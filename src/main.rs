@@ -115,7 +115,9 @@ fn main() {
         renderer.render(&mut screen[..]);
         let texture_data = glium::texture::RawImage2d::from_raw_rgb(screen, (width, height));
         // TODO: Do not generate mipmaps.
-        let texture = glium::texture::Texture2d::new(&display, texture_data)
+        let texture = glium::texture::Texture2d::with_mipmaps(&display,
+                                                              texture_data,
+                                                              glium::texture::MipmapsOption::NoMipmap)
                                                 .expect("failed to create texture");
         let mut target = display.draw();
         quad.draw_to_surface(&mut target, &texture);
