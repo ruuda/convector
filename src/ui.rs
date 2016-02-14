@@ -1,3 +1,6 @@
+//! This module handles user input and getting pixels onto the screen. It uses
+//! the Glium library, a safe wrapper around OpenGL.
+
 use glium::{DisplayBuild, Program, Surface, VertexBuffer};
 use glium::backend::Facade;
 use glium::backend::glutin_backend::GlutinFacade;
