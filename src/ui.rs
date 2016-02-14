@@ -138,12 +138,8 @@ impl Window {
         target.finish().expect("failed to swap buffers");
 
         let end_draw = PreciseTime::now();
-        let tex_upload_ns = begin_texture.to(begin_draw).num_nanoseconds();
-        let draw_vsync_ns = begin_draw.to(end_draw).num_nanoseconds();
-        let tex_upload_us = (tex_upload_ns.unwrap() + 500) / 1000;
-        let draw_vsync_us = (draw_vsync_ns.unwrap() + 500) / 1000;
-        self.tex_upload_stats.insert(tex_upload_us as u32);
-        self.draw_vsync_stats.insert(draw_vsync_us as u32);
+        self.tex_upload_stats.insert_time_us(begin_texture.to(begin_draw));
+        self.draw_vsync_stats.insert_time_us(begin_draw.to(end_draw));
         println!("texture upload min: {} us, median: {} us",
                  self.tex_upload_stats.min(),
                  self.tex_upload_stats.median());

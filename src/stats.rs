@@ -1,5 +1,7 @@
 //! A simple way to keep track of statistics.
 
+use time::Duration;
+
 /// Keeps track of the min, median, and max of a variable.
 ///
 /// The number of values stored is bounded.
@@ -42,6 +44,13 @@ impl Stats {
         };
 
         self.values.insert(idx, value);
+    }
+
+    /// Inserts the duration rounded to microseconds.
+    pub fn insert_time_us(&mut self, duration: Duration) {
+        let ns = duration.num_nanoseconds().unwrap();
+        let us = (ns + 500) / 1000;
+        self.insert(us as u32);
     }
 
     /// Returns the median of the stored values.
