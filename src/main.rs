@@ -100,10 +100,10 @@ fn main() {
     loop {
         // TODO: Use uninitialized vector.
         let mut screen: Vec<u8> = iter::repeat(128)
-                                       .take(width as usize * height as usize * 4)
+                                       .take(width as usize * height as usize * 3)
                                        .collect();
         renderer.render(&mut screen[..]);
-        let texture_data = glium::texture::RawImage2d::from_raw_rgba(screen, (width, height));
+        let texture_data = glium::texture::RawImage2d::from_raw_rgb(screen, (width, height));
         // TODO: Do not generate mipmaps.
         let texture = glium::texture::Texture2d::new(&display, texture_data)
                                                 .expect("failed to create texture");
