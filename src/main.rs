@@ -49,12 +49,13 @@ mod window {
 
     impl Quad {
         pub fn new<F: glium::backend::Facade>(facade: &F) -> Quad {
-            let vertex1 = Vertex { position: [-0.5, -0.5], tex_coords: [0.0, 0.0] };
-            let vertex2 = Vertex { position: [ 0.0,  0.5], tex_coords: [1.0, 0.0] };
-            let vertex3 = Vertex { position: [ 0.5, -0.25], tex_coords: [1.0, 1.0] };
-            let shape = vec![vertex1, vertex2, vertex3];
+            let vertex1 = Vertex { position: [-1.0, -1.0], tex_coords: [0.0, 1.0] };
+            let vertex2 = Vertex { position: [ 1.0, -1.0], tex_coords: [1.0, 1.0] };
+            let vertex3 = Vertex { position: [-1.0,  1.0], tex_coords: [0.0, 0.0] };
+            let vertex4 = Vertex { position: [ 1.0,  1.0], tex_coords: [1.0, 0.0] };
+            let shape = vec![vertex1, vertex2, vertex3, vertex4];
             let vertex_buffer = glium::VertexBuffer::new(facade, &shape).unwrap();
-            let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+            let indices = glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip);
             let program = glium::Program::from_source(facade, VERTEX_SHADER, FRAGMENT_SHADER,
                                                       None).unwrap();
             Quad {
