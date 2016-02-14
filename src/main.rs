@@ -92,12 +92,22 @@ fn main() {
     let display = glium::glutin::WindowBuilder::new()
         .with_dimensions(width, height)
         .with_title(format!("Hello world"))
+        .with_vsync()
+        .with_srgb(Some(true)) // Automatically convert RGB -> sRGB.
         .build_glium()
         .expect("failed to create gl window");
 
     let quad = Quad::new(&display);
 
     loop {
+        for ev in display.poll_events() {
+            match ev {
+                // Window was closed by the user.
+                glium::glutin::Event::Closed => return,
+                _ => ()
+            }
+        }
+
         // TODO: Use uninitialized vector.
         let mut screen: Vec<u8> = iter::repeat(128)
                                        .take(width as usize * height as usize * 3)
@@ -109,16 +119,8 @@ fn main() {
                                                 .expect("failed to create texture");
         let mut target = display.draw();
         quad.draw_to_surface(&mut target, &texture);
+
+        // Finishing drawing will swap the buffers and wait for a vsync.
         target.finish().expect("failed to swap buffers");
-
-        for ev in display.poll_events() {
-            match ev {
-                // Window was closed by the user.
-                glium::glutin::Event::Closed => return,
-                _ => ()
-            }
-        }
-
-        // TODO: Wait for vsync.
     }
 }
