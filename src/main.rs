@@ -49,10 +49,10 @@ mod window {
 
     impl Quad {
         pub fn new<F: glium::backend::Facade>(facade: &F) -> Quad {
-            let vertex1 = Vertex { position: [-1.0, -1.0], tex_coords: [0.0, 1.0] };
-            let vertex2 = Vertex { position: [ 1.0, -1.0], tex_coords: [1.0, 1.0] };
-            let vertex3 = Vertex { position: [-1.0,  1.0], tex_coords: [0.0, 0.0] };
-            let vertex4 = Vertex { position: [ 1.0,  1.0], tex_coords: [1.0, 0.0] };
+            let vertex1 = Vertex { position: [-1.0, -1.0], tex_coords: [0.0, 0.0] };
+            let vertex2 = Vertex { position: [ 1.0, -1.0], tex_coords: [1.0, 0.0] };
+            let vertex3 = Vertex { position: [-1.0,  1.0], tex_coords: [0.0, 1.0] };
+            let vertex4 = Vertex { position: [ 1.0,  1.0], tex_coords: [1.0, 1.0] };
             let shape = vec![vertex1, vertex2, vertex3, vertex4];
             let vertex_buffer = glium::VertexBuffer::new(facade, &shape).unwrap();
             let indices = glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip);
@@ -98,15 +98,16 @@ fn main() {
     let quad = Quad::new(&display);
 
     loop {
+        // TODO: Use uninitialized vector.
         let mut screen: Vec<u8> = iter::repeat(128)
                                        .take(width as usize * height as usize * 4)
                                        .collect();
         renderer.render(&mut screen[..]);
-        let texture_data = glium::texture::RawImage2d::from_raw_rgba_reversed(screen, (width, height));
+        let texture_data = glium::texture::RawImage2d::from_raw_rgba(screen, (width, height));
+        // TODO: Do not generate mipmaps.
         let texture = glium::texture::Texture2d::new(&display, texture_data)
                                                 .expect("failed to create texture");
         let mut target = display.draw();
-        target.clear_color(0.0, 0.0, 1.0, 1.0);
         quad.draw_to_surface(&mut target, &texture);
         target.finish().expect("failed to swap buffers");
 
