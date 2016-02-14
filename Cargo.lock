@@ -3,6 +3,7 @@ name = "infomagr"
 version = "0.1.0"
 dependencies = [
  "glium 0.13.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "simd 0.1.0 (git+https://github.com/rekka/simd?rev=0ae5c4b)",
 ]
 
 [[package]]
@@ -365,6 +366,11 @@ dependencies = [
  "winapi 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "simd"
+version = "0.1.0"
+source = "git+https://github.com/rekka/simd?rev=0ae5c4b#0ae5c4ba2bb9788fc18827f5a438ece4357b5f46"
 
 [[package]]
 name = "smallvec"
