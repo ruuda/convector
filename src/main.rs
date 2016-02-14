@@ -5,6 +5,7 @@ extern crate glium;
 extern crate time;
 
 mod renderer;
+mod stats;
 mod ui;
 
 use renderer::Renderer;

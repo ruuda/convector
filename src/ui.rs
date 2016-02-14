@@ -7,6 +7,7 @@ use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{Event, WindowBuilder};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::{MipmapsOption, RawImage2d, Texture2d};
+use stats::Stats;
 use time::PreciseTime;
 
 /// Vertex for the full-screen quad.
@@ -87,6 +88,8 @@ pub struct Window {
     quad: FullScreenQuad,
     width: u32,
     height: u32,
+    tex_upload_stats: Stats<u32>,
+    draw_vsync_stats: Stats<u32>,
 }
 
 impl Window {
@@ -108,6 +111,8 @@ impl Window {
             quad: quad,
             width: width,
             height: height,
+            tex_upload_stats: Stats::new(),
+            draw_vsync_stats: Stats::new(),
         }
     }
 
@@ -133,8 +138,18 @@ impl Window {
         target.finish().expect("failed to swap buffers");
 
         let end_draw = PreciseTime::now();
-        println!("texture upload took {:?}", begin_texture.to(begin_draw));
-        println!("draw and vsync took {:?}", begin_draw.to(end_draw));
+        let tex_upload_ns = begin_texture.to(begin_draw).num_nanoseconds();
+        let draw_vsync_ns = begin_draw.to(end_draw).num_nanoseconds();
+        let tex_upload_us = (tex_upload_ns.unwrap() + 500) / 1000;
+        let draw_vsync_us = (draw_vsync_ns.unwrap() + 500) / 1000;
+        self.tex_upload_stats.insert(tex_upload_us as u32);
+        self.draw_vsync_stats.insert(draw_vsync_us as u32);
+        println!("texture upload min: {} us, median: {} us",
+                 self.tex_upload_stats.min(),
+                 self.tex_upload_stats.median());
+        println!("draw and vsync min: {} us, median: {} us",
+                 self.draw_vsync_stats.min(),
+                 self.draw_vsync_stats.median());
     }
 
     /// Handles all window events and returns whether the app should continue to
