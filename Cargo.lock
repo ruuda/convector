@@ -2,7 +2,7 @@
 name = "infomagr"
 version = "0.1.0"
 dependencies = [
- "glium 0.13.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glium 0.13.5 (git+https://github.com/tomaka/glium?rev=master)",
  "simd 0.1.0 (git+https://github.com/rekka/simd?rev=0ae5c4b)",
  "time 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -204,7 +204,7 @@ dependencies = [
 [[package]]
 name = "glium"
 version = "0.13.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/tomaka/glium?rev=master#81f0cb2ca69c65039353512ca3944c5880666d9d"
 dependencies = [
  "backtrace 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "gl_generator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
