@@ -6,3 +6,4 @@ authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
 [dependencies]
 glium = "0.13.5"
 simd = { git = "https://github.com/rekka/simd", rev = "0ae5c4b" }
+time = "0.1"

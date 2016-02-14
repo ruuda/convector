@@ -2,6 +2,7 @@
 
 #[macro_use]
 extern crate glium;
+extern crate time;
 
 mod renderer;
 
@@ -100,6 +101,7 @@ fn main() {
     let quad = Quad::new(&display);
 
     loop {
+        let begin = time::PreciseTime::now();
         for ev in display.poll_events() {
             match ev {
                 // Window was closed by the user.
@@ -119,10 +121,15 @@ fn main() {
                                                               texture_data,
                                                               glium::texture::MipmapsOption::NoMipmap)
                                                 .expect("failed to create texture");
+        let duration = begin.to(time::PreciseTime::now());
+        println!("frame without draw took {:?}", duration);
+
         let mut target = display.draw();
         quad.draw_to_surface(&mut target, &texture);
 
         // Finishing drawing will swap the buffers and wait for a vsync.
         target.finish().expect("failed to swap buffers");
+        let duration = begin.to(time::PreciseTime::now());
+        println!("frame took {:?}", duration);
     }
 }
