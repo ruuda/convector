@@ -110,10 +110,11 @@ fn main() {
             }
         }
 
-        // TODO: Use uninitialized vector.
-        let mut screen: Vec<u8> = iter::repeat(128)
-                                       .take(width as usize * height as usize * 3)
-                                       .collect();
+        // Create an uninitialized vector to render into. Because the renderer
+        // will write to every pixel, no uninitialized memory is exposed.
+        let screen_len = width as usize * height as usize * 3;
+        let mut screen: Vec<u8> = Vec::with_capacity(screen_len);
+        unsafe { screen.set_len(screen_len); }
         renderer.render(&mut screen[..]);
         let texture_data = glium::texture::RawImage2d::from_raw_rgb(screen, (width, height));
         // TODO: Do not generate mipmaps.
