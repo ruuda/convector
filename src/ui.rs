@@ -7,7 +7,7 @@ use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{Event, WindowBuilder};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::{MipmapsOption, RawImage2d, Texture2d};
-use stats::Stats;
+use stats::GlobalStats;
 use time::PreciseTime;
 
 /// Vertex for the full-screen quad.
@@ -88,8 +88,6 @@ pub struct Window {
     quad: FullScreenQuad,
     width: u32,
     height: u32,
-    tex_upload_stats: Stats,
-    draw_vsync_stats: Stats,
 }
 
 impl Window {
@@ -111,12 +109,10 @@ impl Window {
             quad: quad,
             width: width,
             height: height,
-            tex_upload_stats: Stats::new(),
-            draw_vsync_stats: Stats::new(),
         }
     }
 
-    pub fn render(&mut self, rgb_buffer: Vec<u8>) {
+    pub fn render(&mut self, rgb_buffer: Vec<u8>, stats: &mut GlobalStats) {
         assert_eq!(rgb_buffer.len(), self.width as usize * self.height as usize * 3);
 
         let begin_texture = PreciseTime::now();
@@ -138,25 +134,22 @@ impl Window {
         target.finish().expect("failed to swap buffers");
 
         let end_draw = PreciseTime::now();
-        self.tex_upload_stats.insert_time_us(begin_texture.to(begin_draw));
-        self.draw_vsync_stats.insert_time_us(begin_draw.to(end_draw));
-        println!("texture upload min: {} us, median: {} us",
-                 self.tex_upload_stats.min(),
-                 self.tex_upload_stats.median());
-        println!("draw and vsync min: {} us, median: {} us",
-                 self.draw_vsync_stats.min(),
-                 self.draw_vsync_stats.median());
+        stats.tex_upload_us.insert_time_us(begin_texture.to(begin_draw));
+        stats.draw_vsync_us.insert_time_us(begin_draw.to(end_draw));
     }
 
     /// Handles all window events and returns whether the app should continue to
     /// run.
-    pub fn handle_events(&mut self) -> bool {
+    pub fn handle_events(&mut self, stats: &GlobalStats) -> bool {
         for ev in self.display.poll_events() {
             match ev {
                 // Window was closed by the user.
                 Event::Closed => return false,
-                // The user pressed 'q'.
+                // The user pressed 'q' for quit.
                 Event::ReceivedCharacter('q') => return false,
+                // The user pressed 's' for stats.
+                // TODO: Invert dependency, handle_events should not take stats.
+                Event::ReceivedCharacter('s') => stats.print(),
                 // Something else.
                 _ => ()
             }

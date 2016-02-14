@@ -9,6 +9,7 @@ mod stats;
 mod ui;
 
 use renderer::Renderer;
+use stats::GlobalStats;
 use ui::Window;
 
 fn main() {
@@ -17,14 +18,15 @@ fn main() {
 
     let mut window = Window::new(width, height, "infomagr interactive tracer");
     let renderer = Renderer::new(width, height);
+    let mut stats = GlobalStats::new();
 
-    while window.handle_events() {
+    while window.handle_events(&stats) {
         // Create an uninitialized buffer to render into. Because the renderer
         // will write to every pixel, no uninitialized memory is exposed.
         let screen_len = width as usize * height as usize * 3;
         let mut screen: Vec<u8> = Vec::with_capacity(screen_len);
         unsafe { screen.set_len(screen_len); }
         renderer.render(&mut screen[..]);
-        window.render(screen);
+        window.render(screen, &mut stats);
     }
 }

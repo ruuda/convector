@@ -76,3 +76,30 @@ impl Stats {
         self.values[self.values.len() - 1]
     }
 }
+
+/// A collection of global stats that the app keeps track of.
+pub struct GlobalStats {
+    /// Texture upload time in microseconds.
+    pub tex_upload_us: Stats,
+    /// Draw and wait for vsync time in microseconds.
+    pub draw_vsync_us: Stats,
+}
+
+impl GlobalStats {
+    pub fn new() -> GlobalStats {
+        GlobalStats {
+            tex_upload_us: Stats::new(),
+            draw_vsync_us: Stats::new(),
+        }
+    }
+
+    pub fn print(&self) {
+        println!("");
+        println!("texture upload: median {} us, min {} us",
+                 self.tex_upload_us.median(),
+                 self.tex_upload_us.min());
+        println!("draw and vsync: median {} us, min {} us",
+                 self.draw_vsync_us.median(),
+                 self.draw_vsync_us.min());
+    }
+}
