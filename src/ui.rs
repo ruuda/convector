@@ -88,8 +88,8 @@ pub struct Window {
     quad: FullScreenQuad,
     width: u32,
     height: u32,
-    tex_upload_stats: Stats<u32>,
-    draw_vsync_stats: Stats<u32>,
+    tex_upload_stats: Stats,
+    draw_vsync_stats: Stats,
 }
 
 impl Window {
