@@ -18,7 +18,7 @@ mod window {
         tex_coords: [f32; 2],
     }
 
-    implement_vertex!(Vertex, position);
+    implement_vertex!(Vertex, position, tex_coords);
 
     static VERTEX_SHADER: &'static str = r#"
         #version 140
@@ -27,6 +27,7 @@ mod window {
         out vec2 v_tex_coords;
         void main() {
             gl_Position = vec4(position, 0.0, 1.0);
+            v_tex_coords = tex_coords;
         }
     "#;
 
@@ -81,38 +82,28 @@ fn main() {
     use glium::DisplayBuild;
 
     // TODO: Proper HiDPI support.
-    let width = 503; // 1280;
-    let height = 521; //720;
+    let width = 1280;
+    let height = 720;
 
     let renderer = Renderer::new(width, height);
 
     // TODO: Proper HiDPI support.
     let display = glium::glutin::WindowBuilder::new()
-        //.with_dimensions(width, height)
-        //.with_title(format!("Hello world"))
+        .with_dimensions(width, height)
+        .with_title(format!("Hello world"))
         .build_glium()
         .expect("failed to create gl window");
-
-    let mut screen: Vec<u8> = iter::repeat(128).take(width as usize * height as usize * 4).collect();
-    renderer.render(&mut screen[..]);
-    // TODO: Why do I see garbage?
-    let mut screen: Vec<u8> = iter::repeat(128).take((width * height * 4) as usize).collect();
-    for y in (0..height) {
-        for x in (0..width) {
-            let i = ((y * width + x) * 4) as usize;
-            screen[i + 0] = (x * 256 / width) as u8;
-            screen[i + 1] = (y * 256 / height) as u8;
-            screen[i + 2] = 0;
-            screen[i + 3] = 255;
-        }
-    }
-    let texture_data = glium::texture::RawImage2d::from_raw_rgba_reversed(screen, (width, height));
-    let texture = glium::texture::Texture2d::new(&display, texture_data)
-                                            .expect("failed to create texture");
 
     let quad = Quad::new(&display);
 
     loop {
+        let mut screen: Vec<u8> = iter::repeat(128)
+                                       .take(width as usize * height as usize * 4)
+                                       .collect();
+        renderer.render(&mut screen[..]);
+        let texture_data = glium::texture::RawImage2d::from_raw_rgba_reversed(screen, (width, height));
+        let texture = glium::texture::Texture2d::new(&display, texture_data)
+                                                .expect("failed to create texture");
         let mut target = display.draw();
         target.clear_color(0.0, 0.0, 1.0, 1.0);
         quad.draw_to_surface(&mut target, &texture);

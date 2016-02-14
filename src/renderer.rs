@@ -16,7 +16,7 @@ impl Renderer {
         for j in 0..self.height {
             for i in 0..self.width {
                 let idx = ((j * self.width + i) * 4) as usize;
-                dest_bitmap[idx + 0] = 255; //(255.0 * i as f32 / self.width as f32) as u8;
+                dest_bitmap[idx + 0] = (256 * i / self.width) as u8;
                 dest_bitmap[idx + 1] = (256 * j / self.height) as u8;
                 dest_bitmap[idx + 2] = 0;
                 dest_bitmap[idx + 3] = 255;
