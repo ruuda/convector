@@ -7,6 +7,7 @@ extern crate time;
 mod renderer;
 mod stats;
 mod ui;
+mod vector3;
 
 use renderer::Renderer;
 use stats::GlobalStats;
