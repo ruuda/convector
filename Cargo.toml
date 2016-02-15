@@ -5,6 +5,6 @@ authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
 
 [dependencies]
 # glium = "0.13.5"
-glium = { git = "https://github.com/tomaka/glium", rev = "master" }
+glium = { git = "https://github.com/tomaka/glium", rev = "a37c771" }
 simd = { git = "https://github.com/rekka/simd", rev = "0ae5c4b" }
 time = "0.1"
