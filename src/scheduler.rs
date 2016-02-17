@@ -5,7 +5,7 @@ use std::thread;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{Receiver, Sender, channel};
 
-type Work = Box<FnOnce() + Send>;
+type Work = Box<FnMut() + Send>;
 
 struct Scheduler {
     worker_signals: Vec<Sender<()>>,
@@ -36,7 +36,7 @@ impl Scheduler {
         // Block until the sender signals, or stop if the sender has quit.
         while let Ok(()) = signal_rx.recv() {
             // Keep executing fork from the queue until it is empty.
-            while let Some(task) = work_queue.lock().unwrap().pop() {
+            while let Some(mut task) = work_queue.lock().unwrap().pop() {
                 task();
             }
         }
