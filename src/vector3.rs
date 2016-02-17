@@ -108,3 +108,8 @@ impl Mul<f32> for Vector3 {
         }
     }
 }
+
+pub struct Ray {
+    pub origin: Vector3,
+    pub direction: Vector3,
+}

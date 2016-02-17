@@ -1,9 +1,15 @@
 use scene::Scene;
+use vector3::Vector3;
 
 pub struct Renderer {
     scene: Scene,
     width: u32,
     height: u32,
+}
+
+/// Clamps a float to the unit interval [0, 1].
+fn clamp_unit(x: f32) -> f32 {
+    if x < 0.0 { 0.0 } else if x > 1.0 { 1.0 } else { x }
 }
 
 impl Renderer {
@@ -22,13 +28,28 @@ impl Renderer {
                               y_to: u32) {
         assert_eq!(backbuffer_slice.len(), self.width as usize * (y_to - y_from) as usize * 3);
 
-        for j in y_from..y_to {
-            for i in 0..self.width {
-                let idx = (((j - y_from) * self.width + i) * 3) as usize;
-                backbuffer_slice[idx + 0] = (256 * i / self.width) as u8;
-                backbuffer_slice[idx + 1] = (256 * j / self.height) as u8;
-                backbuffer_slice[idx + 2] = 0;
+        let scale = 2.0 / self.width as f32;
+
+        for y in y_from..y_to {
+            for x in 0..self.width {
+                let xf = (x as f32 - self.width as f32 / 2.0) * scale;
+                let yf = (y as f32 - self.height as f32 / 2.0) * scale;
+
+                let rgb = self.render_pixel(xf, yf);
+
+                // Write the color as linear RGB, 8 bytes per pixel. The window
+                // has been set up so that this will be converted to sRGB when
+                // it is displayed.
+                let idx = (((y - y_from) * self.width + x) * 3) as usize;
+                backbuffer_slice[idx + 0] = (255.0 * clamp_unit(rgb.x)) as u8;
+                backbuffer_slice[idx + 1] = (255.0 * clamp_unit(rgb.y)) as u8;
+                backbuffer_slice[idx + 2] = (255.0 * clamp_unit(rgb.z)) as u8;
             }
         }
+    }
+
+    fn render_pixel(&self, x: f32, y: f32) -> Vector3 {
+        let ray = self.scene.camera.get_ray(x, y);
+        ray.direction
     }
 }
