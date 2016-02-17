@@ -8,8 +8,12 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 type Work = Box<FnMut() + Send>;
 
 struct Scheduler {
-    worker_signals: Vec<Sender<()>>,
+    worker_signals: Vec<Sender<Sender<()>>>,
     work_queue: Arc<Mutex<Vec<Work>>>,
+}
+
+struct WaitToken {
+    worker_done_signals: Vec<Receiver<()>>,
 }
 
 impl Scheduler {
@@ -32,18 +36,21 @@ impl Scheduler {
         }
     }
 
-    fn run_worker(signal_rx: Receiver<()>, work_queue: Arc<Mutex<Vec<Work>>>) {
+    fn run_worker(signal_rx: Receiver<Sender<()>>,
+                  work_queue: Arc<Mutex<Vec<Work>>>) {
         // Block until the sender signals, or stop if the sender has quit.
-        while let Ok(()) = signal_rx.recv() {
+        while let Ok(done_sender) = signal_rx.recv() {
             // Keep executing fork from the queue until it is empty.
             while let Some(mut task) = work_queue.lock().unwrap().pop() {
                 task();
             }
+            // Signal that this worker has completed.
+            done_sender.send(());
         }
     }
 
     /// Executes all of the work in worker threads. Returns immediately.
-    fn do_work_async(&mut self, mut work: Vec<Work>) {
+    fn do_work_async(&mut self, mut work: Vec<Work>) -> WaitToken {
         // First put the work into the queue.
         let mut locked_queue = self.work_queue.lock().unwrap();
         // TODO: Is there a method for this?
@@ -51,11 +58,26 @@ impl Scheduler {
             locked_queue.push(w);
         }
 
-        // Then wake up the workers.
+        // Then wake up the workers. Send them the sending end of a channel
+        // through which they should signal that they are done.
+        let mut worker_done_signals = Vec::with_capacity(self.worker_signals.len());
         for sender in &self.worker_signals {
-            sender.send(());
+            let (signal_tx, signal_rx) = channel();
+            sender.send(signal_tx);
+            worker_done_signals.push(signal_rx);
+        }
+
+        WaitToken {
+            worker_done_signals: worker_done_signals,
         }
     }
+}
 
-    // TODO: I should have a way to wait for workers.
+impl WaitToken {
+    pub fn wait(self) {
+        // Wait for one signal from every worker.
+        for done_signal in self.worker_done_signals {
+            done_signal.recv().ok().expect("worker thread quit unexpectedly");
+        }
+    }
 }
