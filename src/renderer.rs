@@ -11,6 +11,16 @@ impl Renderer {
         }
     }
 
+    /// Renders one frame, returns the rendered surface.
+    pub fn render_frame(&self) -> Vec<u8> {
+        // Create an uninitialized buffer to render into. Because the renderer
+        // will write to every pixel, no uninitialized memory is exposed.
+        let surface_len = self.width as usize * self.height as usize * 3;
+        let mut surface: Vec<u8> = Vec::with_capacity(surface_len);
+        unsafe { surface.set_len(surface_len); }
+        surface
+    }
+
     pub fn render(&self, dest_bitmap: &mut [u8]) {
         assert_eq!(dest_bitmap.len(), self.width as usize * self.height as usize * 3);
         for j in 0..self.height {

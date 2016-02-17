@@ -1,10 +1,12 @@
-#[warn(missing_docs)]
+#![warn(missing_docs)]
 
 #[macro_use]
 extern crate glium;
+extern crate num_cpus;
 extern crate time;
 
 mod renderer;
+mod scheduler;
 mod stats;
 mod ui;
 mod vector3;
