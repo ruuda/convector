@@ -13,6 +13,7 @@ mod vector3;
 
 use renderer::Renderer;
 use stats::GlobalStats;
+use time::PreciseTime;
 use ui::Window;
 
 fn main() {
@@ -30,6 +31,7 @@ fn main() {
 
     let mut threadpool = scoped_threadpool::Pool::new(num_cpus::get() as u32);
     let mut should_continue = true;
+    let mut frame_start = PreciseTime::now();
 
     while should_continue {
         // Create a new uninitialized buffer to render into. Because the
@@ -59,5 +61,8 @@ fn main() {
         }
 
         frontbuffer = backbuffer;
+        let now = PreciseTime::now();
+        stats.frame_us.insert_time_us(frame_start.to(now));
+        frame_start = now;
     }
 }

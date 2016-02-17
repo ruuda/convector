@@ -83,6 +83,8 @@ pub struct GlobalStats {
     pub tex_upload_us: Stats,
     /// Draw and wait for vsync time in microseconds.
     pub draw_vsync_us: Stats,
+    /// Total time of rendering and drawing a frame.
+    pub frame_us: Stats,
 }
 
 impl GlobalStats {
@@ -90,6 +92,7 @@ impl GlobalStats {
         GlobalStats {
             tex_upload_us: Stats::new(),
             draw_vsync_us: Stats::new(),
+            frame_us: Stats::new(),
         }
     }
 
@@ -101,5 +104,8 @@ impl GlobalStats {
         println!("draw and vsync: median {} us, min {} us",
                  self.draw_vsync_us.median(),
                  self.draw_vsync_us.min());
+        println!("frame time: median {} us, min {} us",
+                 self.frame_us.median(),
+                 self.frame_us.min());
     }
 }
