@@ -9,7 +9,7 @@ type Work = Box<FnOnce() + Send>;
 
 struct Scheduler {
     worker_signals: Vec<Sender<()>>,
-    work: Arc<Mutex<Vec<Work>>>,
+    work_queue: Arc<Mutex<Vec<Work>>>,
 }
 
 impl Scheduler {
@@ -19,26 +19,43 @@ impl Scheduler {
 
     pub fn with_concurrency(concurrency: usize) -> Scheduler {
         let mut worker_signals = Vec::with_capacity(concurrency);
-        let work = Arc::new(Mutex::new(Vec::new()));
+        let work_queue = Arc::new(Mutex::new(Vec::new()));
         for _ in 0 .. concurrency {
             let (signal_tx, signal_rx) = channel();
-            let work_ref = work.clone();
-            thread::spawn(move || Scheduler::run_worker(signal_rx, work_ref));
+            let work_queue_ref = work_queue.clone();
+            thread::spawn(move || Scheduler::run_worker(signal_rx, work_queue_ref));
             worker_signals.push(signal_tx);
         }
         Scheduler {
             worker_signals: worker_signals,
-            work: work,
+            work_queue: work_queue,
         }
     }
 
-    fn run_worker(signal_rx: Receiver<()>, work: Arc<Mutex<Vec<Work>>>) {
+    fn run_worker(signal_rx: Receiver<()>, work_queue: Arc<Mutex<Vec<Work>>>) {
         // Block until the sender signals, or stop if the sender has quit.
         while let Ok(()) = signal_rx.recv() {
             // Keep executing fork from the queue until it is empty.
-            while let Some(task) = work.lock().unwrap().pop() {
+            while let Some(task) = work_queue.lock().unwrap().pop() {
                 task();
             }
         }
     }
+
+    /// Executes all of the work in worker threads. Returns immediately.
+    fn do_work_async(&mut self, mut work: Vec<Work>) {
+        // First put the work into the queue.
+        let mut locked_queue = self.work_queue.lock().unwrap();
+        // TODO: Is there a method for this?
+        for w in work.drain(..) {
+            locked_queue.push(w);
+        }
+
+        // Then wake up the workers.
+        for sender in &self.worker_signals {
+            sender.send(());
+        }
+    }
+
+    // TODO: I should have a way to wait for workers.
 }
