@@ -20,7 +20,7 @@ impl Renderer {
 
         for j in y_from..y_to {
             for i in 0..self.width {
-                let idx = ((j * self.width + i) * 3) as usize;
+                let idx = (((j - y_from) * self.width + i) * 3) as usize;
                 backbuffer_slice[idx + 0] = (256 * i / self.width) as u8;
                 backbuffer_slice[idx + 1] = (256 * j / self.height) as u8;
                 backbuffer_slice[idx + 2] = 0;

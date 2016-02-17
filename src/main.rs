@@ -13,12 +13,14 @@ mod vector3;
 
 use renderer::Renderer;
 use stats::GlobalStats;
+use std::slice;
 use time::PreciseTime;
 use ui::Window;
 
 fn main() {
     let width = 1280;
     let height = 720;
+    let slice_height = height / 20;
 
     let mut window = Window::new(width, height, "infomagr interactive tracer");
     let renderer = Renderer::new(width, height);
@@ -41,22 +43,28 @@ fn main() {
         unsafe { backbuffer.set_len(screen_len); }
 
         {
-            // TODO: Split up the frame in slices.
-            let slice = &mut backbuffer[..];
+            let slice_len = 3 * width * slice_height;
+            let slices = make_slices(&mut backbuffer[..], slice_len as usize);
+            let renderer_ref = &renderer;
 
             threadpool.scoped(|scope| {
+                // Queue tasks for the worker threads to render slices.
+                let mut y_from = 0;
+                let mut y_to = slice_height;
+                for slice in slices {
+                    scope.execute(move || renderer_ref.render_frame_slice(slice, y_from, y_to));
+                    y_from += slice_height;
+                    y_to += slice_height;
+                }
 
-                // Start rendering with worker threads.
-                scope.execute(|| renderer.render_frame_slice(slice, 0, height));
-
-                // In the mean time, upload previously rendered frame to the GPU and
-                // display it, then wait for a vsync.
+                // In the mean time, upload previously rendered frame to the GPU
+                // and display it, then wait for a vsync.
                 window.display_buffer(frontbuffer, &mut stats);
 
                 should_continue = window.handle_events(&mut stats);
 
-                // The scope automatically waits for all tasks to complete before
-                // the loop continue.
+                // The scope automatically waits for all tasks to complete
+                // before the loop continue.
             });
         }
 
@@ -65,4 +73,19 @@ fn main() {
         stats.frame_us.insert_time_us(frame_start.to(now));
         frame_start = now;
     }
+}
+
+/// Splits the buffer into slices of length `slice_len`.
+///
+/// This is similar to `slice::split_at_mut()`.
+fn make_slices<'a>(backbuffer: &'a mut [u8], slice_len: usize) -> Vec<&'a mut [u8]> {
+    let len = backbuffer.len();
+    let mut ptr = backbuffer.as_mut_ptr();
+    let end = unsafe { ptr.offset(len as isize) };
+    let mut slices = Vec::with_capacity(len / slice_len);
+    while ptr < end {
+        slices.push(unsafe { slice::from_raw_parts_mut(ptr, slice_len) });
+        ptr = unsafe { ptr.offset(slice_len as isize) };
+    }
+    slices
 }
