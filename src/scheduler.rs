@@ -50,13 +50,11 @@ impl Scheduler {
     }
 
     /// Executes all of the work in worker threads. Returns immediately.
-    fn do_work_async(&mut self, mut work: Vec<Work>) -> WaitToken {
+    ///
+    /// This leaves `work` empty.
+    fn do_work_async(&mut self, work: &mut Vec<Work>) -> WaitToken {
         // First put the work into the queue.
-        let mut locked_queue = self.work_queue.lock().unwrap();
-        // TODO: Is there a method for this?
-        for w in work.drain(..) {
-            locked_queue.push(w);
-        }
+        self.work_queue.lock().unwrap().append(work);
 
         // Then wake up the workers. Send them the sending end of a channel
         // through which they should signal that they are done.
