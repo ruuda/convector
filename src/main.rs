@@ -3,10 +3,10 @@
 #[macro_use]
 extern crate glium;
 extern crate num_cpus;
+extern crate scoped_threadpool;
 extern crate time;
 
 mod renderer;
-mod scheduler;
 mod stats;
 mod ui;
 mod vector3;
@@ -23,13 +23,41 @@ fn main() {
     let renderer = Renderer::new(width, height);
     let mut stats = GlobalStats::new();
 
-    while window.handle_events(&stats) {
-        // Create an uninitialized buffer to render into. Because the renderer
-        // will write to every pixel, no uninitialized memory is exposed.
-        let screen_len = width as usize * height as usize * 3;
-        let mut screen: Vec<u8> = Vec::with_capacity(screen_len);
-        unsafe { screen.set_len(screen_len); }
-        renderer.render(&mut screen[..]);
-        window.render(screen, &mut stats);
+    // Initialize a buffer to black.
+    let screen_len = width as usize * height as usize * 3;
+    let mut frontbuffer = Vec::with_capacity(screen_len);
+    frontbuffer.resize(screen_len, 0);
+
+    let mut threadpool = scoped_threadpool::Pool::new(num_cpus::get() as u32);
+    let mut should_continue = true;
+
+    while should_continue {
+        // Create a new uninitialized buffer to render into. Because the
+        // renderer will write to every pixel, no uninitialized memory is
+        // exposed.
+        let mut backbuffer: Vec<u8> = Vec::with_capacity(screen_len);
+        unsafe { backbuffer.set_len(screen_len); }
+
+        {
+            // TODO: Split up the frame in slices.
+            let slice = &mut backbuffer[..];
+
+            threadpool.scoped(|scope| {
+
+                // Start rendering with worker threads.
+                scope.execute(|| renderer.render_frame_slice(slice, 0, height));
+
+                // In the mean time, upload previously rendered frame to the GPU and
+                // display it, then wait for a vsync.
+                window.display_buffer(frontbuffer, &mut stats);
+
+                should_continue = window.handle_events(&mut stats);
+
+                // The scope automatically waits for all tasks to complete before
+                // the loop continue.
+            });
+        }
+
+        frontbuffer = backbuffer;
     }
 }

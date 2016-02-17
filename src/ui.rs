@@ -34,7 +34,7 @@ impl Window {
         }
     }
 
-    pub fn render(&mut self, rgb_buffer: Vec<u8>, stats: &mut GlobalStats) {
+    pub fn display_buffer(&mut self, rgb_buffer: Vec<u8>, stats: &mut GlobalStats) {
         assert_eq!(rgb_buffer.len(), self.width as usize * self.height as usize * 3);
 
         let begin_texture = PreciseTime::now();

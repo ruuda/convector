@@ -1,19 +1,27 @@
 //! This module is responsible for scheduling work across multiple cores.
+//! It is a thread pool with a task queue and support for waiting for
+//! completion.
 
 use num_cpus;
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{Receiver, Sender, channel};
 
-type Work = Box<FnMut() + Send>;
+pub type Work = Box<FnMut() + Send>;
+pub type WorkRef<'a> = &'a (FnMut() + Send);
 
-struct Scheduler {
+pub struct Scheduler {
     worker_signals: Vec<Sender<Sender<()>>>,
     work_queue: Arc<Mutex<Vec<Work>>>,
 }
 
-struct WaitToken {
+pub struct WaitToken {
     worker_done_signals: Vec<Receiver<()>>,
+}
+
+struct Batch<'a> {
+    work_queue: Arc<Mutex<Vec<WorkRef<'a>>>>,
+    done_signal: Sender<()>,
 }
 
 impl Scheduler {
@@ -24,7 +32,7 @@ impl Scheduler {
     pub fn with_concurrency(concurrency: usize) -> Scheduler {
         let mut worker_signals = Vec::with_capacity(concurrency);
         let work_queue = Arc::new(Mutex::new(Vec::new()));
-        for _ in 0 .. concurrency {
+        for _ in 0..concurrency {
             let (signal_tx, signal_rx) = channel();
             let work_queue_ref = work_queue.clone();
             thread::spawn(move || Scheduler::run_worker(signal_rx, work_queue_ref));
@@ -36,23 +44,21 @@ impl Scheduler {
         }
     }
 
-    fn run_worker(signal_rx: Receiver<Sender<()>>,
-                  work_queue: Arc<Mutex<Vec<Work>>>) {
-        // Block until the sender signals, or stop if the sender has quit.
-        while let Ok(done_sender) = signal_rx.recv() {
-            // Keep executing fork from the queue until it is empty.
-            while let Some(mut task) = work_queue.lock().unwrap().pop() {
+    fn run_worker(batch_rx: Receiver<Batch<'a>>) {
+        // Block until there is work to do, or until the sender hangs up.
+        while let Ok(batch) = batch_rx.recv() {
+            while let Some(mut task) = batch.work_queue.lock().unwrap().pop() {
                 task();
             }
             // Signal that this worker has completed.
-            done_sender.send(());
+            batch.done_signal.send(());
         }
     }
 
     /// Executes all of the work in worker threads. Returns immediately.
     ///
     /// This leaves `work` empty.
-    fn do_work_async(&mut self, work: &mut Vec<Work>) -> WaitToken {
+    pub fn do_work_async<'a>(&mut self, work: &mut Vec<WorkRef<'a>>) -> WaitToken {
         // First put the work into the queue.
         self.work_queue.lock().unwrap().append(work);
 
@@ -72,6 +78,13 @@ impl Scheduler {
 }
 
 impl WaitToken {
+    /// A wait token that waits for nothing.
+    pub fn empty() -> WaitToken {
+        WaitToken {
+            worker_done_signals: Vec::new(),
+        }
+    }
+
     pub fn wait(self) {
         // Wait for one signal from every worker.
         for done_signal in self.worker_done_signals {
