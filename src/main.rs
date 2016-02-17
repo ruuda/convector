@@ -7,15 +7,21 @@ extern crate scoped_threadpool;
 extern crate time;
 
 mod renderer;
+mod scene;
 mod stats;
 mod ui;
 mod vector3;
 
 use renderer::Renderer;
+use scene::Scene;
 use stats::GlobalStats;
 use std::slice;
 use time::PreciseTime;
 use ui::Window;
+
+fn build_scene() -> Scene {
+    Scene::new()
+}
 
 fn main() {
     let width = 1280;
@@ -23,7 +29,7 @@ fn main() {
     let slice_height = height / 20;
 
     let mut window = Window::new(width, height, "infomagr interactive tracer");
-    let renderer = Renderer::new(width, height);
+    let renderer = Renderer::new(build_scene(), width, height);
     let mut stats = GlobalStats::new();
 
     // Initialize a buffer to black.

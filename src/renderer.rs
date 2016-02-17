@@ -1,11 +1,15 @@
+use scene::Scene;
+
 pub struct Renderer {
+    scene: Scene,
     width: u32,
     height: u32,
 }
 
 impl Renderer {
-    pub fn new(width: u32, height: u32) -> Renderer {
+    pub fn new(scene: Scene, width: u32, height: u32) -> Renderer {
         Renderer {
+            scene: scene,
             width: width,
             height: height,
         }
