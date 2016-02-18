@@ -24,8 +24,8 @@ use wavefront::Mesh;
 
 fn build_scene() -> Scene {
     use vector3::Vector3;
-    use scene::Triangle;
     let mut scene = Scene::new();
+    scene.camera.position = Vector3::new(0.0, 0.0, -5.0);
     let suzanne = Mesh::load("suzanne.obj");
     scene.add_mesh(&suzanne);
     scene
