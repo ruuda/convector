@@ -65,7 +65,7 @@ impl Renderer {
                     let mut strength = dot(isect.normal, to_light);
                     if strength < 0.0 { strength = 0.0; }
                     strength = strength * (1.0 / (distance * distance));
-                    color = color + Vector3::new(strength, 0.0, 0.0);
+                    color = color + Vector3::new(strength * 5.0, 0.0, 0.0);
                 }
             }
         }

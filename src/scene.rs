@@ -89,7 +89,7 @@ impl Camera {
     /// Values for x are in the range (-1, 1), the scale is uniform in both
     /// directions.
     pub fn get_ray(&self, x: f32, y: f32) -> Ray {
-        let direction = Vector3::new(x, y, self.screen_distance).normalized();
+        let direction = Vector3::new(x, y, -self.screen_distance).normalized();
         // TODO: Transform direction with orientation quaternion.
         Ray {
             origin: self.position,
