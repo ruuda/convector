@@ -113,3 +113,14 @@ pub struct Ray {
     pub origin: Vector3,
     pub direction: Vector3,
 }
+
+pub struct Intersection {
+    /// The position at which the ray intersected the surface.
+    pub position: Vector3,
+
+    /// The surface normal at the intersection point.
+    pub normal: Vector3,
+
+    /// This distance between the ray origin and the position.
+    pub distance: f32,
+}

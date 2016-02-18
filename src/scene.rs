@@ -1,10 +1,26 @@
 use std::f32::consts::PI;
-use vector3::{Ray, Vector3};
+use vector3::{Intersection, Ray, Vector3, cross};
 
 pub struct Triangle {
-    pub v1: Vector3,
-    pub v2: Vector3,
-    pub v3: Vector3,
+    pub origin: Vector3,
+    pub left: Vector3,
+    pub right: Vector3,
+}
+
+impl Triangle {
+    fn new(v1: Vector3, v2: Vector3, v3: Vector3) -> Triangle {
+        Triangle {
+            origin: v1,
+            left: v2 - v1,
+            right: v3 - v1,
+        }
+    }
+
+    pub fn intersect(&self, ray: &Ray) -> Option<Intersection> {
+        let normal = cross(self.left, self.right).normalized();
+        // TODO: Implement.
+        None
+    }
 }
 
 pub struct Camera {
