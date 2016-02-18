@@ -114,6 +114,15 @@ pub struct Ray {
     pub direction: Vector3,
 }
 
+impl Ray {
+    pub fn advance_epsilon(&self) -> Ray {
+        Ray {
+            origin: self.origin + self.direction * 1.0e-5,
+            direction: self.direction,
+        }
+    }
+}
+
 pub struct Intersection {
     /// The position at which the ray intersected the surface.
     pub position: Vector3,

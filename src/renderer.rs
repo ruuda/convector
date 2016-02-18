@@ -58,7 +58,7 @@ impl Renderer {
                 let shadow_ray = Ray {
                     origin: isect.position,
                     direction: to_light * (1.0 / distance),
-                };
+                }.advance_epsilon();
                 if self.scene.intersect(&shadow_ray)
                     // TODO: Actually, the distance squared would be sufficient in most cases.
                     .map_or(true, |occluder| occluder.distance > distance) {
