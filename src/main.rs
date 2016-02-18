@@ -1,6 +1,7 @@
 #![warn(missing_docs)]
 
 #[macro_use]
+extern crate filebuffer;
 extern crate glium;
 extern crate num_cpus;
 extern crate scoped_threadpool;
@@ -11,6 +12,7 @@ mod scene;
 mod stats;
 mod ui;
 mod vector3;
+mod wavefront;
 
 use renderer::Renderer;
 use scene::Scene;
