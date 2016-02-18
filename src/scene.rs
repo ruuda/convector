@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
 use vector3::{Intersection, Ray, Vector3, cross, dot};
+use wavefront::Mesh;
 
 pub struct Triangle {
     pub origin: Vector3,
@@ -131,6 +132,15 @@ impl Scene {
             geometry: Vec::new(),
             lights: Vec::new(),
             camera: Camera::with_fov(PI * 0.6),
+        }
+    }
+
+    pub fn add_mesh(&mut self, mesh: &Mesh) {
+        for &(i1, i2, i3) in &mesh.triangles {
+            let v1 = mesh.vertices[i1 as usize];
+            let v2 = mesh.vertices[i2 as usize];
+            let v3 = mesh.vertices[i3 as usize];
+            self.geometry.push(Triangle::new(v1, v2, v3));
         }
     }
 

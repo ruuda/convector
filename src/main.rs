@@ -20,17 +20,14 @@ use stats::GlobalStats;
 use std::slice;
 use time::PreciseTime;
 use ui::Window;
+use wavefront::Mesh;
 
 fn build_scene() -> Scene {
     use vector3::Vector3;
     use scene::Triangle;
     let mut scene = Scene::new();
-    let triangle = Triangle::new(
-        Vector3::new(0.0, 1.0, 1.0),
-        Vector3::new(-1.0, -1.0, 1.0),
-        Vector3::new(1.0, -1.0, 1.0)
-    );
-    scene.geometry.push(triangle);
+    let suzanne = Mesh::load("suzanne.obj");
+    scene.add_mesh(&suzanne);
     scene
 }
 
@@ -50,6 +47,7 @@ fn main() {
 
     let mut threadpool = scoped_threadpool::Pool::new(num_cpus::get() as u32);
     let mut should_continue = true;
+    println!("scene and renderer initialized, entering render loop");
     let mut frame_start = PreciseTime::now();
 
     while should_continue {
