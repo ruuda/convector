@@ -23,11 +23,20 @@ use ui::Window;
 use wavefront::Mesh;
 
 fn build_scene() -> Scene {
+    use scene::Light;
     use vector3::Vector3;
+
     let mut scene = Scene::new();
     scene.camera.position = Vector3::new(0.0, 0.0, -5.0);
+
     let suzanne = Mesh::load("suzanne.obj");
     scene.add_mesh(&suzanne);
+
+    let light = Light {
+        position: Vector3::new(5.0, 0.0, -3.0),
+    };
+    scene.lights.push(light);
+
     scene
 }
 
