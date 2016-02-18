@@ -20,7 +20,16 @@ use time::PreciseTime;
 use ui::Window;
 
 fn build_scene() -> Scene {
-    Scene::new()
+    use vector3::Vector3;
+    use scene::Triangle;
+    let mut scene = Scene::new();
+    let triangle = Triangle::new(
+        Vector3::new(0.0, 1.0, 1.0),
+        Vector3::new(-1.0, -1.0, 1.0),
+        Vector3::new(1.0, -1.0, 1.0)
+    );
+    scene.geometry.push(triangle);
+    scene
 }
 
 fn main() {

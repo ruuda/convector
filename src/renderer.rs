@@ -50,6 +50,10 @@ impl Renderer {
 
     fn render_pixel(&self, x: f32, y: f32) -> Vector3 {
         let ray = self.scene.camera.get_ray(x, y);
-        ray.direction
+        if let Some(isect) = self.scene.intersect(&ray) {
+            Vector3::new(1.0, 0.0, 0.0)
+        } else {
+            Vector3::zero() // Space is black.
+        }
     }
 }

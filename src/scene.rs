@@ -8,7 +8,7 @@ pub struct Triangle {
 }
 
 impl Triangle {
-    fn new(v1: Vector3, v2: Vector3, v3: Vector3) -> Triangle {
+    pub fn new(v1: Vector3, v2: Vector3, v3: Vector3) -> Triangle {
         Triangle {
             origin: v1,
             left: v2 - v1,
