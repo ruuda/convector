@@ -22,6 +22,31 @@ pub struct BvhNode {
     geometry: Vec<Triangle>,
 }
 
+// Intersecting an axis-aligned bounding box is actually not trivial. Below is
+// an implementation for intersecting a ray with the two faces of the AABB
+// parallel to the xy-plane. By cyclically permuting x, y, and z, it is possible
+// to intersect all faces.
+macro_rules! intersect_aabb {
+    ($aabb: ident, $ray: ident, $x: ident, $y: ident, $z: ident) => {
+        if $ray.direction.$z != 0.0 {
+            let origin_z1 = $aabb.origin.$z - $ray.origin.$z;
+            let origin_z2 = origin_z1 + $aabb.size.$z;
+            let t1 = origin_z1 / $ray.direction.$z;
+            let t2 = origin_z2 / $ray.direction.$z;
+            // TODO: Ensure that the t's are positive.
+            let i1 = $ray.origin + $ray.direction * t1 - $aabb.origin;
+            let i2 = $ray.origin + $ray.direction * t2 - $aabb.origin;
+            let in_x1 = (0.0 <= i1.$x) && (i1.$x <= $aabb.size.$x);
+            let in_x2 = (0.0 <= i2.$x) && (i2.$x <= $aabb.size.$x);
+            let in_y1 = (0.0 <= i1.$y) && (i1.$y <= $aabb.size.$y);
+            let in_y2 = (0.0 <= i1.$y) && (i1.$y <= $aabb.size.$y);
+            if (in_x1 && in_y1) || (in_x2 && in_y2) {
+                return true
+            }
+        }
+    }
+}
+
 impl Aabb {
     pub fn new(origin: Vector3, size: Vector3) -> Aabb {
         Aabb {
@@ -65,28 +90,11 @@ impl Aabb {
 
     /// Returns whether the ray intersects the bounding box.
     pub fn intersect(&self, ray: &Ray) -> bool {
-        // TODO: Division by zero?
         // TODO: Simd the **** out of this.
-        let nxy = ray.direction.x / ray.direction.y;
-        let nyx = ray.direction.y / ray.direction.x;
-        let nzx = ray.direction.z / ray.direction.x;
-        let d_near = self.origin - ray.origin;
-        let d_far = d_near + self.size;
-        let ix1 = d_near.y * nxy - self.origin.x;
-        let ix2 = d_far.y * nxy - self.origin.x;
-        let iy1 = d_near.x * nyx - self.origin.y;
-        let iy2 = d_far.x * nyx - self.origin.y;
-        let iz1 = d_near.x * nzx - self.origin.z;
-        let iz2 = d_far.x * nzx - self.origin.z;
-
-        let in_x1 = (0.0 <= ix1) && (ix1 <= self.size.x);
-        let in_x2 = (0.0 <= ix2) && (ix2 <= self.size.x);
-        let in_y1 = (0.0 <= iy1) && (iy1 <= self.size.y);
-        let in_y2 = (0.0 <= iy2) && (iy2 <= self.size.y);
-        let in_z1 = (0.0 <= iz1) && (iz1 <= self.size.z);
-        let in_z2 = (0.0 <= iz2) && (iz2 <= self.size.z);
-
-        (in_x1 || in_x2) && (in_y1 || in_y2) && (in_z1 || in_z2)
+        intersect_aabb!(self, ray, x, y, z);
+        intersect_aabb!(self, ray, y, z, x);
+        intersect_aabb!(self, ray, z, x, y);
+        false
     }
 }
 
@@ -190,6 +198,12 @@ fn intersect_aabb() {
         direction: Vector3::new(1.0, 4.0, 5.0).normalized(),
     };
 
+    let r3 = Ray {
+        origin: Vector3::zero(),
+        direction: Vector3::new(2.0, 3.0, 0.0).normalized(),
+    };
+
     assert!(aabb.intersect(&r1));
     assert!(aabb.intersect(&r2));
+    assert!(!aabb.intersect(&r3));
 }
