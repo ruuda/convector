@@ -13,6 +13,7 @@ pub struct Vector3 {
     pub z: f32
 }
 
+#[derive(Copy, Clone)]
 pub enum Axis {
     X,
     Y,

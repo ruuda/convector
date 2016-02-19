@@ -1,5 +1,6 @@
 //! Implements a bounding volume hierarchy.
 
+use std::cmp::PartialOrd;
 use std::f32;
 use vector3::{Axis, Intersection, Ray, Vector3, cross, dot};
 
@@ -51,6 +52,12 @@ macro_rules! intersect_aabb {
                 return true
             }
         }
+    }
+}
+
+impl Triangle {
+    pub fn barycenter(&self) -> Vector3 {
+        (self.v1 + self.v2 + self.v3) * 3.0f32.recip()
     }
 }
 
@@ -198,8 +205,12 @@ fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
         axis = Axis::Z;
     }
 
-    // TODO: Sort all triangles along this axis.
-    // TODO: Partition along this axis.
+    // Sort the  triangles along that axis (panic on NaN).
+    triangles.sort_by(|a, b| PartialOrd::partial_cmp(
+        &a.barycenter().get_coord(axis),
+        &b.barycenter().get_coord(axis)).unwrap());
+
+    // TODO: Split half-way geometrically, not by index.
     let split_point = triangles.len() / 2;
     let (left_triangles, right_triangles) = triangles.split_at_mut(split_point);
     let left_node = build_bvh_node(left_triangles);
