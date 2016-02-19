@@ -123,6 +123,17 @@ impl Ray {
     }
 }
 
+impl Neg for Ray {
+    type Output = Ray;
+
+    fn neg(self) -> Ray {
+        Ray {
+            origin: self.origin,
+            direction: -self.direction,
+        }
+    }
+}
+
 pub struct Intersection {
     /// The position at which the ray intersected the surface.
     pub position: Vector3,

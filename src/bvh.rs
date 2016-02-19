@@ -205,5 +205,7 @@ fn intersect_aabb() {
 
     assert!(aabb.intersect(&r1));
     assert!(aabb.intersect(&r2));
+    assert!(!aabb.intersect(&-r1));
+    assert!(!aabb.intersect(&-r2));
     assert!(!aabb.intersect(&r3));
 }
