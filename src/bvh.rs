@@ -22,10 +22,10 @@ pub struct BvhNode {
     geometry: Vec<Triangle>,
 }
 
-// Intersecting an axis-aligned bounding box is actually not trivial. Below is
-// an implementation for intersecting a ray with the two faces of the AABB
-// parallel to the xy-plane. By cyclically permuting x, y, and z, it is possible
-// to intersect all faces.
+// Intersecting an axis-aligned bounding box is tricky to implement. Below is a
+// macro for intersecting a ray with the two faces of the AABB parallel to the
+// xy-plane. By cyclically permuting x, y, and z, it is possible to intersect
+// all faces, saving a third of the code.
 macro_rules! intersect_aabb {
     ($aabb: ident, $ray: ident, $x: ident, $y: ident, $z: ident) => {
         if $ray.direction.$z != 0.0 {
@@ -33,14 +33,13 @@ macro_rules! intersect_aabb {
             let origin_z2 = origin_z1 + $aabb.size.$z;
             let t1 = origin_z1 / $ray.direction.$z;
             let t2 = origin_z2 / $ray.direction.$z;
-            // TODO: Ensure that the t's are positive.
             let i1 = $ray.origin + $ray.direction * t1 - $aabb.origin;
             let i2 = $ray.origin + $ray.direction * t2 - $aabb.origin;
             let in_x1 = (0.0 <= i1.$x) && (i1.$x <= $aabb.size.$x);
             let in_x2 = (0.0 <= i2.$x) && (i2.$x <= $aabb.size.$x);
             let in_y1 = (0.0 <= i1.$y) && (i1.$y <= $aabb.size.$y);
             let in_y2 = (0.0 <= i1.$y) && (i1.$y <= $aabb.size.$y);
-            if (in_x1 && in_y1) || (in_x2 && in_y2) {
+            if (t1 >= 0.0 && in_x1 && in_y1) || (t2 >= 0.0 && in_x2 && in_y2) {
                 return true
             }
         }
