@@ -187,24 +187,43 @@ fn intersect_aabb() {
         size: Vector3::new(1.0, 2.0, 3.0),
     };
 
+    // Intersects forwards but not backwards.
     let r1 = Ray {
         origin: Vector3::zero(),
         direction: Vector3::new(2.0, 3.0, 5.0).normalized(),
     };
+    assert!(aabb.intersect(&r1));
+    assert!(!aabb.intersect(&-r1));
 
+    // Intersects forwards but not backwards.
     let r2 = Ray {
         origin: Vector3::zero(),
         direction: Vector3::new(1.0, 4.0, 5.0).normalized(),
     };
+    assert!(aabb.intersect(&r2));
+    assert!(!aabb.intersect(&-r2));
 
+    // Intersects neither forwards nor backwards.
     let r3 = Ray {
         origin: Vector3::zero(),
         direction: Vector3::new(2.0, 3.0, 0.0).normalized(),
     };
-
-    assert!(aabb.intersect(&r1));
-    assert!(aabb.intersect(&r2));
-    assert!(!aabb.intersect(&-r1));
-    assert!(!aabb.intersect(&-r2));
     assert!(!aabb.intersect(&r3));
+    assert!(!aabb.intersect(&-r3));
+
+    // Intersects both forwards and backwards (origin is inside the aabb).
+    let r4 = Ray {
+        origin: Vector3::new(0.2, 1.2, 2.2),
+        direction: Vector3::new(1.0, 1.0, 0.0).normalized(),
+    };
+    assert!(aabb.intersect(&r4));
+    assert!(aabb.intersect(&-r4));
+
+    // Intersects both forwards and backwards (origin is inside the aabb).
+    let r5 = Ray {
+        origin: Vector3::new(0.0, 2.0, 3.5),
+        direction: Vector3::new(0.0, 0.0, 1.0).normalized(),
+    };
+    assert!(aabb.intersect(&r5));
+    assert!(aabb.intersect(&-r5));
 }
