@@ -7,6 +7,7 @@ extern crate num_cpus;
 extern crate scoped_threadpool;
 extern crate time;
 
+mod bvh;
 mod renderer;
 mod scene;
 mod stats;
