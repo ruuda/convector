@@ -13,6 +13,12 @@ pub struct Vector3 {
     pub z: f32
 }
 
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
 pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
     Vector3 {
         x: a.y * b.z - a.z * b.y,
@@ -58,6 +64,14 @@ impl Vector3 {
 
     pub fn reflect(self, normal: Vector3) -> Vector3 {
         self - normal * 2.0 * dot(normal, self)
+    }
+
+    pub fn get_coord(self, axis: Axis) -> f32 {
+        match axis {
+            Axis::X => self.x,
+            Axis::Y => self.y,
+            Axis::Z => self.z,
+        }
     }
 }
 
