@@ -70,7 +70,7 @@ impl Aabb {
         let xmax = f32::max(a.origin.x + a.size.x, b.origin.x + b.size.x);
         let ymax = f32::max(a.origin.y + a.size.y, b.origin.y + b.size.y);
         let zmax = f32::max(a.origin.z + a.size.z, b.origin.z + b.size.z);
-        let origin = Vector3::new(xmin, ymin, zmax);
+        let origin = Vector3::new(xmin, ymin, zmin);
         let size = Vector3::new(xmax - xmin, ymax - ymin, zmax - zmin);
         Aabb::new(origin, size)
     }
@@ -83,6 +83,15 @@ impl Aabb {
         intersect_aabb!(self, ray, z, x, y);
         false
     }
+}
+
+#[test]
+fn aabb_enclose_aabbs() {
+    let a = Aabb::new(Vector3::new(1.0, 2.0, 3.0), Vector3::new(4.0, 5.0, 6.0));
+    let b = Aabb::new(Vector3::new(0.0, 3.0, 2.0), Vector3::new(9.0, 3.0, 7.0));
+    let ab = Aabb::enclose_aabbs(&a, &b);
+    assert_eq!(ab.origin, Vector3::new(0.0, 2.0, 2.0));
+    assert_eq!(ab.size, Vector3::new(9.0, 5.0, 7.0));
 }
 
 #[test]

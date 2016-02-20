@@ -9,7 +9,7 @@ use aabb::Aabb;
 use ray::{Intersection, Ray};
 use vector3::{Vector3, cross, dot};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Triangle {
     pub v1: Vector3,
     pub v2: Vector3,
