@@ -2,6 +2,7 @@
 
 use aabb::Aabb;
 use geometry::Triangle;
+use ray::Ray;
 use std::cmp::PartialOrd;
 use vector3::{Axis, Vector3};
 
@@ -67,11 +68,49 @@ fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
 }
 
 impl Bvh {
-    fn build(mut triangles: Vec<Triangle>) -> Bvh {
+    pub fn build(mut triangles: Vec<Triangle>) -> Bvh {
         // TODO: Use rayon for data parallelism here.
         let root = build_bvh_node(&mut triangles);
         Bvh {
             root: root,
         }
+    }
+
+    /// Traverses the BVH, calls a callback when a node is intersected and for
+    /// every leaf triangle that might insersect the ray.
+    pub fn traverse_with_nodes<OnNode, OnTriangle>(&self,
+                                                   ray: &Ray,
+                                                   on_node: OnNode,
+                                                   on_triangle: OnTriangle)
+                                             where OnNode: Fn(),
+                                                   OnTriangle: Fn(&Triangle) {
+        let mut nodes = Vec::new();
+
+        if self.root.aabb.intersect(ray) {
+            on_node();
+            nodes.push(&self.root);
+        }
+
+        while let Some(node) = nodes.pop() {
+            if node.geometry.is_empty() {
+                for child in &node.children {
+                    if child.aabb.intersect(ray) {
+                        on_node();
+                        nodes.push(child);
+                    }
+                }
+            } else {
+                for triangle in &node.geometry {
+                    on_triangle(triangle);
+                }
+            }
+        }
+    }
+
+    /// Traverses the BVH, calls a callback for every leaf triangle that might
+    /// intersect the ray.
+    pub fn traverse<OnTriangle>(&self, ray: &Ray, on_triangle: OnTriangle)
+        where OnTriangle: Fn(&Triangle) {
+        self.traverse_with_nodes(ray, || {}, on_triangle);
     }
 }
