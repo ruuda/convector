@@ -27,8 +27,8 @@ fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
         aabb = Aabb::enclose_aabbs(&aabb, &triangle.aabb);
     }
 
-    // TODO: My root AABB for Suzanne has infinities for the z coordinate. How
-    // is that possible?
+    let centroids: Vec<Vector3> = triangles.iter().map(|tri| tri.aabb.center()).collect();
+    let centroid_aabb = Aabb::enclose_points(&centroids[..]);
 
     // Ideally every node would contain two triangles, so splitting less than
     // four triangles does not make sense; make a leaf node in that case.
@@ -41,16 +41,16 @@ fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
     }
 
     // Split along the axis in which the box is largest.
-    let mut size = aabb.size.x;
+    let mut size = centroid_aabb.size.x;
     let mut axis = Axis::X;
 
-    if aabb.size.y > size {
-        size = aabb.size.y;
+    if centroid_aabb.size.y > size {
+        size = centroid_aabb.size.y;
         axis = Axis::Y;
     }
 
-    if aabb.size.z > size {
-        size = aabb.size.z;
+    if centroid_aabb.size.z > size {
+        size = centroid_aabb.size.z;
         axis = Axis::Z;
     }
 
@@ -59,8 +59,24 @@ fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
         &a.barycenter().get_coord(axis),
         &b.barycenter().get_coord(axis)).unwrap());
 
-    // TODO: Split half-way geometrically, not by index.
-    let split_point = triangles.len() / 2;
+    let half_way = centroid_aabb.origin.get_coord(axis) + size * 0.5;
+
+    // Find the index to split at so that everything before the split has
+    // coordinate less than `half_way` and everything after has larger or equal
+    // coordinates.
+    let mut split_point = triangles.binary_search_by(|tri| {
+        PartialOrd::partial_cmp(&tri.aabb.center().get_coord(axis), &half_way).unwrap()
+    }).unwrap_or_else(|idx| idx);
+
+    // Ensure a balanced tree at the leaves.
+    // (This also ensures that the recursion terminates.)
+    if split_point > triangles.len() - 2 {
+        split_point = triangles.len() - 2;
+    }
+    if split_point < 2 {
+        split_point = 2;
+    }
+
     let (left_triangles, right_triangles) = triangles.split_at_mut(split_point);
     let left_node = build_bvh_node(left_triangles);
     let right_node = build_bvh_node(right_triangles);

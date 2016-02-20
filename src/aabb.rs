@@ -75,6 +75,11 @@ impl Aabb {
         Aabb::new(origin, size)
     }
 
+    /// Returns the center of the bounding box.
+    pub fn center(&self) -> Vector3 {
+        self.origin + self.size * 0.5
+    }
+
     /// Returns whether the ray intersects the bounding box.
     pub fn intersect(&self, ray: &Ray) -> bool {
         // My measurements show that this is the fastest method to intersect an
@@ -138,6 +143,12 @@ fn aabb_enclose_aabbs() {
     let ab = Aabb::enclose_aabbs(&a, &b);
     assert_eq!(ab.origin, Vector3::new(0.0, 2.0, 2.0));
     assert_eq!(ab.size, Vector3::new(9.0, 5.0, 7.0));
+}
+
+#[test]
+fn aabb_center() {
+    let aabb = Aabb::new(Vector3::new(1.0, 2.0, 3.0), Vector3::new(4.0, 5.0, 6.0));
+    assert_eq!(aabb.center(), Vector3::new(3.0, 4.5, 6.0));
 }
 
 #[test]
