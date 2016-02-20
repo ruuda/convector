@@ -80,6 +80,8 @@ impl Aabb {
         // My measurements show that this is the fastest method to intersect an
         // AABB by a factor 2 in the frame time.
         // TODO: Add benchmarks to verify.
+        // TODO: It seems that marking this method #[inline(always)] makes it
+        // a bit faster too (2.8 fps vs 2.9 fps).
         self.intersect_flavor_planes(ray)
 
         // Alternative:
