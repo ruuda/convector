@@ -1,11 +1,13 @@
 use ray::Ray;
 use scene::Scene;
+use time::PreciseTime;
 use vector3::{Vector3, dot};
 
 pub struct Renderer {
     scene: Scene,
     width: u32,
     height: u32,
+    epoch: PreciseTime,
 }
 
 /// Clamps a float to the unit interval [0, 1].
@@ -19,7 +21,21 @@ impl Renderer {
             scene: scene,
             width: width,
             height: height,
+            epoch: PreciseTime::now(),
         }
+    }
+
+    /// For an interactive scene, updates the scene for the new frame.
+    /// TODO: This method does not really belong here.
+    pub fn update_scene(&mut self) {
+        let t = self.epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
+
+        // Make the light circle around.
+        self.scene.lights[0].position = Vector3 {
+            x: t.cos() * 5.0,
+            y: (t * 0.3).cos() * 7.0,
+            z: t.sin() * 5.0,
+        };
     }
 
     /// Renders part of a frame.

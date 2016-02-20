@@ -51,7 +51,7 @@ fn main() {
     let slice_height = height / 20;
 
     let mut window = Window::new(width, height, "infomagr interactive raytracer");
-    let renderer = Renderer::new(build_scene(), width, height);
+    let mut renderer = Renderer::new(build_scene(), width, height);
     let mut stats = GlobalStats::new();
 
     // Initialize a buffer to black.
@@ -71,6 +71,7 @@ fn main() {
         let mut backbuffer: Vec<u8> = Vec::with_capacity(screen_len);
         unsafe { backbuffer.set_len(screen_len); }
 
+        renderer.update_scene();
         {
             let slice_len = 3 * width * slice_height;
             let slices = make_slices(&mut backbuffer[..], slice_len as usize);
