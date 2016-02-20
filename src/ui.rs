@@ -22,7 +22,6 @@ impl Window {
         let display = WindowBuilder::new()
             .with_dimensions(width, height)
             .with_title(From::from(title))
-            .with_vsync()
             .with_srgb(Some(true)) // Automatically convert RGB -> sRGB.
             .build_glium()
             .expect("failed to create gl window");
