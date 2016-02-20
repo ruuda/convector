@@ -77,7 +77,6 @@ impl Scene {
             // all?
             let result_ref = &mut result;
             self.bvh.traverse(ray, |triangle| {
-                println!("intersecting triangle");
                 *result_ref = closest(result_ref.clone(), triangle.intersect(ray));
             });
         }

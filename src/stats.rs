@@ -104,8 +104,9 @@ impl GlobalStats {
         println!("draw and vsync: median {} us, min {} us",
                  self.draw_vsync_us.median(),
                  self.draw_vsync_us.min());
-        println!("frame time: median {} us, min {} us",
+        println!("frame time: median {} us, min {} us -> {:0.1} fps",
                  self.frame_us.median(),
-                 self.frame_us.min());
+                 self.frame_us.min(),
+                 1.0 / (self.frame_us.median() as f32 * 1e-6));
     }
 }
