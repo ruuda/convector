@@ -1,4 +1,9 @@
 //! This module implement the triangle primitive and related geometry functions.
+//!
+//! The only primitive is the triangle, there are no spheres or other shapes.
+//! This avoids having to dispatch on the primitive type to intersect an object.
+//! It avoids a virtual method call, which in turn enables the triangle
+//! intersection code to be inlined.
 
 use aabb::Aabb;
 use ray::{Intersection, Ray};

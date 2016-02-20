@@ -28,6 +28,8 @@ impl Neg for Ray {
     }
 }
 
+// TODO: Do not derive clone, sort out the BVH traversal mess.
+#[derive(Clone)]
 pub struct Intersection {
     /// The position at which the ray intersected the surface.
     pub position: Vector3,

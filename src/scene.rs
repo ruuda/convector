@@ -1,4 +1,4 @@
-use geometry::Triangle;
+use bvh::Bvh;
 use ray::{Intersection, Ray};
 use std::f32::consts::PI;
 use vector3::Vector3;
@@ -42,11 +42,7 @@ pub struct Light {
 }
 
 pub struct Scene {
-    // The only primitive is the triangle, there are no spheres or other shapes.
-    // This avoids having to dispatch on the primitive type to intersect an
-    // object. It avoids a virtual method call. This in turn enables the
-    // triangle intersection code to be inlined.
-    pub geometry: Vec<Triangle>,
+    pub bvh: Bvh,
     pub lights: Vec<Light>,
     pub camera: Camera,
 }
@@ -66,27 +62,24 @@ fn closest(i1: Option<Intersection>, i2: Option<Intersection>) -> Option<Interse
 }
 
 impl Scene {
-    pub fn new() -> Scene {
+    pub fn from_mesh(mesh: &Mesh) -> Scene {
         Scene {
-            geometry: Vec::new(),
+            bvh: Bvh::from_mesh(mesh),
             lights: Vec::new(),
             camera: Camera::with_fov(PI * 0.6),
         }
     }
 
-    pub fn add_mesh(&mut self, mesh: &Mesh) {
-        for &(i1, i2, i3) in &mesh.triangles {
-            let v1 = mesh.vertices[i1 as usize];
-            let v2 = mesh.vertices[i2 as usize];
-            let v3 = mesh.vertices[i3 as usize];
-            self.geometry.push(Triangle::new(v1, v2, v3));
-        }
-    }
-
     pub fn intersect(&self, ray: &Ray) -> Option<Intersection> {
         let mut result = None;
-        for triangle in &self.geometry {
-            result = closest(result, triangle.intersect(ray));
+        {
+            // TODO: Can I make this more ergonomic? Perhaps an iterator instead of a closure after
+            // all?
+            let result_ref = &mut result;
+            self.bvh.traverse(ray, |triangle| {
+                println!("intersecting triangle");
+                *result_ref = closest(result_ref.clone(), triangle.intersect(ray));
+            });
         }
         result
     }

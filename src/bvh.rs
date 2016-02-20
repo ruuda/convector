@@ -5,6 +5,7 @@ use geometry::Triangle;
 use ray::Ray;
 use std::cmp::PartialOrd;
 use vector3::{Axis, Vector3};
+use wavefront::Mesh;
 
 /// One node in a bounding volume hierarchy.
 struct BvhNode {
@@ -25,6 +26,9 @@ fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
     for triangle in triangles.iter() {
         aabb = Aabb::enclose_aabbs(&aabb, &triangle.aabb);
     }
+
+    // TODO: My root AABB for Suzanne has infinities for the z coordinate. How
+    // is that possible?
 
     // Ideally every node would contain two triangles, so splitting less than
     // four triangles does not make sense; make a leaf node in that case.
@@ -76,17 +80,29 @@ impl Bvh {
         }
     }
 
+    pub fn from_mesh(mesh: &Mesh) -> Bvh {
+        let triangles: Vec<Triangle> = mesh.triangles.iter().map(
+            |&(i1, i2, i3)| {
+                let v1 = mesh.vertices[i1 as usize];
+                let v2 = mesh.vertices[i2 as usize];
+                let v3 = mesh.vertices[i3 as usize];
+                Triangle::new(v1, v2, v3)
+            }).collect();
+        Bvh::build(triangles)
+    }
+
     /// Traverses the BVH, calls a callback when a node is intersected and for
     /// every leaf triangle that might insersect the ray.
     pub fn traverse_with_nodes<OnNode, OnTriangle>(&self,
                                                    ray: &Ray,
-                                                   on_node: OnNode,
-                                                   on_triangle: OnTriangle)
-                                             where OnNode: Fn(),
-                                                   OnTriangle: Fn(&Triangle) {
+                                                   mut on_node: OnNode,
+                                                   mut on_triangle: OnTriangle)
+                                             where OnNode: FnMut(),
+                                                   OnTriangle: FnMut(&Triangle) {
         let mut nodes = Vec::new();
 
         if self.root.aabb.intersect(ray) {
+            // TODO: on_node_tested and on_node_hit.
             on_node();
             nodes.push(&self.root);
         }
@@ -110,7 +126,7 @@ impl Bvh {
     /// Traverses the BVH, calls a callback for every leaf triangle that might
     /// intersect the ray.
     pub fn traverse<OnTriangle>(&self, ray: &Ray, on_triangle: OnTriangle)
-        where OnTriangle: Fn(&Triangle) {
+        where OnTriangle: FnMut(&Triangle) {
         self.traverse_with_nodes(ray, || {}, on_triangle);
     }
 }

@@ -4,7 +4,7 @@ use ray::Ray;
 use vector3::Vector3;
 
 /// An axis-aligned bounding box.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Aabb {
     pub origin: Vector3,
     pub size: Vector3,
