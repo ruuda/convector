@@ -77,11 +77,55 @@ impl Aabb {
 
     /// Returns whether the ray intersects the bounding box.
     pub fn intersect(&self, ray: &Ray) -> bool {
+        // My measurements show that this is the fastest method to intersect an
+        // AABB by a factor 2 in the frame time.
+        // TODO: Add benchmarks to verify.
+        self.intersect_flavor_planes(ray)
+
+        // Alternative:
+        // self.intersect_flavor_slab(ray).is_some()
+    }
+
+    /// Intersects the AABB by intersecting six planes and testing the bounds.
+    #[inline(always)]
+    fn intersect_flavor_planes(&self, ray: &Ray) -> bool {
         // TODO: Simd the **** out of this.
         intersect_aabb!(self, ray, x, y, z);
         intersect_aabb!(self, ray, y, z, x);
         intersect_aabb!(self, ray, z, x, y);
         false
+    }
+
+    /// Intersects the AABB by clipping the t values inside.
+    #[inline(always)]
+    fn intersect_flavor_slab(&self, ray: &Ray) -> Option<f32> {
+        // TODO: This implementation has a bug.
+        // TODO: The reciprocal could be precomputed per ray.
+        let xinv = ray.direction.x.recip();
+        let yinv = ray.direction.y.recip();
+        let zinv = ray.direction.z.recip();
+
+        let d1 = self.origin - ray.origin;
+        let d2 = d1 + self.size;
+
+        let txmin = f32::min(d1.x * xinv, d2.y * xinv);
+        let txmax = f32::max(d1.x * xinv, d2.y * xinv);
+
+        let tymin = f32::min(d1.y * yinv, d2.y * yinv);
+        let tymax = f32::max(d1.y * yinv, d2.y * yinv);
+
+        let tzmin = f32::min(d1.z * zinv, d2.z * zinv);
+        let tzmax = f32::max(d1.z * zinv, d2.z * zinv);
+
+        // The minimum t in all dimension is the maximum of the per-axis minima.
+        let tmin = f32::max(txmin, f32::max(tymin, tzmin));
+        let tmax = f32::min(txmax, f32::min(tymax, tzmax));
+
+        if tmax >= tmin && tmax >= 0.0 {
+            Some(tmin)
+        } else {
+            None
+        }
     }
 }
 
