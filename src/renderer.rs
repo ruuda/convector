@@ -1,5 +1,6 @@
+use ray::Ray;
 use scene::Scene;
-use vector3::{Ray, Vector3, dot};
+use vector3::{Vector3, dot};
 
 pub struct Renderer {
     scene: Scene,

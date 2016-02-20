@@ -1,6 +1,7 @@
-use bvh::{Triangle};
+use geometry::Triangle;
+use ray::{Intersection, Ray};
 use std::f32::consts::PI;
-use vector3::{Intersection, Ray, Vector3, cross, dot};
+use vector3::Vector3;
 use wavefront::Mesh;
 
 pub struct Camera {

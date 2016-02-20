@@ -1,13 +1,18 @@
-#![warn(missing_docs)]
+//! An interactive raytracer.
 
-#[macro_use]
+#![warn(missing_docs)]
+#![allow(dead_code)] // TODO: Remove before v0.1.
+
 extern crate filebuffer;
 extern crate glium;
 extern crate num_cpus;
 extern crate scoped_threadpool;
 extern crate time;
 
+mod aabb;
 mod bvh;
+mod geometry;
+mod ray;
 mod renderer;
 mod scene;
 mod stats;
@@ -46,7 +51,7 @@ fn main() {
     let height = 720;
     let slice_height = height / 20;
 
-    let mut window = Window::new(width, height, "infomagr interactive tracer");
+    let mut window = Window::new(width, height, "infomagr interactive raytracer");
     let renderer = Renderer::new(build_scene(), width, height);
     let mut stats = GlobalStats::new();
 
@@ -77,7 +82,8 @@ fn main() {
                 let mut y_from = 0;
                 let mut y_to = slice_height;
                 for slice in slices {
-                    scope.execute(move || renderer_ref.render_frame_slice(slice, y_from, y_to));
+                    scope.execute(move ||
+                        renderer_ref.render_frame_slice(slice, y_from, y_to));
                     y_from += slice_height;
                     y_to += slice_height;
                 }
