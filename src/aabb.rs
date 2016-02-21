@@ -106,7 +106,6 @@ impl Aabb {
     /// Intersects the AABB by clipping the t values inside.
     #[inline(always)]
     fn intersect_flavor_slab(&self, ray: &Ray) -> Option<f32> {
-        // TODO: This implementation has a bug.
         // TODO: The reciprocal could be precomputed per ray.
         let xinv = ray.direction.x.recip();
         let yinv = ray.direction.y.recip();
@@ -115,8 +114,8 @@ impl Aabb {
         let d1 = self.origin - ray.origin;
         let d2 = d1 + self.size;
 
-        let txmin = f32::min(d1.x * xinv, d2.y * xinv);
-        let txmax = f32::max(d1.x * xinv, d2.y * xinv);
+        let txmin = f32::min(d1.x * xinv, d2.x * xinv);
+        let txmax = f32::max(d1.x * xinv, d2.x * xinv);
 
         let tymin = f32::min(d1.y * yinv, d2.y * yinv);
         let tymax = f32::max(d1.y * yinv, d2.y * yinv);
