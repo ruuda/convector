@@ -47,20 +47,6 @@ pub struct Scene {
     pub camera: Camera,
 }
 
-/// Returns the closest of two intersections.
-fn closest(i1: Option<Intersection>, i2: Option<Intersection>) -> Option<Intersection> {
-    match (i1, i2) {
-        (None, None) => None,
-        (None, Some(isect)) => Some(isect),
-        (Some(isect), None) => Some(isect),
-        (Some(isect1), Some(isect2)) => if isect1.distance < isect2.distance {
-            Some(isect1)
-        } else {
-            Some(isect2)
-        }
-    }
-}
-
 impl Scene {
     pub fn from_mesh(mesh: &Mesh) -> Scene {
         Scene {
@@ -71,15 +57,6 @@ impl Scene {
     }
 
     pub fn intersect(&self, ray: &Ray) -> Option<Intersection> {
-        let mut result = None;
-        {
-            // TODO: Can I make this more ergonomic? Perhaps an iterator instead of a closure after
-            // all?
-            let result_ref = &mut result;
-            self.bvh.traverse(ray, |triangle| {
-                *result_ref = closest(result_ref.clone(), triangle.intersect(ray));
-            });
-        }
-        result
+        self.bvh.intersect_nearest(ray)
     }
 }

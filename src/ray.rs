@@ -8,6 +8,31 @@ pub struct Ray {
     pub direction: Vector3,
 }
 
+pub struct Intersection {
+    /// The position at which the ray intersected the surface.
+    pub position: Vector3,
+
+    /// The surface normal at the intersection point.
+    pub normal: Vector3,
+
+    /// This distance between the ray origin and the position.
+    pub distance: f32,
+}
+
+/// Returns the nearest of two intersections.
+pub fn nearest(i1: Option<Intersection>, i2: Option<Intersection>) -> Option<Intersection> {
+    match (i1, i2) {
+        (None, None) => None,
+        (None, Some(isect)) => Some(isect),
+        (Some(isect), None) => Some(isect),
+        (Some(isect1), Some(isect2)) => if isect1.distance < isect2.distance {
+            Some(isect1)
+        } else {
+            Some(isect2)
+        }
+    }
+}
+
 impl Ray {
     pub fn advance_epsilon(&self) -> Ray {
         Ray {
@@ -27,17 +52,3 @@ impl Neg for Ray {
         }
     }
 }
-
-// TODO: Do not derive clone, sort out the BVH traversal mess.
-#[derive(Clone)]
-pub struct Intersection {
-    /// The position at which the ray intersected the surface.
-    pub position: Vector3,
-
-    /// The surface normal at the intersection point.
-    pub normal: Vector3,
-
-    /// This distance between the ray origin and the position.
-    pub distance: f32,
-}
-

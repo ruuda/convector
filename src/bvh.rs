@@ -2,7 +2,7 @@
 
 use aabb::Aabb;
 use geometry::Triangle;
-use ray::Ray;
+use ray::{Intersection, Ray, nearest};
 use std::cmp::PartialOrd;
 use vector3::{Axis, Vector3};
 use wavefront::Mesh;
@@ -107,42 +107,30 @@ impl Bvh {
         Bvh::build(triangles)
     }
 
-    /// Traverses the BVH, calls a callback when a node is intersected and for
-    /// every leaf triangle that might insersect the ray.
-    pub fn traverse_with_nodes<OnNode, OnTriangle>(&self,
-                                                   ray: &Ray,
-                                                   mut on_node: OnNode,
-                                                   mut on_triangle: OnTriangle)
-                                             where OnNode: FnMut(),
-                                                   OnTriangle: FnMut(&Triangle) {
+    pub fn intersect_nearest(&self, ray: &Ray) -> Option<Intersection> {
         let mut nodes = Vec::new();
+        let mut isect = None;
 
         if self.root.aabb.intersect(ray) {
-            // TODO: on_node_tested and on_node_hit.
-            on_node();
             nodes.push(&self.root);
         }
 
+        // TODO: Store distance and early out.
         while let Some(node) = nodes.pop() {
             if node.geometry.is_empty() {
                 for child in &node.children {
                     if child.aabb.intersect(ray) {
-                        on_node();
                         nodes.push(child);
                     }
                 }
             } else {
                 for triangle in &node.geometry {
-                    on_triangle(triangle);
+                    let tri_isect = triangle.intersect(ray);
+                    isect = nearest(isect, tri_isect);
                 }
             }
         }
-    }
 
-    /// Traverses the BVH, calls a callback for every leaf triangle that might
-    /// intersect the ray.
-    pub fn traverse<OnTriangle>(&self, ray: &Ray, on_triangle: OnTriangle)
-        where OnTriangle: FnMut(&Triangle) {
-        self.traverse_with_nodes(ray, || {}, on_triangle);
+        isect
     }
 }
