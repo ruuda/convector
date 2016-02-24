@@ -38,12 +38,12 @@ pub fn aabb_with_rays(n: usize, m: usize) -> (Aabb, Vec<Ray>) {
     let size = Vector3::new(2.0, 2.0, 2.0);
     let aabb = Aabb::new(origin, size);
     let up = Vector3::new(0.0, 0.0, 1.0);
-    let mut rays = rays_inward(32.0, n);
+    let mut rays = rays_inward(16.0, n);
 
     // Offset the m-n rays that should not intersect the box in a direction
     // perpendicular to the ray.
     for i in m..n {
-        let p = rays[i].origin + cross(up, rays[i].direction).normalized() * 3.0;
+        let p = rays[i].origin + cross(up, rays[i].direction).normalized() * 16.0;
         rays[i].origin = p;
     }
 
@@ -52,4 +52,16 @@ pub fn aabb_with_rays(n: usize, m: usize) -> (Aabb, Vec<Ray>) {
     rand::thread_rng().shuffle(&mut rays[..]);
 
     (aabb, rays)
+}
+
+#[test]
+fn aabb_with_rays_respects_probability() {
+    let (aabb, rays) = aabb_with_rays(4096, 2048);
+    let mut n = 0;
+    for ray in &rays {
+        if aabb.intersect(ray) {
+            n += 1;
+        }
+    }
+    assert_eq!(2048, n);
 }
