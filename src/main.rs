@@ -6,10 +6,12 @@
 extern crate filebuffer;
 extern crate glium;
 extern crate num_cpus;
+extern crate rand;
 extern crate scoped_threadpool;
 extern crate time;
 
 mod aabb;
+mod bench;
 mod bvh;
 mod geometry;
 mod ray;
