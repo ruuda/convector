@@ -34,6 +34,13 @@ pub fn nearest(i1: Option<Intersection>, i2: Option<Intersection>) -> Option<Int
 }
 
 impl Ray {
+    pub fn new(origin: Vector3, direction: Vector3) -> Ray {
+        Ray {
+            origin: origin,
+            direction: direction,
+        }
+    }
+
     pub fn advance_epsilon(&self) -> Ray {
         Ray {
             origin: self.origin + self.direction * 1.0e-5,
