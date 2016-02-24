@@ -48,7 +48,7 @@ fn build_scene() -> Scene {
 fn main() {
     let width = 1280;
     let height = 720;
-    let slice_height = height / 20;
+    let slice_height = height / 90;
 
     let mut window = Window::new(width, height, "infomagr interactive raytracer");
     let mut renderer = Renderer::new(build_scene(), width, height);
