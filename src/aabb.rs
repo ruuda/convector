@@ -202,7 +202,7 @@ fn intersect_aabb() {
 }
 
 #[bench]
-fn bench_intersect_aabb_flavor_planes_p100(b: &mut test::Bencher) {
+fn bench_intersect_flavor_planes_p100(b: &mut test::Bencher) {
     let (aabb, rays) = bench::aabb_with_rays(4096, 4096);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
@@ -212,7 +212,7 @@ fn bench_intersect_aabb_flavor_planes_p100(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_intersect_aabb_flavor_planes_p50(b: &mut test::Bencher) {
+fn bench_intersect_flavor_planes_p50(b: &mut test::Bencher) {
     let (aabb, rays) = bench::aabb_with_rays(4096, 2048);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
@@ -222,7 +222,7 @@ fn bench_intersect_aabb_flavor_planes_p50(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_intersect_aabb_flavor_slab_p100(b: &mut test::Bencher) {
+fn bench_intersect_flavor_slab_p100(b: &mut test::Bencher) {
     let (aabb, rays) = bench::aabb_with_rays(4096, 4096);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
@@ -232,7 +232,7 @@ fn bench_intersect_aabb_flavor_slab_p100(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_intersect_aabb_flavor_slab_p50(b: &mut test::Bencher) {
+fn bench_intersect_flavor_slab_p50(b: &mut test::Bencher) {
     let (aabb, rays) = bench::aabb_with_rays(4096, 2048);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
