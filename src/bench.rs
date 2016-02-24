@@ -1,13 +1,15 @@
 //! This module generates test data for the benchmarks.
 
+use aabb::Aabb;
 use rand;
+use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
 use ray::Ray;
 use std::f32::consts;
-use vector3::Vector3;
+use vector3::{Vector3, cross};
 
 /// Generates n vectors distributed uniformly on the unit sphere.
-fn points_on_sphere(n: usize) -> Vec<Vector3> {
+pub fn points_on_sphere(n: usize) -> Vec<Vector3> {
     let mut rng = rand::thread_rng();
     let phi_range = Range::new(0.0, 2.0 * consts::PI);
     let cos_theta_range = Range::new(-1.0_f32, 1.0);
@@ -26,6 +28,28 @@ fn points_on_sphere(n: usize) -> Vec<Vector3> {
 }
 
 /// Generates rays with origin on a sphere, pointing to the origin.
-fn rays_inward(radius: f32, n: usize) -> Vec<Ray> {
+pub fn rays_inward(radius: f32, n: usize) -> Vec<Ray> {
     points_on_sphere(n).iter().map(|&x| Ray::new(x * radius, -x)).collect()
+}
+
+/// Generates a random AABB and n rays of which m intersect the box.
+pub fn aabb_with_rays(n: usize, m: usize) -> (Aabb, Vec<Ray>) {
+    let origin = Vector3::new(-1.0, -1.0, -1.0);
+    let size = Vector3::new(2.0, 2.0, 2.0);
+    let aabb = Aabb::new(origin, size);
+    let up = Vector3::new(0.0, 0.0, 1.0);
+    let mut rays = rays_inward(32.0, n);
+
+    // Offset the m-n rays that should not intersect the box in a direction
+    // perpendicular to the ray.
+    for i in m..n {
+        let p = rays[i].origin + cross(up, rays[i].direction).normalized() * 3.0;
+        rays[i].origin = p;
+    }
+
+    // Shuffle the intersecting and non-intersecting rays to confuse the branch
+    // predictor.
+    rand::thread_rng().shuffle(&mut rays[..]);
+
+    (aabb, rays)
 }

@@ -3,12 +3,21 @@
 #![warn(missing_docs)]
 #![allow(dead_code)] // TODO: Remove before v0.1.
 
+// Note: the following unstable feature is required to run benchmarks, but
+// unstable features can only be used with a Rust compiler from the nightly
+// channel. If you only want to run the program you can safely comment out this
+// line.
+#![feature(test)]
+
 extern crate filebuffer;
 extern crate glium;
 extern crate num_cpus;
 extern crate rand;
 extern crate scoped_threadpool;
 extern crate time;
+
+#[cfg(test)]
+extern crate test;
 
 mod aabb;
 mod bench;

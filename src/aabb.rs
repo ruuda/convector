@@ -3,6 +3,9 @@
 use ray::Ray;
 use vector3::Vector3;
 
+#[cfg(test)]
+use {bench, test};
+
 /// An axis-aligned bounding box.
 #[derive(Clone, Debug)]
 pub struct Aabb {
@@ -196,4 +199,44 @@ fn intersect_aabb() {
     };
     assert!(aabb.intersect(&r5));
     assert!(aabb.intersect(&-r5));
+}
+
+#[bench]
+fn bench_intersect_aabb_flavor_planes_p100(b: &mut test::Bencher) {
+    let (aabb, rays) = bench::aabb_with_rays(4096, 4096);
+    let mut rays_it = rays.iter().cycle();
+    b.iter(|| {
+        let isect = aabb.intersect_flavor_planes(rays_it.next().unwrap());
+        test::black_box(isect);
+    });
+}
+
+#[bench]
+fn bench_intersect_aabb_flavor_planes_p50(b: &mut test::Bencher) {
+    let (aabb, rays) = bench::aabb_with_rays(4096, 2048);
+    let mut rays_it = rays.iter().cycle();
+    b.iter(|| {
+        let isect = aabb.intersect_flavor_planes(rays_it.next().unwrap());
+        test::black_box(isect);
+    });
+}
+
+#[bench]
+fn bench_intersect_aabb_flavor_slab_p100(b: &mut test::Bencher) {
+    let (aabb, rays) = bench::aabb_with_rays(4096, 4096);
+    let mut rays_it = rays.iter().cycle();
+    b.iter(|| {
+        let isect = aabb.intersect_flavor_slab(rays_it.next().unwrap());
+        test::black_box(isect);
+    });
+}
+
+#[bench]
+fn bench_intersect_aabb_flavor_slab_p50(b: &mut test::Bencher) {
+    let (aabb, rays) = bench::aabb_with_rays(4096, 2048);
+    let mut rays_it = rays.iter().cycle();
+    b.iter(|| {
+        let isect = aabb.intersect_flavor_slab(rays_it.next().unwrap());
+        test::black_box(isect);
+    });
 }
