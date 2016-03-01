@@ -59,7 +59,7 @@ fn build_scene() -> Scene {
 fn main() {
     let width = 1280;
     let height = 720;
-    let slice_height = height / 90;
+    let patch_width = 16;
 
     let mut window = Window::new(width, height, "infomagr interactive raytracer");
     let mut renderer = Renderer::new(build_scene(), width, height);
@@ -68,7 +68,9 @@ fn main() {
     // Initialize a buffer to black.
     let screen_len = width as usize * height as usize * 3;
     let mut frontbuffer = Vec::with_capacity(screen_len);
+    let mut patchbuffer = Vec::with_capacity(screen_len);
     frontbuffer.resize(screen_len, 0);
+    patchbuffer.resize(screen_len, 0);
 
     let mut threadpool = scoped_threadpool::Pool::new(num_cpus::get() as u32);
     let mut should_continue = true;
@@ -76,41 +78,55 @@ fn main() {
     let mut frame_start = PreciseTime::now();
 
     while should_continue {
-        // Create a new uninitialized buffer to render into. Because the
-        // renderer will write to every pixel, no uninitialized memory is
-        // exposed.
-        let mut backbuffer: Vec<u8> = Vec::with_capacity(screen_len);
-        unsafe { backbuffer.set_len(screen_len); }
 
         renderer.update_scene();
         {
-            let slice_len = 3 * width * slice_height;
-            let slices = make_slices(&mut backbuffer[..], slice_len as usize);
+            let mut patches = make_slices(&mut patchbuffer[..], (patch_width * patch_width * 3) as usize);
             let renderer_ref = &renderer;
 
             threadpool.scoped(|scope| {
-                // Queue tasks for the worker threads to render slices.
-                let mut y_from = 0;
-                let mut y_to = slice_height;
-                for slice in slices {
+                // Queue tasks for the worker threads to render patches.
+                let mut k = 0;
+                for patch in &mut patches {
+                    let y = k / width;
+                    let x = k - y;
                     scope.execute(move ||
-                        renderer_ref.render_frame_slice(slice, y_from, y_to));
-                    y_from += slice_height;
-                    y_to += slice_height;
+                        renderer_ref.render_patch(patch, patch_width as u32, x as u32, y as u32));
+                    k += patch_width * patch_width;
                 }
 
                 // In the mean time, upload previously rendered frame to the GPU
-                // and display it, then wait for a vsync.
+                // and display it.
                 window.display_buffer(frontbuffer, &mut stats);
 
                 should_continue = window.handle_events(&mut stats);
 
                 // The scope automatically waits for all tasks to complete
-                // before the loop continue.
+                // before the loop continues.
             });
+
+            // Create a new uninitialized buffer to stitch the patches into.
+            // Because this will write to every pixel, no uninitialized memory
+            // is exposed.
+            let mut backbuffer: Vec<u8> = Vec::with_capacity(screen_len);
+            unsafe { backbuffer.set_len(screen_len); }
+
+            // Stitch together the patches into an image.
+            let mut k = 0;
+            for patch in &patches {
+                for j in 0..patch_width {
+                    for i in 0..patch_width {
+                        // TODO: Morton copier.
+                        let pa_idx = (j * patch_width * 3 + i * 3) as usize;
+                        backbuffer[k * 3] = patch[pa_idx];
+                    }
+                }
+                k += (patch_width * patch_width) as usize;
+            }
+
+            frontbuffer = backbuffer;
         }
 
-        frontbuffer = backbuffer;
         let now = PreciseTime::now();
         stats.frame_us.insert_time_us(frame_start.to(now));
         frame_start = now;

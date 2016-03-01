@@ -39,28 +39,30 @@ impl Renderer {
     }
 
     /// Renders part of a frame.
-    pub fn render_frame_slice(&self,
-                              backbuffer_slice: &mut [u8],
-                              y_from: u32,
-                              y_to: u32) {
-        assert_eq!(backbuffer_slice.len(), self.width as usize * (y_to - y_from) as usize * 3);
+    ///
+    /// The (x, y) coordinate is the coordinate of the bottom-left pixel of the
+    /// patch. The length of the patch slice must be a power of two.
+    pub fn render_patch(&self, patch: &mut [u8], patch_width: u32, x: u32, y: u32) {
+        assert_eq!(patch.len(), (3 * patch_width * patch_width) as usize);
+        assert_eq!(patch.len() & (patch.len() - 1), 0);
 
         let scale = 2.0 / self.width as f32;
 
-        for y in y_from..y_to {
-            for x in 0..self.width {
-                let xf = (x as f32 - self.width as f32 / 2.0) * scale;
-                let yf = (y as f32 - self.height as f32 / 2.0) * scale;
+        // TODO: Morton order iterator.
+        for j in 0..patch_width {
+            for i in 0..patch_width {
+                let xf = ((x + i) as f32 - self.width as f32 / 2.0) * scale;
+                let yf = ((y + j) as f32 - self.height as f32 / 2.0) * scale;
 
                 let rgb = self.render_pixel(xf, yf);
 
                 // Write the color as linear RGB, 8 bytes per pixel. The window
                 // has been set up so that this will be converted to sRGB when
                 // it is displayed.
-                let idx = (((y - y_from) * self.width + x) * 3) as usize;
-                backbuffer_slice[idx + 0] = (255.0 * clamp_unit(rgb.x)) as u8;
-                backbuffer_slice[idx + 1] = (255.0 * clamp_unit(rgb.y)) as u8;
-                backbuffer_slice[idx + 2] = (255.0 * clamp_unit(rgb.z)) as u8;
+                let idx = ((j * patch_width + i) * 3) as usize;
+                patch[idx + 0] = (255.0 * clamp_unit(rgb.x)) as u8;
+                patch[idx + 1] = (255.0 * clamp_unit(rgb.y)) as u8;
+                patch[idx + 2] = (255.0 * clamp_unit(rgb.z)) as u8;
             }
         }
     }
