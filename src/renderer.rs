@@ -63,6 +63,7 @@ impl Renderer {
                 patch[idx + 0] = (255.0 * clamp_unit(rgb.x)) as u8;
                 patch[idx + 1] = (255.0 * clamp_unit(rgb.y)) as u8;
                 patch[idx + 2] = (255.0 * clamp_unit(rgb.z)) as u8;
+                patch[idx + 2] = ((x * 263 + y * 239) & 0xff) as u8;
             }
         }
     }

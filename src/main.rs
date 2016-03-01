@@ -125,7 +125,9 @@ fn main() {
                         // TODO: Morton copier.
                         let bb_idx = ((y + j) * width * 3 + (x + i) * 3) as usize;
                         let pa_idx = (j * patch_width * 3 + i * 3) as usize;
-                        backbuffer[bb_idx] = patch[pa_idx];
+                        backbuffer[bb_idx + 0] = patch[pa_idx + 0];
+                        backbuffer[bb_idx + 1] = patch[pa_idx + 1];
+                        backbuffer[bb_idx + 2] = patch[pa_idx + 2];
                     }
                 }
                 x = x + patch_width; // TODO: DRY this up.
