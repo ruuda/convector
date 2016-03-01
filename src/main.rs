@@ -85,18 +85,23 @@ fn main() {
             let renderer_ref = &renderer;
 
             threadpool.scoped(|scope| {
+                let mut x = 0;
+                let mut y = 0;
+
                 // Queue tasks for the worker threads to render patches.
-                let mut k = 0;
                 for patch in &mut patches {
-                    let y = k / width;
-                    let x = k - y;
                     scope.execute(move ||
                         renderer_ref.render_patch(patch, patch_width as u32, x as u32, y as u32));
-                    k += patch_width * patch_width;
+
+                    x = x + patch_width;
+                    if x >= width {
+                        x = 0;
+                        y = y + patch_width;
+                    }
                 }
 
-                // In the mean time, upload previously rendered frame to the GPU
-                // and display it.
+                // In the mean time, upload the previously rendered frame to the
+                // GPU and display it.
                 window.display_buffer(frontbuffer, &mut stats);
 
                 should_continue = window.handle_events(&mut stats);
@@ -112,16 +117,22 @@ fn main() {
             unsafe { backbuffer.set_len(screen_len); }
 
             // Stitch together the patches into an image.
-            let mut k = 0;
+            let mut x = 0;
+            let mut y = 0;
             for patch in &patches {
                 for j in 0..patch_width {
                     for i in 0..patch_width {
                         // TODO: Morton copier.
+                        let bb_idx = ((y + j) * width * 3 + (x + i) * 3) as usize;
                         let pa_idx = (j * patch_width * 3 + i * 3) as usize;
-                        backbuffer[k * 3] = patch[pa_idx];
+                        backbuffer[bb_idx] = patch[pa_idx];
                     }
                 }
-                k += (patch_width * patch_width) as usize;
+                x = x + patch_width; // TODO: DRY this up.
+                if x >= width {
+                    x = 0;
+                    y = y + patch_width;
+                }
             }
 
             frontbuffer = backbuffer;

@@ -41,10 +41,10 @@ impl Renderer {
     /// Renders part of a frame.
     ///
     /// The (x, y) coordinate is the coordinate of the bottom-left pixel of the
-    /// patch. The length of the patch slice must be a power of two.
+    /// patch. The patch width must be a power of two.
     pub fn render_patch(&self, patch: &mut [u8], patch_width: u32, x: u32, y: u32) {
         assert_eq!(patch.len(), (3 * patch_width * patch_width) as usize);
-        assert_eq!(patch.len() & (patch.len() - 1), 0);
+        assert_eq!(patch_width & (patch_width - 1), 0);
 
         let scale = 2.0 / self.width as f32;
 
