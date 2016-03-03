@@ -38,6 +38,7 @@ use stats::GlobalStats;
 use std::slice;
 use time::PreciseTime;
 use ui::Window;
+use util::z_order;
 use wavefront::Mesh;
 
 fn build_scene() -> Scene {
@@ -121,15 +122,12 @@ fn main() {
             let mut x = 0;
             let mut y = 0;
             for patch in &patches {
-                for j in 0..patch_width {
-                    for i in 0..patch_width {
-                        // TODO: Morton copier.
-                        let bb_idx = ((y + j) * width * 3 + (x + i) * 3) as usize;
-                        let pa_idx = (j * patch_width * 3 + i * 3) as usize;
-                        backbuffer[bb_idx + 0] = patch[pa_idx + 0];
-                        backbuffer[bb_idx + 1] = patch[pa_idx + 1];
-                        backbuffer[bb_idx + 2] = patch[pa_idx + 2];
-                    }
+                for i in 0..(patch_width * patch_width) {
+                    let (px, py) = z_order(i as u16);
+                    let bb_idx = ((y + py as u32) * width * 3 + (x + px as u32) * 3) as usize;
+                    backbuffer[bb_idx + 0] = patch[i as usize * 3 + 0];
+                    backbuffer[bb_idx + 1] = patch[i as usize * 3 + 1];
+                    backbuffer[bb_idx + 2] = patch[i as usize * 3 + 2];
                 }
                 x = x + patch_width; // TODO: DRY this up.
                 if x >= width {

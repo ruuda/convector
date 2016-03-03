@@ -1,6 +1,7 @@
 use ray::Ray;
 use scene::Scene;
 use time::PreciseTime;
+use util::z_order;
 use vector3::{Vector3, dot};
 
 pub struct Renderer {
@@ -48,23 +49,19 @@ impl Renderer {
 
         let scale = 2.0 / self.width as f32;
 
-        // TODO: Morton order iterator.
-        for j in 0..patch_width {
-            for i in 0..patch_width {
-                let xf = ((x + i) as f32 - self.width as f32 / 2.0) * scale;
-                let yf = ((y + j) as f32 - self.height as f32 / 2.0) * scale;
+        for i in 0..(patch_width * patch_width) {
+            let (px, py) = z_order(i as u16);
+            let xf = ((x + px as u32) as f32 - self.width as f32 / 2.0) * scale;
+            let yf = ((y + py as u32) as f32 - self.height as f32 / 2.0) * scale;
 
-                let rgb = self.render_pixel(xf, yf);
+            let rgb = self.render_pixel(xf, yf);
 
-                // Write the color as linear RGB, 8 bytes per pixel. The window
-                // has been set up so that this will be converted to sRGB when
-                // it is displayed.
-                let idx = ((j * patch_width + i) * 3) as usize;
-                patch[idx + 0] = (255.0 * clamp_unit(rgb.x)) as u8;
-                patch[idx + 1] = (255.0 * clamp_unit(rgb.y)) as u8;
-                patch[idx + 2] = (255.0 * clamp_unit(rgb.z)) as u8;
-                patch[idx + 2] = ((x * 263 + y * 239) & 0xff) as u8;
-            }
+            // Write the color as linear RGB, 8 bytes per pixel. The window
+            // has been set up so that this will be converted to sRGB when
+            // it is displayed.
+            patch[i as usize * 3 + 0] = (255.0 * clamp_unit(rgb.x)) as u8;
+            patch[i as usize * 3 + 1] = (255.0 * clamp_unit(rgb.y)) as u8;
+            patch[i as usize * 3 + 2] = (255.0 * clamp_unit(rgb.z)) as u8;
         }
     }
 
