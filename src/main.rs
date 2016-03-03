@@ -9,6 +9,9 @@
 // line.
 #![feature(test)]
 
+#![feature(repr_simd)]
+#![feature(platform_intrinsics)]
+
 extern crate filebuffer;
 extern crate glium;
 extern crate num_cpus;
@@ -26,6 +29,7 @@ mod geometry;
 mod ray;
 mod renderer;
 mod scene;
+mod simd;
 mod stats;
 mod ui;
 mod util;

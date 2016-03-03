@@ -10,5 +10,4 @@ glium = { git = "https://github.com/tomaka/glium", rev = "a37c771" }
 num_cpus = "0.2"
 rand = "0.3.14"
 scoped_threadpool = "0.1.6"
-simd = { git = "https://github.com/rekka/simd", rev = "0ae5c4b" }
 time = "0.1"
