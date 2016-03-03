@@ -7,7 +7,7 @@
 use std::ops::Add;
 
 #[repr(simd)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct OctaF32(f32, f32, f32, f32, f32, f32, f32, f32);
 
 impl Add<OctaF32> for OctaF32 {
@@ -38,4 +38,12 @@ extern "platform-intrinsic" {
     fn x86_mm256_testnzc_ps(x: OctaF32, y: OctaF32) -> i32;
     fn x86_mm256_testz_ps(x: OctaF32, y: OctaF32) -> i32;
     */
+}
+
+#[test]
+fn octa_f32_add_ps() {
+    let a = OctaF32(0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
+    let b = OctaF32(5.0, 6.0, 7.0, 8.0, 0.0, 1.0, 2.0, 3.0);
+    let c = OctaF32(5.0, 6.0, 7.0, 8.0, 1.0, 3.0, 5.0, 7.0);
+    assert_eq!(a + b, c);
 }
