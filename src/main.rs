@@ -28,6 +28,7 @@ mod renderer;
 mod scene;
 mod stats;
 mod ui;
+mod util;
 mod vector3;
 mod wavefront;
 
