@@ -8,7 +8,13 @@ use std::ops::Add;
 
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct OctaF32(f32, f32, f32, f32, f32, f32, f32, f32);
+pub struct OctaF32(pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32);
+
+impl OctaF32 {
+    pub fn zero() -> OctaF32 {
+        OctaF32(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    }
+}
 
 impl Add<OctaF32> for OctaF32 {
     type Output = OctaF32;

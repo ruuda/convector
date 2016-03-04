@@ -4,13 +4,24 @@
 
 //! Implements vectors in R3.
 
+use simd::OctaF32;
 use std::ops::{Add, Sub, Neg, Mul};
+
+#[cfg(test)]
+use {bench, test};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vector3 {
     pub x: f32,
     pub y: f32,
-    pub z: f32
+    pub z: f32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct OctaVector3 {
+    pub x: OctaF32,
+    pub y: OctaF32,
+    pub z: OctaF32,
 }
 
 #[derive(Copy, Clone)]
@@ -20,12 +31,28 @@ pub enum Axis {
     Z,
 }
 
-pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
+#[inline(always)]
+pub fn cross_naive(a: Vector3, b: Vector3) -> Vector3 {
     Vector3 {
         x: a.y * b.z - a.z * b.y,
         y: a.z * b.x - a.x * b.z,
         z: a.x * b.y - a.y * b.x,
     }
+}
+
+#[inline(always)]
+pub fn cross_fma(a: Vector3, b: Vector3) -> Vector3 {
+    Vector3 {
+        x: a.y.mul_add(b.z, -a.z * b.y),
+        y: a.z.mul_add(b.x, -a.x * b.z),
+        z: a.x.mul_add(b.y, -a.y * b.x),
+    }
+}
+
+pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
+    // Benchmarks show that the naive version is faster than the
+    // FMA version (2 ns vs 6 ns on my Skylake i7).
+    cross_naive(a, b)
 }
 
 pub fn dot(a: Vector3, b: Vector3) -> f32 {
@@ -76,11 +103,33 @@ impl Vector3 {
     }
 }
 
+impl OctaVector3 {
+    pub fn new(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaVector3 {
+        OctaVector3 { x: x, y: y, z: z }
+    }
+
+    pub fn zero() -> OctaVector3 {
+        OctaVector3::new(OctaF32::zero(), OctaF32::zero(), OctaF32::zero())
+    }
+}
+
 impl Add for Vector3 {
     type Output = Vector3;
 
     fn add(self, other: Vector3) -> Vector3 {
         Vector3 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }
+}
+
+impl Add for OctaVector3 {
+    type Output = OctaVector3;
+
+    fn add(self, other: OctaVector3) -> OctaVector3 {
+        OctaVector3 {
             x: self.x + other.x,
             y: self.y + other.y,
             z: self.z + other.z,
@@ -122,4 +171,26 @@ impl Mul<f32> for Vector3 {
             z: self.z * a,
         }
     }
+}
+
+#[bench]
+fn bench_cross_naive(bencher: &mut test::Bencher) {
+    let vectors_a = bench::points_on_sphere(4096);
+    let vectors_b = bench::points_on_sphere(4096);
+    let mut vectors_it = vectors_a.iter().zip(vectors_b.iter()).cycle();
+    bencher.iter(|| {
+        let (&a, &b) = vectors_it.next().unwrap();
+        test::black_box(cross_naive(a, b));
+    });
+}
+
+#[bench]
+fn bench_cross_fma(bencher: &mut test::Bencher) {
+    let vectors_a = bench::points_on_sphere(4096);
+    let vectors_b = bench::points_on_sphere(4096);
+    let mut vectors_it = vectors_a.iter().zip(vectors_b.iter()).cycle();
+    bencher.iter(|| {
+        let (&a, &b) = vectors_it.next().unwrap();
+        test::black_box(cross_fma(a, b));
+    });
 }
