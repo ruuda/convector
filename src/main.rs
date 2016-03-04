@@ -17,10 +17,8 @@ extern crate glium;
 extern crate num_cpus;
 extern crate rand;
 extern crate scoped_threadpool;
-extern crate time;
-
-#[cfg(test)]
 extern crate test;
+extern crate time;
 
 mod aabb;
 mod bench;
