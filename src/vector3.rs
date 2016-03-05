@@ -55,6 +55,14 @@ pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
     cross_naive(a, b)
 }
 
+pub fn octa_cross(a: OctaVector3, b: OctaVector3) -> OctaVector3 {
+    OctaVector3 {
+        x: a.y * b.z - a.z * b.y,
+        y: a.z * b.x - a.x * b.z,
+        z: a.x * b.y - a.y * b.x,
+    }
+}
+
 #[inline(always)]
 pub fn dot_naive(a: Vector3, b: Vector3) -> f32 {
     a.x * b.x + a.y * b.y + a.z * b.z
@@ -203,6 +211,16 @@ fn bench_cross_fma(bencher: &mut test::Bencher) {
     bencher.iter(|| {
         let &(a, b) = vectors_it.next().unwrap();
         test::black_box(cross_fma(a, b));
+    });
+}
+
+#[bench]
+fn bench_octa_cross(bencher: &mut test::Bencher) {
+    let vectors = bench::octa_vector3_pairs(4096 / 8);
+    let mut vectors_it = vectors.iter().cycle();
+    bencher.iter(|| {
+        let &(a, b) = vectors_it.next().unwrap();
+        test::black_box(octa_cross(a, b));
     });
 }
 
