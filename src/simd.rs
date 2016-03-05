@@ -19,6 +19,16 @@ impl OctaF32 {
     pub fn generate<F: FnMut(usize) -> f32>(mut f: F) -> OctaF32 {
         OctaF32(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7))
     }
+
+    #[inline(always)]
+    pub fn mul_add(self, factor: OctaF32, term: OctaF32) -> OctaF32 {
+        unsafe { x86_mm256_fmadd_ps(self, factor, term) }
+    }
+
+    #[inline(always)]
+    pub fn mul_sub(self, factor: OctaF32, term: OctaF32) -> OctaF32 {
+        unsafe { x86_mm256_fmsub_ps(self, factor, term) }
+    }
 }
 
 impl Add<OctaF32> for OctaF32 {
@@ -58,6 +68,9 @@ extern "platform-intrinsic" {
     // This is `_mm256_mul_ps` when compiled for AVX.
     fn simd_mul<T>(x: T, y: T) -> T;
 
+    fn x86_mm256_fmadd_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
+    fn x86_mm256_fmsub_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
+
     /*
     fn x86_mm256_addsub_ps(x: OctaF32, y: OctaF32) -> OctaF32;
     fn x86_mm256_dp_ps(x: OctaF32, y: OctaF32, z: i32) -> OctaF32;
@@ -82,4 +95,22 @@ fn octa_f32_add_ps() {
     let b = OctaF32(5.0, 6.0, 7.0, 8.0, 0.0, 1.0, 2.0, 3.0);
     let c = OctaF32(5.0, 6.0, 7.0, 8.0, 1.0, 3.0, 5.0, 7.0);
     assert_eq!(a + b, c);
+}
+
+#[test]
+fn octa_f32_fmadd_ps() {
+    let a = OctaF32(0.0,  1.0, 0.0,  2.0, 1.0, 2.0,  3.0,  4.0);
+    let b = OctaF32(5.0,  6.0, 7.0,  8.0, 0.0, 1.0,  2.0,  3.0);
+    let c = OctaF32(5.0,  6.0, 7.0,  8.0, 1.0, 3.0,  5.0,  7.0);
+    let d = OctaF32(5.0, 12.0, 7.0, 24.0, 1.0, 5.0, 11.0, 19.0);
+    assert_eq!(a.mul_add(b, c), d);
+}
+
+#[test]
+fn octa_f32_fmsub_ps() {
+    let a = OctaF32( 0.0, 1.0,  0.0, 2.0,  1.0,  2.0, 3.0, 4.0);
+    let b = OctaF32( 5.0, 6.0,  7.0, 8.0,  0.0,  1.0, 2.0, 3.0);
+    let c = OctaF32( 5.0, 6.0,  7.0, 8.0,  1.0,  3.0, 5.0, 7.0);
+    let d = OctaF32(-5.0, 0.0, -7.0, 8.0, -1.0, -1.0, 1.0, 5.0);
+    assert_eq!(a.mul_sub(b, c), d);
 }
