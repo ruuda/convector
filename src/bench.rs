@@ -27,6 +27,13 @@ pub fn points_on_sphere(n: usize) -> Vec<Vector3> {
     vectors
 }
 
+pub fn vector3_pairs(n: usize) -> Vec<(Vector3, Vector3)> {
+    let mut a = points_on_sphere(n);
+    let mut b = points_on_sphere(n);
+    let pairs = a.drain(..).zip(b.drain(..)).collect();
+    pairs
+}
+
 /// Generates rays with origin on a sphere, pointing to the origin.
 pub fn rays_inward(radius: f32, n: usize) -> Vec<Ray> {
     points_on_sphere(n).iter().map(|&x| Ray::new(x * radius, -x)).collect()

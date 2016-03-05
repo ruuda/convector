@@ -55,8 +55,21 @@ pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
     cross_naive(a, b)
 }
 
-pub fn dot(a: Vector3, b: Vector3) -> f32 {
+#[inline(always)]
+pub fn dot_naive(a: Vector3, b: Vector3) -> f32 {
     a.x * b.x + a.y * b.y + a.z * b.z
+}
+
+#[inline(always)]
+pub fn dot_fma(a: Vector3, b: Vector3) -> f32 {
+    a.x.mul_add(b.x, a.y.mul_add(b.y, a.z * b.z))
+}
+
+pub fn dot(a: Vector3, b: Vector3) -> f32 {
+    // Benchmarks show that the naive version is faster than the
+    // FMA version (1 ns vs 4 ns on my Skylake i7). This makes sense:
+    // the naive version has less data dependencies.
+    dot_naive(a, b)
 }
 
 impl Vector3 {
@@ -175,22 +188,40 @@ impl Mul<f32> for Vector3 {
 
 #[bench]
 fn bench_cross_naive(bencher: &mut test::Bencher) {
-    let vectors_a = bench::points_on_sphere(4096);
-    let vectors_b = bench::points_on_sphere(4096);
-    let mut vectors_it = vectors_a.iter().zip(vectors_b.iter()).cycle();
+    let vectors = bench::vector3_pairs(4096);
+    let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        let (&a, &b) = vectors_it.next().unwrap();
+        let &(a, b) = vectors_it.next().unwrap();
         test::black_box(cross_naive(a, b));
     });
 }
 
 #[bench]
 fn bench_cross_fma(bencher: &mut test::Bencher) {
-    let vectors_a = bench::points_on_sphere(4096);
-    let vectors_b = bench::points_on_sphere(4096);
-    let mut vectors_it = vectors_a.iter().zip(vectors_b.iter()).cycle();
+    let vectors = bench::vector3_pairs(4096);
+    let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        let (&a, &b) = vectors_it.next().unwrap();
+        let &(a, b) = vectors_it.next().unwrap();
         test::black_box(cross_fma(a, b));
+    });
+}
+
+#[bench]
+fn bench_dot_naive(bencher: &mut test::Bencher) {
+    let vectors = bench::vector3_pairs(4096);
+    let mut vectors_it = vectors.iter().cycle();
+    bencher.iter(|| {
+        let &(a, b) = vectors_it.next().unwrap();
+        test::black_box(dot_naive(a, b));
+    });
+}
+
+#[bench]
+fn bench_dot_fma(bencher: &mut test::Bencher) {
+    let vectors = bench::vector3_pairs(4096);
+    let mut vectors_it = vectors.iter().cycle();
+    bencher.iter(|| {
+        let &(a, b) = vectors_it.next().unwrap();
+        test::black_box(dot_fma(a, b));
     });
 }
