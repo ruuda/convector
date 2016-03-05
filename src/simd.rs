@@ -4,7 +4,7 @@
 //! use this to the full extent. (Otherwise it will not use AVX but two SSE
 //! adds, for instance.)
 
-use std::ops::Add;
+use std::ops::{Add, Mul, Sub};
 
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -13,6 +13,11 @@ pub struct OctaF32(pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32
 impl OctaF32 {
     pub fn zero() -> OctaF32 {
         OctaF32(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    }
+
+    /// Builds a octafloat by applying the function to the numbers 0..7.
+    pub fn generate<F: FnMut(usize) -> f32>(mut f: F) -> OctaF32 {
+        OctaF32(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7))
     }
 }
 
@@ -25,9 +30,34 @@ impl Add<OctaF32> for OctaF32 {
     }
 }
 
+impl Sub<OctaF32> for OctaF32 {
+    type Output = OctaF32;
+
+    #[inline(always)]
+    fn sub(self, other: OctaF32) -> OctaF32 {
+        unsafe { simd_sub(self, other) }
+    }
+}
+
+impl Mul<OctaF32> for OctaF32 {
+    type Output = OctaF32;
+
+    #[inline(always)]
+    fn mul(self, other: OctaF32) -> OctaF32 {
+        unsafe { simd_mul(self, other) }
+    }
+}
+
 extern "platform-intrinsic" {
-    // Note: `_mm256_add_ps` is called `simd_add` for some reason.
+    // This is `_mm256_add_ps` when compiled for AVX.
     fn simd_add<T>(x: T, y: T) -> T;
+
+    // This is `_mm256_sub_ps` when compiled for AVX.
+    fn simd_sub<T>(x: T, y: T) -> T;
+
+    // This is `_mm256_mul_ps` when compiled for AVX.
+    fn simd_mul<T>(x: T, y: T) -> T;
+
     /*
     fn x86_mm256_addsub_ps(x: OctaF32, y: OctaF32) -> OctaF32;
     fn x86_mm256_dp_ps(x: OctaF32, y: OctaF32, z: i32) -> OctaF32;
