@@ -50,17 +50,35 @@ pub fn cross_fma(a: Vector3, b: Vector3) -> Vector3 {
 }
 
 pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
-    // Benchmarks show that the naive version is faster than the
-    // FMA version (2 ns vs 6 ns on my Skylake i7).
-    cross_naive(a, b)
+    // Benchmarks show that the FMA version is faster than the
+    // naive version (1.9 ns vs 2.1 ns on my Skylake i7). **However**
+    // the "fma" codegen feature must be enabled, otherwise the naive
+    // version is faster.
+    cross_fma(a, b)
 }
 
-pub fn octa_cross(a: OctaVector3, b: OctaVector3) -> OctaVector3 {
+#[inline(always)]
+pub fn octa_cross_naive(a: OctaVector3, b: OctaVector3) -> OctaVector3 {
     OctaVector3 {
         x: a.y * b.z - a.z * b.y,
         y: a.z * b.x - a.x * b.z,
         z: a.x * b.y - a.y * b.x,
     }
+}
+
+#[inline(always)]
+pub fn octa_cross_fma(a: OctaVector3, b: OctaVector3) -> OctaVector3 {
+    OctaVector3 {
+        x: a.y.mul_sub(b.z, a.z * b.y),
+        y: a.z.mul_sub(b.x, a.x * b.z),
+        z: a.x.mul_sub(b.y, a.y * b.x),
+    }
+}
+
+pub fn octa_cross(a: OctaVector3, b: OctaVector3) -> OctaVector3 {
+    // Benchmarks show that the FMA version is faster than the naive version
+    // (2.1 ns vs 2.4 ns on my Skylake i7).
+    octa_cross_fma(a, b)
 }
 
 #[inline(always)]
@@ -74,10 +92,15 @@ pub fn dot_fma(a: Vector3, b: Vector3) -> f32 {
 }
 
 pub fn dot(a: Vector3, b: Vector3) -> f32 {
-    // Benchmarks show that the naive version is faster than the
-    // FMA version (1 ns vs 4 ns on my Skylake i7). This makes sense:
-    // the naive version has less data dependencies.
-    dot_naive(a, b)
+    // Benchmarks show that the naive version is faster than the FMA version
+    // when the "fma" codegen feature is not enabled, but when it is the
+    // performance is similar. The FMA version appears to be slightly more
+    // stable.
+    dot_fma(a, b)
+}
+
+pub fn octa_dot(a: OctaVector3, b: OctaVector3) -> OctaF32 {
+    a.x * b.x + a.y * b.y + a.z * b.z
 }
 
 impl Vector3 {
@@ -194,52 +217,78 @@ impl Mul<f32> for Vector3 {
     }
 }
 
+// These benchmarks all measure ten operations per iteration, because the
+// benchmark framework reports times in nanoseconds, which is too coarse for
+// these operations.
+
 #[bench]
-fn bench_cross_naive(bencher: &mut test::Bencher) {
+fn bench_cross_naive_x10(bencher: &mut test::Bencher) {
     let vectors = bench::vector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        let &(a, b) = vectors_it.next().unwrap();
-        test::black_box(cross_naive(a, b));
+        for _ in 0..10 {
+            let &(a, b) = vectors_it.next().unwrap();
+            test::black_box(cross_naive(a, b));
+        }
     });
 }
 
 #[bench]
-fn bench_cross_fma(bencher: &mut test::Bencher) {
+fn bench_cross_fma_x10(bencher: &mut test::Bencher) {
     let vectors = bench::vector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        let &(a, b) = vectors_it.next().unwrap();
-        test::black_box(cross_fma(a, b));
+        for _ in 0..10 {
+            let &(a, b) = vectors_it.next().unwrap();
+            test::black_box(cross_fma(a, b));
+        }
     });
 }
 
 #[bench]
-fn bench_octa_cross(bencher: &mut test::Bencher) {
+fn bench_octa_cross_naive_x10(bencher: &mut test::Bencher) {
     let vectors = bench::octa_vector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        let &(a, b) = vectors_it.next().unwrap();
-        test::black_box(octa_cross(a, b));
+        for _ in 0..10 {
+            let &(a, b) = vectors_it.next().unwrap();
+            test::black_box(octa_cross_naive(a, b));
+        }
     });
 }
 
 #[bench]
-fn bench_dot_naive(bencher: &mut test::Bencher) {
-    let vectors = bench::vector3_pairs(4096);
+fn bench_octa_cross_fma_x10(bencher: &mut test::Bencher) {
+    let vectors = bench::octa_vector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        let &(a, b) = vectors_it.next().unwrap();
-        test::black_box(dot_naive(a, b));
+        for _ in 0..10 {
+            let &(a, b) = vectors_it.next().unwrap();
+            test::black_box(octa_cross_fma(a, b));
+        }
     });
 }
 
 #[bench]
-fn bench_dot_fma(bencher: &mut test::Bencher) {
+fn bench_dot_naive_x10(bencher: &mut test::Bencher) {
     let vectors = bench::vector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        let &(a, b) = vectors_it.next().unwrap();
-        test::black_box(dot_fma(a, b));
+        for _ in 0..10 {
+            let &(a, b) = vectors_it.next().unwrap();
+            test::black_box(dot_naive(a, b));
+        }
+    });
+}
+
+#[bench]
+fn bench_dot_fma_x10(bencher: &mut test::Bencher) {
+    let vectors = bench::vector3_pairs(4096);
+    let mut vectors_it = vectors.iter().cycle();
+    bencher.iter(|| {
+        for _ in 0..10 {
+            let &(a, b) = vectors_it.next().unwrap();
+            test::black_box(dot_fma(a, b));
+        }
     });
 }
