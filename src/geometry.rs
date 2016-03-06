@@ -7,7 +7,7 @@
 
 use aabb::Aabb;
 use ray::{Intersection, Ray};
-use vector3::{Vector3, dot};
+use vector3::Vector3;
 
 #[derive(Clone, Debug)]
 pub struct Triangle {
@@ -43,8 +43,8 @@ impl Triangle {
         // direction D is normalized, then t is the distance from the ray origin
         // to the plane.
         let normal = e1.cross(e2).normalized();
-        let t = (dot(self.v1, normal) - dot(ray.origin, normal)) /
-            dot(ray.direction, normal);
+        let t = (self.v1.dot(normal) - ray.origin.dot(normal)) /
+            ray.direction.dot(normal);
 
         // Do not intersect backwards. Also, if t = 0.0 then the ray originated
         // from this triangle, so in that case we don't want to intersect it.
@@ -59,12 +59,12 @@ impl Triangle {
 
         // Express the location of the intersection in terms of the basis for
         // the plane given by (e1, e2).
-        let d = dot(e1, e2);
+        let d = e1.dot(e2);
         let e1_nsq = e1.norm_squared();
         let e2_nsq = e2.norm_squared();
         let denom = d * d - e1_nsq * e2_nsq;
-        let u = (d * dot(isect_rel, e2) - e2_nsq * dot(isect_rel, e1)) / denom;
-        let v = (d * dot(isect_rel, e1) - e1_nsq * dot(isect_rel, e2)) / denom;
+        let u = (d * isect_rel.dot(e2) - e2_nsq * isect_rel.dot(e1)) / denom;
+        let v = (d * isect_rel.dot(e1) - e1_nsq * isect_rel.dot(e2)) / denom;
 
         // In this coordinate system, the triangle is the set of points such
         // { (u, v) in plane | u >= 0 and v >= 0 and u + v <= 1 }

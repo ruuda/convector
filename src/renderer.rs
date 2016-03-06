@@ -2,7 +2,7 @@ use ray::Ray;
 use scene::Scene;
 use time::PreciseTime;
 use util::z_order;
-use vector3::{Vector3, dot};
+use vector3::Vector3;
 
 pub struct Renderer {
     scene: Scene,
@@ -79,7 +79,7 @@ impl Renderer {
                 if self.scene.intersect(&shadow_ray)
                     // TODO: Actually, the distance squared would be sufficient in most cases.
                     .map_or(true, |occluder| occluder.distance > distance) {
-                    let mut strength = dot(isect.normal, to_light);
+                    let mut strength = isect.normal.dot(to_light);
                     if strength < 0.0 { strength = 0.0; }
                     strength = strength * (1.0 / (distance * distance));
                     color = color + Vector3::new(strength * 5.0, 0.0, 0.0);
