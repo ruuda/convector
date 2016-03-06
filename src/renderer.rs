@@ -1,8 +1,9 @@
 use ray::Ray;
 use scene::Scene;
+use simd::OctaF32;
 use time::PreciseTime;
 use util::z_order;
-use vector3::Vector3;
+use vector3::{OctaVector3, Vector3};
 
 pub struct Renderer {
     scene: Scene,
@@ -39,30 +40,65 @@ impl Renderer {
         };
     }
 
+    /// Returns the screen coordinates of the block 16 pixels where (x, y) is the bottom-left
+    /// coordinate. The coordinates are ordered in a z-order.
+    fn get_pixel_coords(&self, x: u32, y: u32) -> ([OctaF32; 2], [OctaF32; 2]) {
+        // TODO: There is little point in using the z-order here.
+        // Perhaps the patching can be sped up by using a normal order,
+        // but a z-order for the patches?
+        let z_order_x0 = OctaF32(0.0, 1.0, 0.0, 1.0, 2.0, 3.0, 2.0, 3.0);
+        let z_order_y0 = OctaF32(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
+        let z_order_y1 = OctaF32(2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0);
+        let xf = OctaF32::broadcast(x as f32 - self.width as f32 * 0.5);
+        let yf = OctaF32::broadcast(y as f32 - self.height as f32 * 0.5);
+        let scale = OctaF32::broadcast(2.0 / self.width as f32);
+        let xs0 = (z_order_x0 + xf) * scale;
+        let ys0 = (z_order_y0 + yf) * scale;
+        let ys1 = (z_order_y1 + yf) * scale;
+        ([xs0, xs0], [ys0, ys1])
+    }
+
     /// Renders part of a frame.
     ///
     /// The (x, y) coordinate is the coordinate of the bottom-left pixel of the
-    /// patch. The patch width must be a power of two.
+    /// patch. The patch width must be a power of 16.
     pub fn render_patch(&self, patch: &mut [u8], patch_width: u32, x: u32, y: u32) {
         assert_eq!(patch.len(), (3 * patch_width * patch_width) as usize);
-        assert_eq!(patch_width & (patch_width - 1), 0);
+        assert_eq!(patch_width & (patch_width - 1), 0); // Patch width must be a power of 2.
+        assert_eq!(patch_width & 15, 0); // Patch width must be a multiple of 16.
 
-        let scale = 2.0 / self.width as f32;
+        let n = patch_width / 16;
+        for i in 0..(n * n) {
+            let (px, py) = z_order((i * 16) as u16);
+            let (xs, ys) = self.get_pixel_coords(x + px as u32, y + py as u32);
 
-        for i in 0..(patch_width * patch_width) {
-            let (px, py) = z_order(i as u16);
-            let xf = ((x + px as u32) as f32 - self.width as f32 / 2.0) * scale;
-            let yf = ((y + py as u32) as f32 - self.height as f32 / 2.0) * scale;
+            let rgb0 = self.render_pixels(xs[0], ys[0]);
+            let rgb1 = self.render_pixels(xs[1], ys[1]);
 
-            let rgb = self.render_pixel(xf, yf);
-
-            // Write the color as linear RGB, 8 bytes per pixel. The window
+            // Convert the color to linear RGB, 8 bytes per pixel. The window
             // has been set up so that this will be converted to sRGB when
             // it is displayed.
-            patch[i as usize * 3 + 0] = (255.0 * clamp_unit(rgb.x)) as u8;
-            patch[i as usize * 3 + 1] = (255.0 * clamp_unit(rgb.y)) as u8;
-            patch[i as usize * 3 + 2] = (255.0 * clamp_unit(rgb.z)) as u8;
+            let range = OctaF32::broadcast(255.0);
+            let rgb0_255 = rgb0.clamp_one() * range;
+            let rgb1_255 = rgb1.clamp_one() * range;
+
+            // TODO: SIMD conversion into integers.
+            for j in 0..8 {
+                let idx0 = ((i * 16 + j) * 3) as usize;
+                let idx1 = ((i * 16 + j + 8) * 3) as usize;
+                patch[idx0 + 0] = rgb0_255.x.as_slice()[j as usize] as u8;
+                patch[idx0 + 1] = rgb0_255.y.as_slice()[j as usize] as u8;
+                patch[idx0 + 2] = rgb0_255.z.as_slice()[j as usize] as u8;
+                patch[idx1 + 0] = rgb1_255.x.as_slice()[j as usize] as u8;
+                patch[idx1 + 1] = rgb1_255.y.as_slice()[j as usize] as u8;
+                patch[idx1 + 2] = rgb1_255.z.as_slice()[j as usize] as u8;
+            }
         }
+    }
+
+    fn render_pixels(&self, x: OctaF32, y: OctaF32) -> OctaVector3 {
+        // TODO: implement rednerer
+        OctaVector3::broadcast(Vector3::new(1.0, 0.6, 0.2))
     }
 
     fn render_pixel(&self, x: f32, y: f32) -> Vector3 {

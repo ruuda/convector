@@ -1,7 +1,3 @@
-// This code is adapted from vector3 in Robigo Luculenta (of which I am the
-// author), licensed under the GNU General Public License version 3.
-// See https://github.com/ruud-v-a/robigo-luculenta/blob/master/src/vector3.rs
-
 //! Implements vectors in R3.
 
 use simd::OctaF32;
@@ -132,6 +128,14 @@ impl OctaVector3 {
         OctaVector3::new(OctaF32::zero(), OctaF32::zero(), OctaF32::zero())
     }
 
+    pub fn broadcast(a: Vector3) -> OctaVector3 {
+        OctaVector3 {
+            x: OctaF32::broadcast(a.x),
+            y: OctaF32::broadcast(a.y),
+            z: OctaF32::broadcast(a.z),
+        }
+    }
+
     #[inline(always)]
     pub fn cross_naive(self, other: OctaVector3) -> OctaVector3 {
         let (a, b) = (self, other);
@@ -193,6 +197,28 @@ impl OctaVector3 {
     /// Scalar multiplication and vector add using fused multiply-add.
     pub fn mul_add(self, factor: OctaF32, other: OctaVector3) -> OctaVector3 {
         self.mul_add_fma(factor, other)
+    }
+
+    pub fn norm_squared(self) -> OctaF32 {
+        self.dot(self)
+    }
+
+    pub fn normalized(self) -> OctaVector3 {
+        let rnorm = self.norm_squared().rsqrt();
+        OctaVector3 {
+            x: self.x * rnorm,
+            y: self.y * rnorm,
+            z: self.z * rnorm,
+        }
+    }
+
+    /// Clamps every coordinate to 1.0 if it exceeds 1.0.
+    pub fn clamp_one(self) -> OctaVector3 {
+        OctaVector3 {
+            x: OctaF32::one().min(self.x),
+            y: OctaF32::one().min(self.y),
+            z: OctaF32::one().min(self.z),
+        }
     }
 }
 

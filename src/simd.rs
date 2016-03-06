@@ -15,6 +15,10 @@ impl OctaF32 {
         OctaF32(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     }
 
+    pub fn one() -> OctaF32 {
+        OctaF32(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+    }
+
     /// Builds a octafloat by applying the function to the numbers 0..7.
     pub fn generate<F: FnMut(usize) -> f32>(mut f: F) -> OctaF32 {
         OctaF32(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7))
@@ -27,6 +31,11 @@ impl OctaF32 {
         OctaF32(x, x, x, x, x, x, x, x)
     }
 
+    pub fn as_slice(&self) -> &[f32; 8] {
+        use std::mem;
+        unsafe { mem::transmute(self) }
+    }
+
     #[inline(always)]
     pub fn mul_add(self, factor: OctaF32, term: OctaF32) -> OctaF32 {
         unsafe { x86_mm256_fmadd_ps(self, factor, term) }
@@ -35,6 +44,22 @@ impl OctaF32 {
     #[inline(always)]
     pub fn mul_sub(self, factor: OctaF32, term: OctaF32) -> OctaF32 {
         unsafe { x86_mm256_fmsub_ps(self, factor, term) }
+    }
+
+    /// Approximates the reciprocal square root.
+    #[inline(always)]
+    pub fn rsqrt(self) -> OctaF32 {
+        unsafe { x86_mm256_rsqrt_ps(self) }
+    }
+
+    #[inline(always)]
+    pub fn max(self, other: OctaF32) -> OctaF32 {
+        unsafe { x86_mm256_max_ps(self, other) }
+    }
+
+    #[inline(always)]
+    pub fn min(self, other: OctaF32) -> OctaF32 {
+        unsafe { x86_mm256_min_ps(self, other) }
     }
 }
 
@@ -77,6 +102,9 @@ extern "platform-intrinsic" {
 
     fn x86_mm256_fmadd_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
     fn x86_mm256_fmsub_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
+    fn x86_mm256_max_ps(x: OctaF32, y: OctaF32) -> OctaF32;
+    fn x86_mm256_min_ps(x: OctaF32, y: OctaF32) -> OctaF32;
+    fn x86_mm256_rsqrt_ps(x: OctaF32) -> OctaF32;
 
     // TODO: Add the x86_mm256_broadcast_ss intrinsic to rustc and see if that
     // is faster than constructing the constant in Rust.
