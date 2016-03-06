@@ -32,56 +32,6 @@ pub enum Axis {
 }
 
 #[inline(always)]
-pub fn cross_naive(a: Vector3, b: Vector3) -> Vector3 {
-    Vector3 {
-        x: a.y * b.z - a.z * b.y,
-        y: a.z * b.x - a.x * b.z,
-        z: a.x * b.y - a.y * b.x,
-    }
-}
-
-#[inline(always)]
-pub fn cross_fma(a: Vector3, b: Vector3) -> Vector3 {
-    Vector3 {
-        x: a.y.mul_add(b.z, -a.z * b.y),
-        y: a.z.mul_add(b.x, -a.x * b.z),
-        z: a.x.mul_add(b.y, -a.y * b.x),
-    }
-}
-
-pub fn cross(a: Vector3, b: Vector3) -> Vector3 {
-    // Benchmarks show that the FMA version is faster than the
-    // naive version (1.9 ns vs 2.1 ns on my Skylake i7). **However**
-    // the "fma" codegen feature must be enabled, otherwise the naive
-    // version is faster.
-    cross_fma(a, b)
-}
-
-#[inline(always)]
-pub fn octa_cross_naive(a: OctaVector3, b: OctaVector3) -> OctaVector3 {
-    OctaVector3 {
-        x: a.y * b.z - a.z * b.y,
-        y: a.z * b.x - a.x * b.z,
-        z: a.x * b.y - a.y * b.x,
-    }
-}
-
-#[inline(always)]
-pub fn octa_cross_fma(a: OctaVector3, b: OctaVector3) -> OctaVector3 {
-    OctaVector3 {
-        x: a.y.mul_sub(b.z, a.z * b.y),
-        y: a.z.mul_sub(b.x, a.x * b.z),
-        z: a.x.mul_sub(b.y, a.y * b.x),
-    }
-}
-
-pub fn octa_cross(a: OctaVector3, b: OctaVector3) -> OctaVector3 {
-    // Benchmarks show that the FMA version is faster than the naive version
-    // (2.1 ns vs 2.4 ns on my Skylake i7).
-    octa_cross_fma(a, b)
-}
-
-#[inline(always)]
 pub fn dot_naive(a: Vector3, b: Vector3) -> f32 {
     a.x * b.x + a.y * b.y + a.z * b.z
 }
@@ -122,6 +72,34 @@ impl Vector3 {
 
     pub fn zero() -> Vector3 {
         Vector3::new(0.0, 0.0, 0.0)
+    }
+
+    #[inline(always)]
+    pub fn cross_naive(self: Vector3, other: Vector3) -> Vector3 {
+        let (a, b) = (self, other);
+        Vector3 {
+            x: a.y * b.z - a.z * b.y,
+            y: a.z * b.x - a.x * b.z,
+            z: a.x * b.y - a.y * b.x,
+        }
+    }
+
+    #[inline(always)]
+    pub fn cross_fma(self: Vector3, other: Vector3) -> Vector3 {
+        let (a, b) = (self, other);
+        Vector3 {
+            x: a.y.mul_add(b.z, -a.z * b.y),
+            y: a.z.mul_add(b.x, -a.x * b.z),
+            z: a.x.mul_add(b.y, -a.y * b.x),
+        }
+    }
+
+    pub fn cross(self, other: Vector3) -> Vector3 {
+        // Benchmarks show that the FMA version is faster than the
+        // naive version (1.9 ns vs 2.1 ns on my Skylake i7). **However**
+        // the "fma" codegen feature must be enabled, otherwise the naive
+        // version is faster.
+        self.cross_fma(other)
     }
 
     pub fn norm_squared(self) -> f32 {
@@ -166,6 +144,32 @@ impl OctaVector3 {
 
     pub fn zero() -> OctaVector3 {
         OctaVector3::new(OctaF32::zero(), OctaF32::zero(), OctaF32::zero())
+    }
+
+    #[inline(always)]
+    pub fn cross_naive(self, other: OctaVector3) -> OctaVector3 {
+        let (a, b) = (self, other);
+        OctaVector3 {
+            x: a.y * b.z - a.z * b.y,
+            y: a.z * b.x - a.x * b.z,
+            z: a.x * b.y - a.y * b.x,
+        }
+    }
+
+    #[inline(always)]
+    pub fn cross_fma(self, other: OctaVector3) -> OctaVector3 {
+        let (a, b) = (self, other);
+        OctaVector3 {
+            x: a.y.mul_sub(b.z, a.z * b.y),
+            y: a.z.mul_sub(b.x, a.x * b.z),
+            z: a.x.mul_sub(b.y, a.y * b.x),
+        }
+    }
+
+    pub fn cross(self, other: OctaVector3) -> OctaVector3 {
+        // Benchmarks show that the FMA version is faster than the
+        // naive version (2.1 ns vs 2.4 ns on my Skylake i7).
+        self.cross_fma(other)
     }
 }
 
@@ -240,7 +244,7 @@ fn bench_cross_naive_x10(bencher: &mut test::Bencher) {
     bencher.iter(|| {
         for _ in 0..10 {
             let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(cross_naive(a, b));
+            test::black_box(a.cross_naive(b));
         }
     });
 }
@@ -252,7 +256,7 @@ fn bench_cross_fma_x10(bencher: &mut test::Bencher) {
     bencher.iter(|| {
         for _ in 0..10 {
             let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(cross_fma(a, b));
+            test::black_box(a.cross_fma(b));
         }
     });
 }
@@ -264,7 +268,7 @@ fn bench_octa_cross_naive_x10(bencher: &mut test::Bencher) {
     bencher.iter(|| {
         for _ in 0..10 {
             let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(octa_cross_naive(a, b));
+            test::black_box(a.cross_naive(b));
         }
     });
 }
@@ -276,7 +280,7 @@ fn bench_octa_cross_fma_x10(bencher: &mut test::Bencher) {
     bencher.iter(|| {
         for _ in 0..10 {
             let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(octa_cross_fma(a, b));
+            test::black_box(a.cross_fma(b));
         }
     });
 }

@@ -7,7 +7,7 @@
 
 use aabb::Aabb;
 use ray::{Intersection, Ray};
-use vector3::{Vector3, cross, dot};
+use vector3::{Vector3, dot};
 
 #[derive(Clone, Debug)]
 pub struct Triangle {
@@ -42,7 +42,7 @@ impl Triangle {
         // is the origin of the ray and D the direction. Note: if the ray
         // direction D is normalized, then t is the distance from the ray origin
         // to the plane.
-        let normal = cross(e1, e2).normalized();
+        let normal = e1.cross(e2).normalized();
         let t = (dot(self.v1, normal) - dot(ray.origin, normal)) /
             dot(ray.direction, normal);
 

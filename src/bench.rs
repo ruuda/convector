@@ -7,7 +7,7 @@ use rand::distributions::{IndependentSample, Range};
 use ray::Ray;
 use simd::OctaF32;
 use std::f32::consts;
-use vector3::{OctaVector3, Vector3, cross};
+use vector3::{OctaVector3, Vector3};
 
 /// Generates n vectors distributed uniformly on the unit sphere.
 pub fn points_on_sphere(n: usize) -> Vec<Vector3> {
@@ -73,7 +73,7 @@ pub fn aabb_with_rays(n: usize, m: usize) -> (Aabb, Vec<Ray>) {
     // Offset the m-n rays that should not intersect the box in a direction
     // perpendicular to the ray.
     for i in m..n {
-        let p = rays[i].origin + cross(up, rays[i].direction).normalized() * 16.0;
+        let p = rays[i].origin + up.cross(rays[i].direction).normalized() * 16.0;
         rays[i].origin = p;
     }
 
