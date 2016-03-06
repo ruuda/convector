@@ -99,8 +99,20 @@ pub fn dot(a: Vector3, b: Vector3) -> f32 {
     dot_fma(a, b)
 }
 
-pub fn octa_dot(a: OctaVector3, b: OctaVector3) -> OctaF32 {
+#[inline(always)]
+pub fn octa_dot_naive(a: OctaVector3, b: OctaVector3) -> OctaF32 {
     a.x * b.x + a.y * b.y + a.z * b.z
+}
+
+#[inline(always)]
+pub fn octa_dot_fma(a: OctaVector3, b: OctaVector3) -> OctaF32 {
+    a.x.mul_add(b.x, a.y.mul_add(b.y, a.z * b.z))
+}
+
+pub fn octa_dot(a: OctaVector3, b: OctaVector3) -> OctaF32 {
+    // Benchmarks show no performance difference between the naive version
+    // and the FMA version. Use the naive one because it is more portable.
+    octa_dot_naive(a, b)
 }
 
 impl Vector3 {
@@ -289,6 +301,30 @@ fn bench_dot_fma_x10(bencher: &mut test::Bencher) {
         for _ in 0..10 {
             let &(a, b) = vectors_it.next().unwrap();
             test::black_box(dot_fma(a, b));
+        }
+    });
+}
+
+#[bench]
+fn bench_octa_dot_naive_x10(bencher: &mut test::Bencher) {
+    let vectors = bench::octa_vector3_pairs(4096 / 8);
+    let mut vectors_it = vectors.iter().cycle();
+    bencher.iter(|| {
+        for _ in 0..10 {
+            let &(a, b) = vectors_it.next().unwrap();
+            test::black_box(octa_dot_naive(a, b));
+        }
+    });
+}
+
+#[bench]
+fn bench_octa_dot_fma_x10(bencher: &mut test::Bencher) {
+    let vectors = bench::octa_vector3_pairs(4096 / 8);
+    let mut vectors_it = vectors.iter().cycle();
+    bencher.iter(|| {
+        for _ in 0..10 {
+            let &(a, b) = vectors_it.next().unwrap();
+            test::black_box(octa_dot_fma(a, b));
         }
     });
 }
