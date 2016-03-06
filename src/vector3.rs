@@ -170,10 +170,29 @@ impl OctaVector3 {
         a.x.mul_add(b.x, a.y.mul_add(b.y, a.z * b.z))
     }
 
-    pub fn octa_dot(self, other: OctaVector3) -> OctaF32 {
+    pub fn dot(self, other: OctaVector3) -> OctaF32 {
         // Benchmarks show no performance difference between the naive version
         // and the FMA version. Use the naive one because it is more portable.
         self.dot_naive(other)
+    }
+
+    #[inline(always)]
+    pub fn mul_add_naive(self, factor: OctaF32, other: OctaVector3) -> OctaVector3 {
+        self * factor + other
+    }
+
+    #[inline(always)]
+    pub fn mul_add_fma(self, factor: OctaF32, other: OctaVector3) -> OctaVector3 {
+        OctaVector3 {
+            x: self.x.mul_add(factor, other.x),
+            y: self.y.mul_add(factor, other.y),
+            z: self.z.mul_add(factor, other.z),
+        }
+    }
+
+    /// Scalar multiplication and vector add using fused multiply-add.
+    pub fn mul_add(self, factor: OctaF32, other: OctaVector3) -> OctaVector3 {
+        self.mul_add_fma(factor, other)
     }
 }
 
@@ -230,6 +249,18 @@ impl Mul<f32> for Vector3 {
 
     fn mul(self, a: f32) -> Vector3 {
         Vector3 {
+            x: self.x * a,
+            y: self.y * a,
+            z: self.z * a,
+        }
+    }
+}
+
+impl Mul<OctaF32> for OctaVector3 {
+    type Output = OctaVector3;
+
+    fn mul(self, a: OctaF32) -> OctaVector3 {
+        OctaVector3 {
             x: self.x * a,
             y: self.y * a,
             z: self.z * a,
