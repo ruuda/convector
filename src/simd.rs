@@ -21,6 +21,13 @@ impl OctaF32 {
     }
 
     #[inline(always)]
+    pub fn broadcast(x: f32) -> OctaF32 {
+        // TODO: Investigate whether an intrinsic might be faster.
+        // unsafe { x86_mm256_broadcast_ss(&x) }
+        OctaF32(x, x, x, x, x, x, x, x)
+    }
+
+    #[inline(always)]
     pub fn mul_add(self, factor: OctaF32, term: OctaF32) -> OctaF32 {
         unsafe { x86_mm256_fmadd_ps(self, factor, term) }
     }
@@ -71,6 +78,10 @@ extern "platform-intrinsic" {
     fn x86_mm256_fmadd_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
     fn x86_mm256_fmsub_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
 
+    // TODO: Add the x86_mm256_broadcast_ss intrinsic to rustc and see if that
+    // is faster than constructing the constant in Rust.
+    // fn x86_mm256_broadcast_ss(x: &f32) -> OctaF32;
+
     /*
     fn x86_mm256_addsub_ps(x: OctaF32, y: OctaF32) -> OctaF32;
     fn x86_mm256_dp_ps(x: OctaF32, y: OctaF32, z: i32) -> OctaF32;
@@ -113,4 +124,11 @@ fn octa_f32_fmsub_ps() {
     let c = OctaF32( 5.0, 6.0,  7.0, 8.0,  1.0,  3.0, 5.0, 7.0);
     let d = OctaF32(-5.0, 0.0, -7.0, 8.0, -1.0, -1.0, 1.0, 5.0);
     assert_eq!(a.mul_sub(b, c), d);
+}
+
+#[test]
+fn octa_f32_broadcast_ps() {
+    let a = OctaF32::broadcast(7.0);
+    let b = OctaF32(7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0);
+    assert_eq!(a, b);
 }
