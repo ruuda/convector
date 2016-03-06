@@ -1,7 +1,8 @@
 use bvh::Bvh;
-use ray::{Intersection, Ray};
+use ray::{Intersection, OctaRay, Ray};
+use simd::OctaF32;
 use std::f32::consts::PI;
-use vector3::Vector3;
+use vector3::{OctaVector3, Vector3};
 use wavefront::Mesh;
 
 pub struct Camera {
@@ -32,6 +33,21 @@ impl Camera {
         // TODO: Transform direction with orientation quaternion.
         Ray {
             origin: self.position,
+            direction: direction,
+        }
+    }
+
+    /// Returns a camera ray for the given screen coordinates.
+    ///
+    /// Values for x are in the range (-1, 1), the scale is uniform in both
+    /// directions.
+    pub fn get_octa_ray(&self, x: OctaF32, y: OctaF32) -> OctaRay {
+        let dist = OctaF32::broadcast(-self.screen_distance);
+        let origin = OctaVector3::broadcast(self.position);
+        let direction = OctaVector3::new(x, y, dist).normalized();
+        // TODO: Transform direction with orientation quaternion.
+        OctaRay {
+            origin: origin,
             direction: direction,
         }
     }
