@@ -9,6 +9,17 @@ use simd::OctaF32;
 use std::f32::consts;
 use vector3::{OctaVector3, Vector3};
 
+/// Generates n random OctaF32s in the range [-1, 1).
+pub fn octa_biunit(n: usize) -> Vec<OctaF32> {
+    let mut vectors = Vec::with_capacity(n);
+    let mut rng = rand::thread_rng();
+    let range = Range::new(-1.0, 1.0);
+    for _ in 0..n {
+        vectors.push(OctaF32::generate(|_| range.ind_sample(&mut rng)));
+    }
+    vectors
+}
+
 /// Generates n vectors distributed uniformly on the unit sphere.
 pub fn points_on_sphere(n: usize) -> Vec<Vector3> {
     let mut rng = rand::thread_rng();

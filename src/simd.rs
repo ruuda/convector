@@ -4,7 +4,10 @@
 //! use this to the full extent. (Otherwise it will not use AVX but two SSE
 //! adds, for instance.)
 
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub};
+
+#[cfg(test)]
+use {bench, test};
 
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -46,6 +49,18 @@ impl OctaF32 {
         unsafe { x86_mm256_fmsub_ps(self, factor, term) }
     }
 
+    /// Approximates 1 / self.
+    #[inline(always)]
+    pub fn rcp(self) -> OctaF32 {
+        unsafe { x86_mm256_rcp_ps(self) }
+    }
+
+    /// Computes self / denom with best precision.
+    #[inline(always)]
+    pub fn div(self, denom: OctaF32) -> OctaF32 {
+        unsafe { simd_div(self, denom) }
+    }
+
     /// Approximates the reciprocal square root.
     #[inline(always)]
     pub fn rsqrt(self) -> OctaF32 {
@@ -72,6 +87,17 @@ impl Add<OctaF32> for OctaF32 {
     }
 }
 
+impl Div<OctaF32> for OctaF32 {
+    type Output = OctaF32;
+
+    #[inline(always)]
+    fn div(self, denom: OctaF32) -> OctaF32 {
+        // Benchmarks show that _mm256_div_ps is as fast as a _mm256_rcp_ps
+        // followed by a _mm256_mul_ps, so we might as well use the div.
+        unsafe { simd_div(self, denom) }
+    }
+}
+
 impl Sub<OctaF32> for OctaF32 {
     type Output = OctaF32;
 
@@ -94,6 +120,9 @@ extern "platform-intrinsic" {
     // This is `_mm256_add_ps` when compiled for AVX.
     fn simd_add<T>(x: T, y: T) -> T;
 
+    // This is `_mm256_div_ps` when compiled for AVX.
+    fn simd_div<T>(x: T, y: T) -> T;
+
     // This is `_mm256_sub_ps` when compiled for AVX.
     fn simd_sub<T>(x: T, y: T) -> T;
 
@@ -104,6 +133,7 @@ extern "platform-intrinsic" {
     fn x86_mm256_fmsub_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
     fn x86_mm256_max_ps(x: OctaF32, y: OctaF32) -> OctaF32;
     fn x86_mm256_min_ps(x: OctaF32, y: OctaF32) -> OctaF32;
+    fn x86_mm256_rcp_ps(x: OctaF32) -> OctaF32;
     fn x86_mm256_rsqrt_ps(x: OctaF32) -> OctaF32;
 
     // TODO: Add the x86_mm256_broadcast_ss intrinsic to rustc and see if that
@@ -159,4 +189,30 @@ fn octa_f32_broadcast_ps() {
     let a = OctaF32::broadcast(7.0);
     let b = OctaF32(7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0);
     assert_eq!(a, b);
+}
+
+#[bench]
+fn bench_mm256_div_ps_x100(b: &mut test::Bencher) {
+    let numers = bench::octa_biunit(4096 / 8);
+    let denoms = bench::octa_biunit(4096 / 8);
+    let mut frac_it = numers.iter().cycle().zip(denoms.iter().cycle());
+    b.iter(|| {
+        for _ in 0..100 {
+            let (&numer, &denom) = frac_it.next().unwrap();
+            test::black_box(numer.div(denom));
+        }
+    });
+}
+
+#[bench]
+fn bench_mm256_rcp_ps_mm256_mul_ps_x100(b: &mut test::Bencher) {
+    let numers = bench::octa_biunit(4096 / 8);
+    let denoms = bench::octa_biunit(4096 / 8);
+    let mut frac_it = numers.iter().cycle().zip(denoms.iter().cycle());
+    b.iter(|| {
+        for _ in 0..100 {
+            let (&numer, &denom) = frac_it.next().unwrap();
+            test::black_box(numer * denom.rcp());
+        }
+    });
 }
