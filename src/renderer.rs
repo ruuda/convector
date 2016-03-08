@@ -65,9 +65,9 @@ impl Renderer {
     pub fn render_patch(&self, patch: &mut [u8], patch_width: u32, x: u32, y: u32) {
         assert_eq!(patch.len(), (3 * patch_width * patch_width) as usize);
         assert_eq!(patch_width & (patch_width - 1), 0); // Patch width must be a power of 2.
-        assert_eq!(patch_width & 15, 0); // Patch width must be a multiple of 16.
+        assert_eq!(patch_width & 3, 0); // Patch width must be a multiple of 4.
 
-        let n = patch_width / 16;
+        let n = patch_width / 4;
         for i in 0..(n * n) {
             let (px, py) = z_order((i * 16) as u16);
             let (xs, ys) = self.get_pixel_coords(x + px as u32, y + py as u32);
