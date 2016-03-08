@@ -1,5 +1,5 @@
 use bvh::Bvh;
-use ray::{Intersection, OctaRay, Ray};
+use ray::{Intersection, OctaIntersection, OctaRay, Ray};
 use simd::OctaF32;
 use std::f32::consts::PI;
 use vector3::{OctaVector3, Vector3};
@@ -74,5 +74,17 @@ impl Scene {
 
     pub fn intersect(&self, ray: &Ray) -> Option<Intersection> {
         self.bvh.intersect_nearest(ray)
+    }
+
+    pub fn intersect_nearest(&self, octa_ray: &OctaRay) -> OctaIntersection {
+        let huge_distance = OctaF32::broadcast(1.0e5);
+        let far_away = OctaIntersection {
+            position: octa_ray.direction.mul_add(huge_distance, octa_ray.origin),
+            normal: octa_ray.direction,
+            distance: huge_distance,
+            // TODO: Set sky/far away material.
+        };
+        far_away
+        // self.bvh.intersect_nearest(ray)
     }
 }

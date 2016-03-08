@@ -97,8 +97,25 @@ impl Renderer {
     }
 
     fn render_pixels(&self, x: OctaF32, y: OctaF32) -> OctaVector3 {
-        // TODO: implement rednerer
-        OctaVector3::broadcast(Vector3::new(1.0, 0.6, 0.2))
+        let octa_ray = self.scene.camera.get_octa_ray(x, y);
+        let mut color = OctaVector3::zero();
+        let isect = self.scene.intersect_nearest(&octa_ray);
+
+        for ref light in &self.scene.lights {
+            let light_pos = OctaVector3::broadcast(light.position);
+            let to_light = light_pos - isect.position;
+            // let distance = to_light.norm();
+            // TODO: shadow rays.
+            let dist_cos_alpha = isect.normal.dot(to_light).max(OctaF32::zero());
+            let strength = dist_cos_alpha; // TODO
+            color = OctaVector3 {
+                x: strength * OctaF32::broadcast(5.0),
+                y: OctaF32::zero(),
+                z: OctaF32::zero(),
+            };
+        }
+
+        color
     }
 
     fn render_pixel(&self, x: f32, y: f32) -> Vector3 {
