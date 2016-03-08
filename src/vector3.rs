@@ -258,6 +258,18 @@ impl Sub for Vector3 {
     }
 }
 
+impl Sub for OctaVector3 {
+    type Output = OctaVector3;
+
+    fn sub(self, other: OctaVector3) -> OctaVector3 {
+        OctaVector3 {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        }
+    }
+}
+
 impl Neg for Vector3 {
     type Output = Vector3;
 
