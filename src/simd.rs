@@ -13,6 +13,8 @@ use {bench, test};
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct OctaF32(pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32);
 
+type Mask = OctaF32;
+
 impl OctaF32 {
     pub fn zero() -> OctaF32 {
         OctaF32(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -51,7 +53,7 @@ impl OctaF32 {
 
     /// Approximates 1 / self.
     #[inline(always)]
-    pub fn rcp(self) -> OctaF32 {
+    pub fn recip(self) -> OctaF32 {
         unsafe { x86_mm256_rcp_ps(self) }
     }
 
@@ -75,6 +77,31 @@ impl OctaF32 {
     #[inline(always)]
     pub fn min(self, other: OctaF32) -> OctaF32 {
         unsafe { x86_mm256_min_ps(self, other) }
+    }
+
+    #[inline(always)]
+    pub fn geq(self, other: OctaF32) -> Mask {
+        // Operation 21 is a not less than comparison, unordered,
+        // non-signalling.
+        unsafe { x86_mm256_cmp_ps(self, other, 21) }
+    }
+
+    /// Returns whether any of the values not masked out is positive.
+    #[inline(always)]
+    pub fn any_positive_masked(self, mask: Mask) -> bool {
+        use std::mem::transmute;
+        // The testc intrinsic computes `(not self) and mask`, and then returns
+        // 1 if all resulting sign bits are 0, or 0 otherwise. If a value is
+        // positive, the sign bit will be 0, so `not self` will have sign bit 1.
+        // Mask out the values that we are not interested in, then testc returns
+        // 1 if there were no positive values, so negate the result. Also, we
+        // know that the returned value is either 0 or 1, so there is no need
+        // for a comparison, just interpret the bytes as a boolean.
+        let no_positive: bool = unsafe {
+            transmute(x86_mm256_testc_ps(self, mask) as i8)
+        };
+
+        !no_positive
     }
 }
 
@@ -129,12 +156,14 @@ extern "platform-intrinsic" {
     // This is `_mm256_mul_ps` when compiled for AVX.
     fn simd_mul<T>(x: T, y: T) -> T;
 
+    fn x86_mm256_cmp_ps(x: OctaF32, y: OctaF32, op: i8) -> Mask;
     fn x86_mm256_fmadd_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
     fn x86_mm256_fmsub_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
     fn x86_mm256_max_ps(x: OctaF32, y: OctaF32) -> OctaF32;
     fn x86_mm256_min_ps(x: OctaF32, y: OctaF32) -> OctaF32;
     fn x86_mm256_rcp_ps(x: OctaF32) -> OctaF32;
     fn x86_mm256_rsqrt_ps(x: OctaF32) -> OctaF32;
+    fn x86_mm256_testc_ps(x: OctaF32, y: OctaF32) -> i32;
 
     // TODO: Add the x86_mm256_broadcast_ss intrinsic to rustc and see if that
     // is faster than constructing the constant in Rust.
@@ -212,7 +241,7 @@ fn bench_mm256_rcp_ps_mm256_mul_ps_x100(b: &mut test::Bencher) {
     b.iter(|| {
         for _ in 0..100 {
             let (&numer, &denom) = frac_it.next().unwrap();
-            test::black_box(numer * denom.rcp());
+            test::black_box(numer * denom.recip());
         }
     });
 }

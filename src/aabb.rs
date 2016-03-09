@@ -1,7 +1,7 @@
 //! This module implements axis-aligned bounding boxes and related functions.
 
-use ray::Ray;
-use vector3::Vector3;
+use ray::{OctaRay, Ray};
+use vector3::{OctaVector3, Vector3};
 
 #[cfg(test)]
 use {bench, test};
@@ -135,6 +135,37 @@ impl Aabb {
         } else {
             None
         }
+    }
+
+    // TODO: naming.
+    pub fn intersect_any(&self, ray: &OctaRay) -> bool {
+        // TODO: Could precompute the reciprocal.
+        let xinv = ray.direction.x.recip();
+        let yinv = ray.direction.y.recip();
+        let zinv = ray.direction.z.recip();
+
+        let d1 = OctaVector3::broadcast(self.origin) - ray.origin;
+        let d2 = d1 + OctaVector3::broadcast(self.size);
+
+        let (tx1, tx2) = (d1.x * xinv, d2.x * xinv);
+        let txmin = tx1.min(tx2);
+        let txmax = tx1.max(tx2);
+
+        let (ty1, ty2) = (d1.y * yinv, d2.y * yinv);
+        let tymin = ty1.min(ty2);
+        let tymax = ty1.max(ty2);
+
+        let (tz1, tz2) = (d1.z * zinv, d2.z * zinv);
+        let tzmin = tz1.min(tz2);
+        let tzmax = tz1.max(tz2);
+
+
+        // The minimum t in all dimension is the maximum of the per-axis minima.
+        let tmin = txmin.max(tymin.max(tzmin));
+        let tmax = txmax.min(tymax.min(tzmax));
+
+        let mask = tmax.geq(tmin);
+        tmax.any_positive_masked(mask)
     }
 }
 
