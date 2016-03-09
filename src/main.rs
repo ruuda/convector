@@ -3,14 +3,7 @@
 #![warn(missing_docs)]
 #![allow(dead_code)] // TODO: Remove before v0.1.
 
-// Note: the following unstable feature is required to run benchmarks, but
-// unstable features can only be used with a Rust compiler from the nightly
-// channel. If you only want to run the program you can safely comment out this
-// line.
-#![feature(test)]
-
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
+#![feature(platform_intrinsics, repr_simd, test)]
 
 extern crate filebuffer;
 extern crate glium;
