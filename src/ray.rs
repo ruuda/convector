@@ -1,6 +1,6 @@
 //! This module implements the ray and related structures.
 
-use simd::{Mask, OctaF32};
+use simd::{Mask, Mf32};
 use std::ops::Neg;
 use vector3::{OctaVector3, SVector3};
 
@@ -30,7 +30,7 @@ pub struct Intersection {
 pub struct OctaIntersection {
     pub position: OctaVector3,
     pub normal: OctaVector3,
-    pub distance: OctaF32,
+    pub distance: Mf32,
 }
 
 impl Ray {
@@ -54,7 +54,7 @@ impl OctaRay {
     }
 
     pub fn advance_epsilon(&self) -> OctaRay {
-        let epsilon = OctaF32::broadcast(1.0e-5);
+        let epsilon = Mf32::broadcast(1.0e-5);
         OctaRay {
             origin: self.direction.mul_add(epsilon, self.origin),
             direction: self.direction,

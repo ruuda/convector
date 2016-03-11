@@ -1,6 +1,6 @@
 //! Implements vectors in R3.
 
-use simd::{Mask, OctaF32};
+use simd::{Mask, Mf32};
 use std::ops::{Add, Sub, Neg, Mul};
 
 #[cfg(test)]
@@ -15,9 +15,9 @@ pub struct SVector3 {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct OctaVector3 {
-    pub x: OctaF32,
-    pub y: OctaF32,
-    pub z: OctaF32,
+    pub x: Mf32,
+    pub y: Mf32,
+    pub z: Mf32,
 }
 
 #[derive(Copy, Clone)]
@@ -120,19 +120,19 @@ impl SVector3 {
 }
 
 impl OctaVector3 {
-    pub fn new(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaVector3 {
+    pub fn new(x: Mf32, y: Mf32, z: Mf32) -> OctaVector3 {
         OctaVector3 { x: x, y: y, z: z }
     }
 
     pub fn zero() -> OctaVector3 {
-        OctaVector3::new(OctaF32::zero(), OctaF32::zero(), OctaF32::zero())
+        OctaVector3::new(Mf32::zero(), Mf32::zero(), Mf32::zero())
     }
 
     pub fn broadcast(a: SVector3) -> OctaVector3 {
         OctaVector3 {
-            x: OctaF32::broadcast(a.x),
-            y: OctaF32::broadcast(a.y),
-            z: OctaF32::broadcast(a.z),
+            x: Mf32::broadcast(a.x),
+            y: Mf32::broadcast(a.y),
+            z: Mf32::broadcast(a.z),
         }
     }
 
@@ -141,9 +141,9 @@ impl OctaVector3 {
     /// Note: this is essentially a transpose, avoid in hot code.
     pub fn generate<F: FnMut(usize) -> SVector3>(mut f: F) -> OctaVector3 {
         OctaVector3 {
-            x: OctaF32::generate(|i| f(i).x),
-            y: OctaF32::generate(|i| f(i).y),
-            z: OctaF32::generate(|i| f(i).z),
+            x: Mf32::generate(|i| f(i).x),
+            y: Mf32::generate(|i| f(i).y),
+            z: Mf32::generate(|i| f(i).z),
         }
     }
 
@@ -174,30 +174,30 @@ impl OctaVector3 {
     }
 
     #[inline(always)]
-    pub fn dot_naive(self, other: OctaVector3) -> OctaF32 {
+    pub fn dot_naive(self, other: OctaVector3) -> Mf32 {
         let (a, b) = (self, other);
         a.x * b.x + a.y * b.y + a.z * b.z
     }
 
     #[inline(always)]
-    pub fn dot_fma(self, other: OctaVector3) -> OctaF32 {
+    pub fn dot_fma(self, other: OctaVector3) -> Mf32 {
         let (a, b) = (self, other);
         a.x.mul_add(b.x, a.y.mul_add(b.y, a.z * b.z))
     }
 
-    pub fn dot(self, other: OctaVector3) -> OctaF32 {
+    pub fn dot(self, other: OctaVector3) -> Mf32 {
         // Benchmarks show no performance difference between the naive version
         // and the FMA version. Use the naive one because it is more portable.
         self.dot_naive(other)
     }
 
     #[inline(always)]
-    pub fn mul_add_naive(self, factor: OctaF32, other: OctaVector3) -> OctaVector3 {
+    pub fn mul_add_naive(self, factor: Mf32, other: OctaVector3) -> OctaVector3 {
         self * factor + other
     }
 
     #[inline(always)]
-    pub fn mul_add_fma(self, factor: OctaF32, other: OctaVector3) -> OctaVector3 {
+    pub fn mul_add_fma(self, factor: Mf32, other: OctaVector3) -> OctaVector3 {
         OctaVector3 {
             x: self.x.mul_add(factor, other.x),
             y: self.y.mul_add(factor, other.y),
@@ -206,17 +206,17 @@ impl OctaVector3 {
     }
 
     /// Scalar multiplication and vector add using fused multiply-add.
-    pub fn mul_add(self, factor: OctaF32, other: OctaVector3) -> OctaVector3 {
+    pub fn mul_add(self, factor: Mf32, other: OctaVector3) -> OctaVector3 {
         self.mul_add_fma(factor, other)
     }
 
     /// Returns ||self|| * ||self||.
-    pub fn norm_squared(self) -> OctaF32 {
+    pub fn norm_squared(self) -> Mf32 {
         self.dot(self)
     }
 
     /// Returns 1 / ||self||.
-    pub fn rnorm(self) -> OctaF32 {
+    pub fn rnorm(self) -> Mf32 {
         self.norm_squared().rsqrt()
     }
 
@@ -232,9 +232,9 @@ impl OctaVector3 {
     /// Clamps every coordinate to 1.0 if it exceeds 1.0.
     pub fn clamp_one(self) -> OctaVector3 {
         OctaVector3 {
-            x: OctaF32::one().min(self.x),
-            y: OctaF32::one().min(self.y),
-            z: OctaF32::one().min(self.z),
+            x: Mf32::one().min(self.x),
+            y: Mf32::one().min(self.y),
+            z: Mf32::one().min(self.z),
         }
     }
 
@@ -320,10 +320,10 @@ impl Mul<f32> for SVector3 {
     }
 }
 
-impl Mul<OctaF32> for OctaVector3 {
+impl Mul<Mf32> for OctaVector3 {
     type Output = OctaVector3;
 
-    fn mul(self, a: OctaF32) -> OctaVector3 {
+    fn mul(self, a: Mf32) -> OctaVector3 {
         OctaVector3 {
             x: self.x * a,
             y: self.y * a,

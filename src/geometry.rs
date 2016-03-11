@@ -7,7 +7,7 @@
 
 use aabb::Aabb;
 use ray::{Intersection, OctaIntersection, OctaRay, Ray};
-use simd::OctaF32;
+use simd::Mf32;
 use vector3::{OctaVector3, SVector3};
 
 #[derive(Clone, Debug)]
@@ -126,7 +126,7 @@ impl Triangle {
         // We also need u + v < 1.0. With the vblendps instruction we are going
         // to use a sign bit of 0 in the mask as "take new value" and 1 as "keep
         // previous intersection", so do a greater-than comparison.
-        let mask_uv = (u + v).geq(OctaF32::one());
+        let mask_uv = (u + v).geq(Mf32::one());
 
         // The intersection also needs to be closer than any previous
         // intersection. (Again, do the reverse comparison because sign bit 1
@@ -191,7 +191,7 @@ fn octa_intersect_triangle() {
     let far = OctaIntersection {
         position: OctaVector3::zero(),
         normal: OctaVector3::zero(),
-        distance: OctaF32::broadcast(1e5),
+        distance: Mf32::broadcast(1e5),
     };
 
     let isect = triangle.intersect_full(&ray, far);

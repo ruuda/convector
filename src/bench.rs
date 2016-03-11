@@ -5,17 +5,17 @@ use rand;
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
 use ray::{OctaRay, Ray};
-use simd::OctaF32;
+use simd::Mf32;
 use std::f32::consts;
 use vector3::{OctaVector3, SVector3};
 
-/// Generates n random OctaF32s in the range [-1, 1).
-pub fn octa_biunit(n: usize) -> Vec<OctaF32> {
+/// Generates n random Mf32s in the range [-1, 1).
+pub fn mf32_biunit(n: usize) -> Vec<Mf32> {
     let mut vectors = Vec::with_capacity(n);
     let mut rng = rand::thread_rng();
     let range = Range::new(-1.0, 1.0);
     for _ in 0..n {
-        vectors.push(OctaF32::generate(|_| range.ind_sample(&mut rng)));
+        vectors.push(Mf32::generate(|_| range.ind_sample(&mut rng)));
     }
     vectors
 }
@@ -44,9 +44,9 @@ pub fn octa_points_on_sphere(n: usize) -> Vec<OctaVector3> {
     let mut vectors = Vec::with_capacity(n);
     for _ in 0..n {
         let p = points_on_sphere(8);
-        let x = OctaF32::generate(|i| p[i].x);
-        let y = OctaF32::generate(|i| p[i].y);
-        let z = OctaF32::generate(|i| p[i].z);
+        let x = Mf32::generate(|i| p[i].x);
+        let y = Mf32::generate(|i| p[i].y);
+        let z = Mf32::generate(|i| p[i].z);
         vectors.push(OctaVector3::new(x, y, z));
     }
     vectors

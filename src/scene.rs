@@ -1,6 +1,6 @@
 use bvh::Bvh;
 use ray::{OctaIntersection, OctaRay};
-use simd::OctaF32;
+use simd::Mf32;
 use std::f32::consts::PI;
 use vector3::{OctaVector3, SVector3};
 use wavefront::Mesh;
@@ -28,8 +28,8 @@ impl Camera {
     ///
     /// Values for x are in the range (-1, 1), the scale is uniform in both
     /// directions.
-    pub fn get_octa_ray(&self, x: OctaF32, y: OctaF32) -> OctaRay {
-        let dist = OctaF32::broadcast(-self.screen_distance);
+    pub fn get_octa_ray(&self, x: Mf32, y: Mf32) -> OctaRay {
+        let dist = Mf32::broadcast(-self.screen_distance);
         let origin = OctaVector3::broadcast(self.position);
         let direction = OctaVector3::new(x, y, dist).normalized();
         // TODO: Transform direction with orientation quaternion.
@@ -60,7 +60,7 @@ impl Scene {
     }
 
     pub fn intersect_nearest(&self, octa_ray: &OctaRay) -> OctaIntersection {
-        let huge_distance = OctaF32::broadcast(1.0e5);
+        let huge_distance = Mf32::broadcast(1.0e5);
         let far_away = OctaIntersection {
             position: octa_ray.direction.mul_add(huge_distance, octa_ray.origin),
             normal: octa_ray.direction,

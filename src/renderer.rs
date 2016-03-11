@@ -1,5 +1,5 @@
 use scene::Scene;
-use simd::OctaF32;
+use simd::Mf32;
 use time::PreciseTime;
 use util::z_order;
 use vector3::{OctaVector3, SVector3};
@@ -36,16 +36,16 @@ impl Renderer {
 
     /// Returns the screen coordinates of the block 16 pixels where (x, y) is the bottom-left
     /// coordinate. The coordinates are ordered in a z-order.
-    fn get_pixel_coords(&self, x: u32, y: u32) -> ([OctaF32; 2], [OctaF32; 2]) {
+    fn get_pixel_coords(&self, x: u32, y: u32) -> ([Mf32; 2], [Mf32; 2]) {
         // TODO: There is little point in using the z-order here.
         // Perhaps the patching can be sped up by using a normal order,
         // but a z-order for the patches?
-        let z_order_x0 = OctaF32(0.0, 1.0, 0.0, 1.0, 2.0, 3.0, 2.0, 3.0);
-        let z_order_y0 = OctaF32(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
-        let z_order_y1 = OctaF32(2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0);
-        let xf = OctaF32::broadcast(x as f32 - self.width as f32 * 0.5);
-        let yf = OctaF32::broadcast(y as f32 - self.height as f32 * 0.5);
-        let scale = OctaF32::broadcast(2.0 / self.width as f32);
+        let z_order_x0 = Mf32(0.0, 1.0, 0.0, 1.0, 2.0, 3.0, 2.0, 3.0);
+        let z_order_y0 = Mf32(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0);
+        let z_order_y1 = Mf32(2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 3.0);
+        let xf = Mf32::broadcast(x as f32 - self.width as f32 * 0.5);
+        let yf = Mf32::broadcast(y as f32 - self.height as f32 * 0.5);
+        let scale = Mf32::broadcast(2.0 / self.width as f32);
         let xs0 = (z_order_x0 + xf) * scale;
         let ys0 = (z_order_y0 + yf) * scale;
         let ys1 = (z_order_y1 + yf) * scale;
@@ -72,7 +72,7 @@ impl Renderer {
             // Convert the color to linear RGB, 8 bytes per pixel. The window
             // has been set up so that this will be converted to sRGB when
             // it is displayed.
-            let range = OctaF32::broadcast(255.0);
+            let range = Mf32::broadcast(255.0);
             let rgb0_255 = rgb0.clamp_one() * range;
             let rgb1_255 = rgb1.clamp_one() * range;
 
@@ -90,7 +90,7 @@ impl Renderer {
         }
     }
 
-    fn render_pixels(&self, x: OctaF32, y: OctaF32) -> OctaVector3 {
+    fn render_pixels(&self, x: Mf32, y: Mf32) -> OctaVector3 {
         let octa_ray = self.scene.camera.get_octa_ray(x, y);
         let mut color = OctaVector3::zero();
         let isect = self.scene.intersect_nearest(&octa_ray);
@@ -99,7 +99,7 @@ impl Renderer {
             let light_pos = OctaVector3::broadcast(light.position);
             let to_light = light_pos - isect.position;
             // TODO: shadow rays.
-            let dist_cos_alpha = isect.normal.dot(to_light).max(OctaF32::zero());
+            let dist_cos_alpha = isect.normal.dot(to_light).max(Mf32::zero());
 
             // Compensate for the norm factor in dist_cos_alpha, then
             // incorporate the inverse square falloff.
@@ -107,9 +107,9 @@ impl Renderer {
             let strength = (dist_cos_alpha * rnorm) * (rnorm * rnorm);
 
             color = OctaVector3 {
-                x: strength * OctaF32::broadcast(10.0),
-                y: OctaF32::zero(),
-                z: OctaF32::zero(),
+                x: strength * Mf32::broadcast(10.0),
+                y: Mf32::zero(),
+                z: Mf32::zero(),
             };
         }
 
