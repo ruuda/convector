@@ -27,7 +27,7 @@ pub struct SIntersection {
     pub distance: f32,
 }
 
-pub struct OctaIntersection {
+pub struct MIntersection {
     pub position: MVector3,
     pub normal: MVector3,
     pub distance: Mf32,
@@ -62,9 +62,9 @@ impl MRay {
     }
 }
 
-impl OctaIntersection {
-    pub fn pick(&self, other: &OctaIntersection, mask: Mask) -> OctaIntersection {
-        OctaIntersection {
+impl MIntersection {
+    pub fn pick(&self, other: &MIntersection, mask: Mask) -> MIntersection {
+        MIntersection {
             position: self.position.pick(other.position, mask),
             normal: self.normal.pick(other.normal, mask),
             distance: self.distance.pick(other.distance, mask),

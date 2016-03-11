@@ -1,5 +1,5 @@
 use bvh::Bvh;
-use ray::{OctaIntersection, MRay};
+use ray::{MIntersection, MRay};
 use simd::Mf32;
 use std::f32::consts::PI;
 use vector3::{MVector3, SVector3};
@@ -59,9 +59,9 @@ impl Scene {
         }
     }
 
-    pub fn intersect_nearest(&self, ray: &MRay) -> OctaIntersection {
+    pub fn intersect_nearest(&self, ray: &MRay) -> MIntersection {
         let huge_distance = Mf32::broadcast(1.0e5);
-        let far_away = OctaIntersection {
+        let far_away = MIntersection {
             position: ray.direction.mul_add(huge_distance, ray.origin),
             normal: ray.direction,
             distance: huge_distance,
