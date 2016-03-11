@@ -16,7 +16,7 @@ pub struct MRay {
     pub direction: MVector3,
 }
 
-pub struct Intersection {
+pub struct SIntersection {
     /// The position at which the ray intersected the surface.
     pub position: SVector3,
 

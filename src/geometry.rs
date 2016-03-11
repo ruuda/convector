@@ -6,7 +6,7 @@
 //! intersection code to be inlined.
 
 use aabb::Aabb;
-use ray::{Intersection, OctaIntersection, MRay, SRay};
+use ray::{OctaIntersection, MRay, SIntersection, SRay};
 use simd::Mf32;
 use vector3::{MVector3, SVector3};
 
@@ -32,7 +32,7 @@ impl Triangle {
         (self.v1 + self.v2 + self.v3) * 3.0f32.recip()
     }
 
-    pub fn intersect(&self, ray: &SRay) -> Option<Intersection> {
+    pub fn intersect(&self, ray: &SRay) -> Option<SIntersection> {
         let e1 = self.v2 - self.v1;
         let e2 = self.v3 - self.v1;
 
@@ -73,7 +73,7 @@ impl Triangle {
         if u < 0.0 || v < 0.0 || u + v > 1.0 {
             None
         } else {
-            let isect = Intersection {
+            let isect = SIntersection {
                 position: isect_pos,
                 normal: normal,
                 distance: t,
