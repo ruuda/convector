@@ -107,7 +107,7 @@ impl Bvh {
         Bvh::build(triangles)
     }
 
-    pub fn intersect_nearest_octa(&self, ray: &OctaRay, mut isect: OctaIntersection) -> OctaIntersection {
+    pub fn intersect_nearest(&self, ray: &OctaRay, mut isect: OctaIntersection) -> OctaIntersection {
         // TODO: Get rid of this heap allocation in the hot path.
         let mut nodes = Vec::new();
 

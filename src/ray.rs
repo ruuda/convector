@@ -5,7 +5,7 @@ use std::ops::Neg;
 use vector3::{MVector3, SVector3};
 
 #[derive(Clone)]
-pub struct Ray {
+pub struct SRay {
     pub origin: SVector3,
     pub direction: SVector3,
 }
@@ -33,9 +33,9 @@ pub struct OctaIntersection {
     pub distance: Mf32,
 }
 
-impl Ray {
-    pub fn new(origin: SVector3, direction: SVector3) -> Ray {
-        Ray {
+impl SRay {
+    pub fn new(origin: SVector3, direction: SVector3) -> SRay {
+        SRay {
             origin: origin,
             direction: direction,
         }
@@ -46,7 +46,7 @@ impl OctaRay {
     /// Builds an octaray by applying the function to the numbers 0..7.
     ///
     /// Note: this is essentially a transpose, avoid in hot code.
-    pub fn generate<F: FnMut(usize) -> Ray>(mut f: F) -> OctaRay {
+    pub fn generate<F: FnMut(usize) -> SRay>(mut f: F) -> OctaRay {
         OctaRay {
             origin: MVector3::generate(|i| f(i).origin),
             direction: MVector3::generate(|i| f(i).direction),
@@ -72,11 +72,11 @@ impl OctaIntersection {
     }
 }
 
-impl Neg for Ray {
-    type Output = Ray;
+impl Neg for SRay {
+    type Output = SRay;
 
-    fn neg(self) -> Ray {
-        Ray {
+    fn neg(self) -> SRay {
+        SRay {
             origin: self.origin,
             direction: -self.direction,
         }

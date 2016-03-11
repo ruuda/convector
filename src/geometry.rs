@@ -6,7 +6,7 @@
 //! intersection code to be inlined.
 
 use aabb::Aabb;
-use ray::{Intersection, OctaIntersection, OctaRay, Ray};
+use ray::{Intersection, OctaIntersection, OctaRay, SRay};
 use simd::Mf32;
 use vector3::{MVector3, SVector3};
 
@@ -32,7 +32,7 @@ impl Triangle {
         (self.v1 + self.v2 + self.v3) * 3.0f32.recip()
     }
 
-    pub fn intersect(&self, ray: &Ray) -> Option<Intersection> {
+    pub fn intersect(&self, ray: &SRay) -> Option<Intersection> {
         let e1 = self.v2 - self.v1;
         let e2 = self.v3 - self.v1;
 
@@ -147,19 +147,19 @@ impl Triangle {
 }
 
 #[test]
-fn intersect_triangle() {
+fn intersect_triangle_s() {
     let triangle = Triangle::new(
         SVector3::new(0.0, 1.0, 1.0),
         SVector3::new(-1.0, -1.0, 1.0),
         SVector3::new(1.0, -1.0, 1.0)
     );
 
-    let r1 = Ray {
+    let r1 = SRay {
         origin: SVector3::zero(),
         direction: SVector3::new(0.0, 0.0, 1.0),
     };
 
-    let r2 = Ray {
+    let r2 = SRay {
         origin: SVector3::new(-1.0, 0.0, 0.0),
         direction: SVector3::new(0.0, 0.0, 1.0),
     };
@@ -169,19 +169,19 @@ fn intersect_triangle() {
 }
 
 #[test]
-fn octa_intersect_triangle() {
+fn intersect_triangle_m() {
     let triangle = Triangle::new(
         SVector3::new(0.0, 1.0, 1.0),
         SVector3::new(-1.0, -1.0, 1.0),
         SVector3::new(1.0, -1.0, 1.0)
     );
 
-    let r1 = Ray {
+    let r1 = SRay {
         origin: SVector3::zero(),
         direction: SVector3::new(0.0, 0.0, 1.0),
     };
 
-    let r2 = Ray {
+    let r2 = SRay {
         origin: SVector3::new(-1.0, 0.0, 0.0),
         direction: SVector3::new(0.0, 0.0, 1.0),
     };

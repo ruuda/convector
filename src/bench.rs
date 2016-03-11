@@ -4,7 +4,7 @@ use aabb::Aabb;
 use rand;
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
-use ray::{OctaRay, Ray};
+use ray::{OctaRay, SRay};
 use simd::Mf32;
 use std::f32::consts;
 use vector3::{MVector3, SVector3};
@@ -69,12 +69,12 @@ pub fn mvector3_pairs(n: usize) -> Vec<(MVector3, MVector3)> {
 }
 
 /// Generates rays with origin on a sphere, pointing to the origin.
-pub fn rays_inward(radius: f32, n: usize) -> Vec<Ray> {
-    points_on_sphere_s(n).iter().map(|&x| Ray::new(x * radius, -x)).collect()
+pub fn rays_inward(radius: f32, n: usize) -> Vec<SRay> {
+    points_on_sphere_s(n).iter().map(|&x| SRay::new(x * radius, -x)).collect()
 }
 
 /// Generates a random AABB and n rays of which m intersect the box.
-pub fn aabb_with_srays(n: usize, m: usize) -> (Aabb, Vec<Ray>) {
+pub fn aabb_with_srays(n: usize, m: usize) -> (Aabb, Vec<SRay>) {
     let origin = SVector3::new(-1.0, -1.0, -1.0);
     let size = SVector3::new(2.0, 2.0, 2.0);
     let aabb = Aabb::new(origin, size);

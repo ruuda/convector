@@ -1,6 +1,6 @@
 //! This module implements axis-aligned bounding boxes and related functions.
 
-use ray::{OctaRay, Ray};
+use ray::{OctaRay, SRay};
 use vector3::{MVector3, SVector3};
 
 #[cfg(test)]
@@ -84,7 +84,7 @@ impl Aabb {
     }
 
     /// Returns whether the ray intersects the bounding box.
-    pub fn intersect(&self, ray: &Ray) -> bool {
+    pub fn intersect(&self, ray: &SRay) -> bool {
         // My measurements show that this is the fastest method to intersect an
         // AABB by a factor 2 in the frame time.
         // TODO: Add benchmarks to verify.
@@ -98,7 +98,7 @@ impl Aabb {
 
     /// Intersects the AABB by intersecting six planes and testing the bounds.
     #[inline(always)]
-    fn intersect_flavor_planes(&self, ray: &Ray) -> bool {
+    fn intersect_flavor_planes(&self, ray: &SRay) -> bool {
         // TODO: Simd the **** out of this.
         intersect_aabb!(self, ray, x, y, z);
         intersect_aabb!(self, ray, y, z, x);
@@ -108,7 +108,7 @@ impl Aabb {
 
     /// Intersects the AABB by clipping the t values inside.
     #[inline(always)]
-    fn intersect_flavor_slab(&self, ray: &Ray) -> Option<f32> {
+    fn intersect_flavor_slab(&self, ray: &SRay) -> Option<f32> {
         // TODO: The reciprocal could be precomputed per ray.
         let xinv = ray.direction.x.recip();
         let yinv = ray.direction.y.recip();
@@ -191,7 +191,7 @@ fn intersect_aabb() {
     };
 
     // Intersects forwards but not backwards.
-    let r1 = Ray {
+    let r1 = SRay {
         origin: SVector3::zero(),
         direction: SVector3::new(2.0, 3.0, 5.0).normalized(),
     };
@@ -199,7 +199,7 @@ fn intersect_aabb() {
     assert!(!aabb.intersect(&-r1));
 
     // Intersects forwards but not backwards.
-    let r2 = Ray {
+    let r2 = SRay {
         origin: SVector3::zero(),
         direction: SVector3::new(1.0, 4.0, 5.0).normalized(),
     };
@@ -207,7 +207,7 @@ fn intersect_aabb() {
     assert!(!aabb.intersect(&-r2));
 
     // Intersects neither forwards nor backwards.
-    let r3 = Ray {
+    let r3 = SRay {
         origin: SVector3::zero(),
         direction: SVector3::new(2.0, 3.0, 0.0).normalized(),
     };
@@ -215,7 +215,7 @@ fn intersect_aabb() {
     assert!(!aabb.intersect(&-r3));
 
     // Intersects both forwards and backwards (origin is inside the aabb).
-    let r4 = Ray {
+    let r4 = SRay {
         origin: SVector3::new(0.2, 1.2, 2.2),
         direction: SVector3::new(1.0, 1.0, 0.0).normalized(),
     };
@@ -223,7 +223,7 @@ fn intersect_aabb() {
     assert!(aabb.intersect(&-r4));
 
     // Intersects both forwards and backwards (origin is inside the aabb).
-    let r5 = Ray {
+    let r5 = SRay {
         origin: SVector3::new(0.0, 2.0, 3.5),
         direction: SVector3::new(0.0, 0.0, 1.0).normalized(),
     };
