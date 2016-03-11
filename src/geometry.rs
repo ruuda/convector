@@ -8,7 +8,7 @@
 use aabb::Aabb;
 use ray::{Intersection, OctaIntersection, OctaRay, Ray};
 use simd::Mf32;
-use vector3::{OctaVector3, SVector3};
+use vector3::{MVector3, SVector3};
 
 #[derive(Clone, Debug)]
 pub struct Triangle {
@@ -84,9 +84,9 @@ impl Triangle {
 
     pub fn intersect_full(&self, ray: &OctaRay, isect: OctaIntersection) -> OctaIntersection {
         // TODO: Switch to edge representation so this is computed already.
-        let e1 = OctaVector3::broadcast(self.v2 - self.v1);
-        let e2 = OctaVector3::broadcast(self.v3 - self.v1);
-        let v1 = OctaVector3::broadcast(self.v1);
+        let e1 = MVector3::broadcast(self.v2 - self.v1);
+        let e2 = MVector3::broadcast(self.v3 - self.v1);
+        let v1 = MVector3::broadcast(self.v1);
 
         // All points P on the plane in which the triangle lies satisfy the
         // equation (P . normal) = c for a unique constant c determined by the
@@ -189,8 +189,8 @@ fn octa_intersect_triangle() {
     let ray = OctaRay::generate(|i| if i % 2 == 0 { r1.clone() } else { r2.clone() });
 
     let far = OctaIntersection {
-        position: OctaVector3::zero(),
-        normal: OctaVector3::zero(),
+        position: MVector3::zero(),
+        normal: MVector3::zero(),
         distance: Mf32::broadcast(1e5),
     };
 

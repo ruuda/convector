@@ -2,7 +2,7 @@ use scene::Scene;
 use simd::Mf32;
 use time::PreciseTime;
 use util::z_order;
-use vector3::{OctaVector3, SVector3};
+use vector3::{MVector3, SVector3};
 
 pub struct Renderer {
     scene: Scene,
@@ -90,13 +90,13 @@ impl Renderer {
         }
     }
 
-    fn render_pixels(&self, x: Mf32, y: Mf32) -> OctaVector3 {
+    fn render_pixels(&self, x: Mf32, y: Mf32) -> MVector3 {
         let octa_ray = self.scene.camera.get_octa_ray(x, y);
-        let mut color = OctaVector3::zero();
+        let mut color = MVector3::zero();
         let isect = self.scene.intersect_nearest(&octa_ray);
 
         for ref light in &self.scene.lights {
-            let light_pos = OctaVector3::broadcast(light.position);
+            let light_pos = MVector3::broadcast(light.position);
             let to_light = light_pos - isect.position;
             // TODO: shadow rays.
             let dist_cos_alpha = isect.normal.dot(to_light).max(Mf32::zero());
@@ -106,7 +106,7 @@ impl Renderer {
             let rnorm = to_light.rnorm();
             let strength = (dist_cos_alpha * rnorm) * (rnorm * rnorm);
 
-            color = OctaVector3 {
+            color = MVector3 {
                 x: strength * Mf32::broadcast(10.0),
                 y: Mf32::zero(),
                 z: Mf32::zero(),

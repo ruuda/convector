@@ -2,7 +2,7 @@ use bvh::Bvh;
 use ray::{OctaIntersection, OctaRay};
 use simd::Mf32;
 use std::f32::consts::PI;
-use vector3::{OctaVector3, SVector3};
+use vector3::{MVector3, SVector3};
 use wavefront::Mesh;
 
 pub struct Camera {
@@ -30,8 +30,8 @@ impl Camera {
     /// directions.
     pub fn get_octa_ray(&self, x: Mf32, y: Mf32) -> OctaRay {
         let dist = Mf32::broadcast(-self.screen_distance);
-        let origin = OctaVector3::broadcast(self.position);
-        let direction = OctaVector3::new(x, y, dist).normalized();
+        let origin = MVector3::broadcast(self.position);
+        let direction = MVector3::new(x, y, dist).normalized();
         // TODO: Transform direction with orientation quaternion.
         OctaRay {
             origin: origin,

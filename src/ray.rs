@@ -2,7 +2,7 @@
 
 use simd::{Mask, Mf32};
 use std::ops::Neg;
-use vector3::{OctaVector3, SVector3};
+use vector3::{MVector3, SVector3};
 
 #[derive(Clone)]
 pub struct Ray {
@@ -12,8 +12,8 @@ pub struct Ray {
 
 #[derive(Clone)]
 pub struct OctaRay {
-    pub origin: OctaVector3,
-    pub direction: OctaVector3,
+    pub origin: MVector3,
+    pub direction: MVector3,
 }
 
 pub struct Intersection {
@@ -28,8 +28,8 @@ pub struct Intersection {
 }
 
 pub struct OctaIntersection {
-    pub position: OctaVector3,
-    pub normal: OctaVector3,
+    pub position: MVector3,
+    pub normal: MVector3,
     pub distance: Mf32,
 }
 
@@ -48,8 +48,8 @@ impl OctaRay {
     /// Note: this is essentially a transpose, avoid in hot code.
     pub fn generate<F: FnMut(usize) -> Ray>(mut f: F) -> OctaRay {
         OctaRay {
-            origin: OctaVector3::generate(|i| f(i).origin),
-            direction: OctaVector3::generate(|i| f(i).direction),
+            origin: MVector3::generate(|i| f(i).origin),
+            direction: MVector3::generate(|i| f(i).direction),
         }
     }
 
