@@ -210,12 +210,18 @@ impl OctaVector3 {
         self.mul_add_fma(factor, other)
     }
 
+    /// Returns ||self|| * ||self||.
     pub fn norm_squared(self) -> OctaF32 {
         self.dot(self)
     }
 
+    /// Returns 1 / ||self||.
+    pub fn rnorm(self) -> OctaF32 {
+        self.norm_squared().rsqrt()
+    }
+
     pub fn normalized(self) -> OctaVector3 {
-        let rnorm = self.norm_squared().rsqrt();
+        let rnorm = self.rnorm();
         OctaVector3 {
             x: self.x * rnorm,
             y: self.y * rnorm,

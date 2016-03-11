@@ -84,7 +84,6 @@ impl Scene {
             distance: huge_distance,
             // TODO: Set sky/far away material.
         };
-        far_away
-        // self.bvh.intersect_nearest(ray)
+        self.bvh.intersect_nearest_octa(octa_ray, far_away)
     }
 }
