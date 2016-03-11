@@ -4,7 +4,7 @@
 //! use this to the full extent. (Otherwise it will not use AVX but two SSE
 //! adds, for instance.)
 
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, BitAnd, BitOr, Div, Mul, Not, Sub};
 
 #[cfg(test)]
 use {bench, test};
@@ -80,6 +80,13 @@ impl OctaF32 {
     }
 
     #[inline(always)]
+    pub fn leq(self, other: OctaF32) -> Mask {
+        // Operation 26 is a not greater than comparison, unordered,
+        // non-signalling.
+        unsafe { x86_mm256_cmp_ps(self, other, 26) }
+    }
+
+    #[inline(always)]
     pub fn geq(self, other: OctaF32) -> Mask {
         // Operation 21 is a not less than comparison, unordered,
         // non-signalling.
@@ -103,6 +110,13 @@ impl OctaF32 {
 
         !no_positive
     }
+
+    /// Picks the component of self if the sign bit in the mask is 0,
+    /// otherwise picks the component in other.
+    #[inline(always)]
+    pub fn pick(self, other: OctaF32, mask: Mask) -> OctaF32 {
+        unsafe { x86_mm256_blendv_ps(self, other, mask) }
+    }
 }
 
 impl Add<OctaF32> for OctaF32 {
@@ -111,6 +125,42 @@ impl Add<OctaF32> for OctaF32 {
     #[inline(always)]
     fn add(self, other: OctaF32) -> OctaF32 {
         unsafe { simd_add(self, other) }
+    }
+}
+
+impl BitAnd<Mask> for Mask {
+    type Output = Mask;
+
+    #[inline(always)]
+    fn bitand(self, other: Mask) -> Mask {
+        use std::mem::transmute;
+        // The _mm256_and_ps intrinsic is not available as an LLVM intrinsic;
+        // the bitwise and operations are different.
+        // TODO: Verify that this emits a vandps instruction though.
+        unsafe {
+            let a: [u64; 4] = transmute(self);
+            let b: [u64; 4] = transmute(other);
+            let a_and_b = [a[0] & b[0], a[1] & b[1], a[2] & b[2], a[3] & b[3]];
+            transmute(a_and_b)
+        }
+    }
+}
+
+impl BitOr<Mask> for Mask {
+    type Output = Mask;
+
+    #[inline(always)]
+    fn bitor(self, other: Mask) -> Mask {
+        use std::mem::transmute;
+        // The _mm256_or_ps intrinsic is not available as an LLVM intrinsic;
+        // the bitwise and operations are different.
+        // TODO: Verify that this emits a vorps instruction though.
+        unsafe {
+            let a: [u64; 4] = transmute(self);
+            let b: [u64; 4] = transmute(other);
+            let a_or_b = [a[0] | b[0], a[1] | b[1], a[2] | b[2], a[3] | b[3]];
+            transmute(a_or_b)
+        }
     }
 }
 
@@ -143,6 +193,21 @@ impl Mul<OctaF32> for OctaF32 {
     }
 }
 
+impl Not for Mask {
+    type Output = Mask;
+
+    #[inline(always)]
+    fn not(self) -> Mask {
+        use std::mem::transmute;
+        // TODO: Verify that this generates concise assembly.
+        unsafe {
+            let a: [u64; 4] = transmute(self);
+            let bitwise_not_a = [!a[0], !a[1], !a[2], !a[3]];
+            transmute(bitwise_not_a)
+        }
+    }
+}
+
 extern "platform-intrinsic" {
     // This is `_mm256_add_ps` when compiled for AVX.
     fn simd_add<T>(x: T, y: T) -> T;
@@ -156,6 +221,7 @@ extern "platform-intrinsic" {
     // This is `_mm256_mul_ps` when compiled for AVX.
     fn simd_mul<T>(x: T, y: T) -> T;
 
+    fn x86_mm256_blendv_ps(x: OctaF32, y: OctaF32, mask: Mask) -> OctaF32;
     fn x86_mm256_cmp_ps(x: OctaF32, y: OctaF32, op: i8) -> Mask;
     fn x86_mm256_fmadd_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;
     fn x86_mm256_fmsub_ps(x: OctaF32, y: OctaF32, z: OctaF32) -> OctaF32;

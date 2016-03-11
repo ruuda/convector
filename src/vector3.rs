@@ -1,6 +1,6 @@
 //! Implements vectors in R3.
 
-use simd::OctaF32;
+use simd::{Mask, OctaF32};
 use std::ops::{Add, Sub, Neg, Mul};
 
 #[cfg(test)]
@@ -229,6 +229,15 @@ impl OctaVector3 {
             x: OctaF32::one().min(self.x),
             y: OctaF32::one().min(self.y),
             z: OctaF32::one().min(self.z),
+        }
+    }
+
+    /// Picks self if the sign bit of mask is 0, or picks other if it is 1.
+    pub fn pick(self, other: OctaVector3, mask: Mask) -> OctaVector3 {
+        OctaVector3 {
+            x: self.x.pick(other.x, mask),
+            y: self.y.pick(other.y, mask),
+            z: self.z.pick(other.z, mask),
         }
     }
 }

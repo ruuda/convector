@@ -1,6 +1,6 @@
 //! This module implements the ray and related structures.
 
-use simd::OctaF32;
+use simd::{Mask, OctaF32};
 use std::ops::Neg;
 use vector3::{OctaVector3, Vector3};
 
@@ -86,6 +86,16 @@ impl OctaRay {
         OctaRay {
             origin: self.direction.mul_add(epsilon, self.origin),
             direction: self.direction,
+        }
+    }
+}
+
+impl OctaIntersection {
+    pub fn pick(&self, other: &OctaIntersection, mask: Mask) -> OctaIntersection {
+        OctaIntersection {
+            position: self.position.pick(other.position, mask),
+            normal: self.normal.pick(other.normal, mask),
+            distance: self.distance.pick(other.distance, mask),
         }
     }
 }
