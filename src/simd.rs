@@ -220,6 +220,20 @@ fn octa_f32_broadcast_ps() {
     assert_eq!(a, b);
 }
 
+#[test]
+fn octa_f32_any_positive_masked() {
+    use std::mem::transmute;
+    let a = OctaF32(-2.0, -1.0, -0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
+    let f1: f32 = unsafe { transmute(0xffffffff_u32) };
+    let f0: f32 = 0.0;
+
+    assert!(a.any_positive_masked(OctaF32(f1, f0, f1, f1, f1, f0, f0, f0)));
+    assert!(a.any_positive_masked(OctaF32(f1, f0, f1, f1, f0, f0, f0, f0)));
+    assert!(!a.any_positive_masked(OctaF32(f1, f0, f1, f0, f0, f0, f0, f0)));
+    assert!(!a.any_positive_masked(OctaF32(f1, f1, f0, f0, f0, f0, f0, f0)));
+    assert!(a.any_positive_masked(OctaF32(f1, f0, f0, f1, f0, f0, f0, f0)));
+}
+
 #[bench]
 fn bench_mm256_div_ps_x100(b: &mut test::Bencher) {
     let numers = bench::octa_biunit(4096 / 8);
