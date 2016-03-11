@@ -33,20 +33,6 @@ pub struct OctaIntersection {
     pub distance: OctaF32,
 }
 
-/// Returns the nearest of two intersections.
-pub fn nearest(i1: Option<Intersection>, i2: Option<Intersection>) -> Option<Intersection> {
-    match (i1, i2) {
-        (None, None) => None,
-        (None, Some(isect)) => Some(isect),
-        (Some(isect), None) => Some(isect),
-        (Some(isect1), Some(isect2)) => if isect1.distance < isect2.distance {
-            Some(isect1)
-        } else {
-            Some(isect2)
-        }
-    }
-}
-
 impl Ray {
     pub fn new(origin: Vector3, direction: Vector3) -> Ray {
         Ray {
@@ -54,23 +40,9 @@ impl Ray {
             direction: direction,
         }
     }
-
-    pub fn advance_epsilon(&self) -> Ray {
-        Ray {
-            origin: self.origin + self.direction * 1.0e-5,
-            direction: self.direction,
-        }
-    }
 }
 
 impl OctaRay {
-    pub fn new(origin: OctaVector3, direction: OctaVector3) -> OctaRay {
-        OctaRay {
-            origin: origin,
-            direction: direction,
-        }
-    }
-
     /// Builds an octaray by applying the function to the numbers 0..7.
     ///
     /// Note: this is essentially a transpose, avoid in hot code.

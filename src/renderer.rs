@@ -12,11 +12,6 @@ pub struct Renderer {
     epoch: PreciseTime,
 }
 
-/// Clamps a float to the unit interval [0, 1].
-fn clamp_unit(x: f32) -> f32 {
-    if x < 0.0 { 0.0 } else if x > 1.0 { 1.0 } else { x }
-}
-
 impl Renderer {
     pub fn new(scene: Scene, width: u32, height: u32) -> Renderer {
         Renderer {

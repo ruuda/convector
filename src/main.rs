@@ -14,7 +14,6 @@ extern crate test;
 extern crate time;
 
 mod aabb;
-mod bench;
 mod bvh;
 mod geometry;
 mod ray;
@@ -26,6 +25,9 @@ mod ui;
 mod util;
 mod vector3;
 mod wavefront;
+
+#[cfg(test)]
+mod bench;
 
 use renderer::Renderer;
 use scene::Scene;
