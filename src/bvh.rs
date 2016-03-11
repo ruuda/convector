@@ -2,7 +2,7 @@
 
 use aabb::Aabb;
 use geometry::Triangle;
-use ray::{Intersection, OctaIntersection, OctaRay, Ray, nearest};
+use ray::{OctaIntersection, OctaRay};
 use std::cmp::PartialOrd;
 use vector3::{Axis, Vector3};
 use wavefront::Mesh;
@@ -105,33 +105,6 @@ impl Bvh {
                 Triangle::new(v1, v2, v3)
             }).collect();
         Bvh::build(triangles)
-    }
-
-    pub fn intersect_nearest(&self, ray: &Ray) -> Option<Intersection> {
-        let mut nodes = Vec::new();
-        let mut isect = None;
-
-        if self.root.aabb.intersect(ray) {
-            nodes.push(&self.root);
-        }
-
-        // TODO: Store distance and early out.
-        while let Some(node) = nodes.pop() {
-            if node.geometry.is_empty() {
-                for child in &node.children {
-                    if child.aabb.intersect(ray) {
-                        nodes.push(child);
-                    }
-                }
-            } else {
-                for triangle in &node.geometry {
-                    let tri_isect = triangle.intersect(ray);
-                    isect = nearest(isect, tri_isect);
-                }
-            }
-        }
-
-        isect
     }
 
     pub fn intersect_nearest_octa(&self, ray: &OctaRay, mut isect: OctaIntersection) -> OctaIntersection {

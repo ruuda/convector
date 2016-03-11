@@ -1,5 +1,5 @@
 use bvh::Bvh;
-use ray::{Intersection, OctaIntersection, OctaRay, Ray};
+use ray::{OctaIntersection, OctaRay};
 use simd::OctaF32;
 use std::f32::consts::PI;
 use vector3::{OctaVector3, Vector3};
@@ -57,10 +57,6 @@ impl Scene {
             lights: Vec::new(),
             camera: Camera::with_fov(PI * 0.6),
         }
-    }
-
-    pub fn intersect(&self, ray: &Ray) -> Option<Intersection> {
-        self.bvh.intersect_nearest(ray)
     }
 
     pub fn intersect_nearest(&self, octa_ray: &OctaRay) -> OctaIntersection {
