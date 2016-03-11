@@ -136,6 +136,17 @@ impl OctaVector3 {
         }
     }
 
+    /// Builds a octavector by applying the function to the numbers 0..7.
+    ///
+    /// Note: this is essentially a transpose, avoid in hot code.
+    pub fn generate<F: FnMut(usize) -> Vector3>(mut f: F) -> OctaVector3 {
+        OctaVector3 {
+            x: OctaF32::generate(|i| f(i).x),
+            y: OctaF32::generate(|i| f(i).y),
+            z: OctaF32::generate(|i| f(i).z),
+        }
+    }
+
     #[inline(always)]
     pub fn cross_naive(self, other: OctaVector3) -> OctaVector3 {
         let (a, b) = (self, other);

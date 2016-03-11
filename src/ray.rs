@@ -4,11 +4,13 @@ use simd::OctaF32;
 use std::ops::Neg;
 use vector3::{OctaVector3, Vector3};
 
+#[derive(Clone)]
 pub struct Ray {
     pub origin: Vector3,
     pub direction: Vector3,
 }
 
+#[derive(Clone)]
 pub struct OctaRay {
     pub origin: OctaVector3,
     pub direction: OctaVector3,
@@ -66,6 +68,16 @@ impl OctaRay {
         OctaRay {
             origin: origin,
             direction: direction,
+        }
+    }
+
+    /// Builds an octaray by applying the function to the numbers 0..7.
+    ///
+    /// Note: this is essentially a transpose, avoid in hot code.
+    pub fn generate<F: FnMut(usize) -> Ray>(mut f: F) -> OctaRay {
+        OctaRay {
+            origin: OctaVector3::generate(|i| f(i).origin),
+            direction: OctaVector3::generate(|i| f(i).direction),
         }
     }
 

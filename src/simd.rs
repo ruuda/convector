@@ -24,7 +24,7 @@ impl OctaF32 {
         OctaF32(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
     }
 
-    /// Builds a octafloat by applying the function to the numbers 0..7.
+    /// Builds an octafloat by applying the function to the numbers 0..7.
     pub fn generate<F: FnMut(usize) -> f32>(mut f: F) -> OctaF32 {
         OctaF32(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7))
     }

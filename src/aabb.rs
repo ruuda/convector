@@ -159,7 +159,6 @@ impl Aabb {
         let tzmin = tz1.min(tz2);
         let tzmax = tz1.max(tz2);
 
-
         // The minimum t in all dimension is the maximum of the per-axis minima.
         let tmin = txmin.max(tymin.max(tzmin));
         let tmax = txmax.min(tymax.min(tzmax));
@@ -265,6 +264,16 @@ fn bench_intersect_flavor_slab_p100(b: &mut test::Bencher) {
 #[bench]
 fn bench_intersect_flavor_slab_p50(b: &mut test::Bencher) {
     let (aabb, rays) = bench::aabb_with_rays(4096, 2048);
+    let mut rays_it = rays.iter().cycle();
+    b.iter(|| {
+        let isect = aabb.intersect_flavor_slab(rays_it.next().unwrap());
+        test::black_box(isect);
+    });
+}
+
+#[bench]
+fn bench_octa_intersect_flavor_slab_p100(b: &mut test::Bencher) {
+    let (aabb, rays) = bench::aabb_with_rays(4096, 4096);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
         let isect = aabb.intersect_flavor_slab(rays_it.next().unwrap());
