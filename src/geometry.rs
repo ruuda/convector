@@ -167,3 +167,36 @@ fn intersect_triangle() {
     assert!(triangle.intersect(&r1).is_some());
     assert!(triangle.intersect(&r2).is_none());
 }
+
+#[test]
+fn octa_intersect_triangle() {
+    let triangle = Triangle::new(
+        Vector3::new(0.0, 1.0, 1.0),
+        Vector3::new(-1.0, -1.0, 1.0),
+        Vector3::new(1.0, -1.0, 1.0)
+    );
+
+    let r1 = Ray {
+        origin: Vector3::zero(),
+        direction: Vector3::new(0.0, 0.0, 1.0),
+    };
+
+    let r2 = Ray {
+        origin: Vector3::new(-1.0, 0.0, 0.0),
+        direction: Vector3::new(0.0, 0.0, 1.0),
+    };
+
+    let ray = OctaRay::generate(|i| if i % 2 == 0 { r1.clone() } else { r2.clone() });
+
+    let far = OctaIntersection {
+        position: OctaVector3::zero(),
+        normal: OctaVector3::zero(),
+        distance: OctaF32::broadcast(1e5),
+    };
+
+    let isect = triangle.intersect_full(&ray, far);
+
+    assert!(isect.distance.0 < 1.01);
+    assert!(isect.distance.0 > 0.99);
+    assert_eq!(isect.distance.1, 1e5);
+}
