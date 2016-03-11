@@ -1,5 +1,5 @@
 use bvh::Bvh;
-use ray::{OctaIntersection, OctaRay};
+use ray::{OctaIntersection, MRay};
 use simd::Mf32;
 use std::f32::consts::PI;
 use vector3::{MVector3, SVector3};
@@ -28,12 +28,12 @@ impl Camera {
     ///
     /// Values for x are in the range (-1, 1), the scale is uniform in both
     /// directions.
-    pub fn get_octa_ray(&self, x: Mf32, y: Mf32) -> OctaRay {
+    pub fn get_ray(&self, x: Mf32, y: Mf32) -> MRay {
         let dist = Mf32::broadcast(-self.screen_distance);
         let origin = MVector3::broadcast(self.position);
         let direction = MVector3::new(x, y, dist).normalized();
         // TODO: Transform direction with orientation quaternion.
-        OctaRay {
+        MRay {
             origin: origin,
             direction: direction,
         }
@@ -59,14 +59,14 @@ impl Scene {
         }
     }
 
-    pub fn intersect_nearest(&self, octa_ray: &OctaRay) -> OctaIntersection {
+    pub fn intersect_nearest(&self, ray: &MRay) -> OctaIntersection {
         let huge_distance = Mf32::broadcast(1.0e5);
         let far_away = OctaIntersection {
-            position: octa_ray.direction.mul_add(huge_distance, octa_ray.origin),
-            normal: octa_ray.direction,
+            position: ray.direction.mul_add(huge_distance, ray.origin),
+            normal: ray.direction,
             distance: huge_distance,
             // TODO: Set sky/far away material.
         };
-        self.bvh.intersect_nearest_octa(octa_ray, far_away)
+        self.bvh.intersect_nearest(ray, far_away)
     }
 }

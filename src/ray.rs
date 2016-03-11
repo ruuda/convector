@@ -11,7 +11,7 @@ pub struct SRay {
 }
 
 #[derive(Clone)]
-pub struct OctaRay {
+pub struct MRay {
     pub origin: MVector3,
     pub direction: MVector3,
 }
@@ -42,20 +42,20 @@ impl SRay {
     }
 }
 
-impl OctaRay {
-    /// Builds an octaray by applying the function to the numbers 0..7.
+impl MRay {
+    /// Builds an mray by applying the function to the numbers 0..7.
     ///
     /// Note: this is essentially a transpose, avoid in hot code.
-    pub fn generate<F: FnMut(usize) -> SRay>(mut f: F) -> OctaRay {
-        OctaRay {
+    pub fn generate<F>(mut f: F) -> MRay where F: FnMut(usize) -> SRay {
+        MRay {
             origin: MVector3::generate(|i| f(i).origin),
             direction: MVector3::generate(|i| f(i).direction),
         }
     }
 
-    pub fn advance_epsilon(&self) -> OctaRay {
+    pub fn advance_epsilon(&self) -> MRay {
         let epsilon = Mf32::broadcast(1.0e-5);
-        OctaRay {
+        MRay {
             origin: self.direction.mul_add(epsilon, self.origin),
             direction: self.direction,
         }

@@ -2,7 +2,7 @@
 
 use aabb::Aabb;
 use geometry::Triangle;
-use ray::{OctaIntersection, OctaRay};
+use ray::{OctaIntersection, MRay};
 use std::cmp::PartialOrd;
 use vector3::{Axis, SVector3};
 use wavefront::Mesh;
@@ -107,7 +107,7 @@ impl Bvh {
         Bvh::build(triangles)
     }
 
-    pub fn intersect_nearest(&self, ray: &OctaRay, mut isect: OctaIntersection) -> OctaIntersection {
+    pub fn intersect_nearest(&self, ray: &MRay, mut isect: OctaIntersection) -> OctaIntersection {
         // TODO: Get rid of this heap allocation in the hot path.
         let mut nodes = Vec::new();
 

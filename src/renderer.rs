@@ -91,7 +91,7 @@ impl Renderer {
     }
 
     fn render_pixels(&self, x: Mf32, y: Mf32) -> MVector3 {
-        let ray = self.scene.camera.get_octa_ray(x, y);
+        let ray = self.scene.camera.get_ray(x, y);
         let mut color = MVector3::zero();
         let isect = self.scene.intersect_nearest(&ray);
 

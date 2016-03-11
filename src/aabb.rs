@@ -1,6 +1,6 @@
 //! This module implements axis-aligned bounding boxes and related functions.
 
-use ray::{OctaRay, SRay};
+use ray::{MRay, SRay};
 use vector3::{MVector3, SVector3};
 
 #[cfg(test)]
@@ -138,7 +138,7 @@ impl Aabb {
     }
 
     // TODO: naming.
-    pub fn intersect_any(&self, ray: &OctaRay) -> bool {
+    pub fn intersect_any(&self, ray: &MRay) -> bool {
         // TODO: Could precompute the reciprocal.
         let xinv = ray.direction.x.recip();
         let yinv = ray.direction.y.recip();

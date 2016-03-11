@@ -4,7 +4,7 @@ use aabb::Aabb;
 use rand;
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
-use ray::{OctaRay, SRay};
+use ray::{MRay, SRay};
 use simd::Mf32;
 use std::f32::consts;
 use vector3::{MVector3, SVector3};
@@ -97,11 +97,11 @@ pub fn aabb_with_srays(n: usize, m: usize) -> (Aabb, Vec<SRay>) {
 
 /// Generates a random AABB and n rays of which m intersect the box,
 /// packed per 8 rays. N must be a multiple of 8.
-pub fn aabb_with_mrays(n: usize, m: usize) -> (Aabb, Vec<OctaRay>) {
+pub fn aabb_with_mrays(n: usize, m: usize) -> (Aabb, Vec<MRay>) {
     assert_eq!(0, n & 7); // Must be a multiple of 8.
     let (aabb, srays) = aabb_with_srays(n, m);
     let mrays = srays.chunks(8)
-                     .map(|rs| OctaRay::generate(|i| rs[i].clone()))
+                     .map(|rs| MRay::generate(|i| rs[i].clone()))
                      .collect();
     (aabb, mrays)
 }

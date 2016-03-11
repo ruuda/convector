@@ -6,7 +6,7 @@
 //! intersection code to be inlined.
 
 use aabb::Aabb;
-use ray::{Intersection, OctaIntersection, OctaRay, SRay};
+use ray::{Intersection, OctaIntersection, MRay, SRay};
 use simd::Mf32;
 use vector3::{MVector3, SVector3};
 
@@ -82,7 +82,7 @@ impl Triangle {
         }
     }
 
-    pub fn intersect_full(&self, ray: &OctaRay, isect: OctaIntersection) -> OctaIntersection {
+    pub fn intersect_full(&self, ray: &MRay, isect: OctaIntersection) -> OctaIntersection {
         // TODO: Switch to edge representation so this is computed already.
         let e1 = MVector3::broadcast(self.v2 - self.v1);
         let e2 = MVector3::broadcast(self.v3 - self.v1);
@@ -186,7 +186,7 @@ fn intersect_triangle_m() {
         direction: SVector3::new(0.0, 0.0, 1.0),
     };
 
-    let ray = OctaRay::generate(|i| if i % 2 == 0 { r1.clone() } else { r2.clone() });
+    let ray = MRay::generate(|i| if i % 2 == 0 { r1.clone() } else { r2.clone() });
 
     let far = OctaIntersection {
         position: MVector3::zero(),
