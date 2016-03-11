@@ -4,7 +4,7 @@ use aabb::Aabb;
 use geometry::Triangle;
 use ray::{OctaIntersection, OctaRay};
 use std::cmp::PartialOrd;
-use vector3::{Axis, Vector3};
+use vector3::{Axis, SVector3};
 use wavefront::Mesh;
 
 /// One node in a bounding volume hierarchy.
@@ -20,14 +20,14 @@ pub struct Bvh {
 }
 
 fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
-    let mut aabb = Aabb::new(Vector3::zero(), Vector3::zero());
+    let mut aabb = Aabb::new(SVector3::zero(), SVector3::zero());
 
     // Compute the bounding box that encloses all triangles.
     for triangle in triangles.iter() {
         aabb = Aabb::enclose_aabbs(&aabb, &triangle.aabb);
     }
 
-    let centroids: Vec<Vector3> = triangles.iter().map(|tri| tri.aabb.center()).collect();
+    let centroids: Vec<SVector3> = triangles.iter().map(|tri| tri.aabb.center()).collect();
     let centroid_aabb = Aabb::enclose_points(&centroids[..]);
 
     // Ideally every node would contain two triangles, so splitting less than

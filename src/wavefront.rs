@@ -4,10 +4,10 @@
 use filebuffer::FileBuffer;
 use std::path::Path;
 use std::str::{FromStr, from_utf8};
-use vector3::Vector3;
+use vector3::SVector3;
 
 pub struct Mesh {
-    pub vertices: Vec<Vector3>,
+    pub vertices: Vec<SVector3>,
     pub triangles: Vec<(u32, u32, u32)>,
 }
 
@@ -23,7 +23,7 @@ impl Mesh {
             match pieces.next() {
                 Some("v") => {
                     let mut coords = pieces.map(|v| f32::from_str(v).unwrap());
-                    let vertex = Vector3 {
+                    let vertex = SVector3 {
                         x: coords.next().expect("missing x coordinate"),
                         y: coords.next().expect("missing y coordinate"),
                         z: coords.next().expect("missing z coordinate"),

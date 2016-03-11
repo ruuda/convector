@@ -7,7 +7,7 @@ use std::ops::{Add, Sub, Neg, Mul};
 use {bench, test};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Vector3 {
+pub struct SVector3 {
     pub x: f32,
     pub y: f32,
     pub z: f32,
@@ -27,19 +27,19 @@ pub enum Axis {
     Z,
 }
 
-impl Vector3 {
-    pub fn new(x: f32, y: f32, z: f32) -> Vector3 {
-        Vector3 { x: x, y: y, z: z }
+impl SVector3 {
+    pub fn new(x: f32, y: f32, z: f32) -> SVector3 {
+        SVector3 { x: x, y: y, z: z }
     }
 
-    pub fn zero() -> Vector3 {
-        Vector3::new(0.0, 0.0, 0.0)
+    pub fn zero() -> SVector3 {
+        SVector3::new(0.0, 0.0, 0.0)
     }
 
     #[inline(always)]
-    pub fn cross_naive(self: Vector3, other: Vector3) -> Vector3 {
+    pub fn cross_naive(self: SVector3, other: SVector3) -> SVector3 {
         let (a, b) = (self, other);
-        Vector3 {
+        SVector3 {
             x: a.y * b.z - a.z * b.y,
             y: a.z * b.x - a.x * b.z,
             z: a.x * b.y - a.y * b.x,
@@ -47,16 +47,16 @@ impl Vector3 {
     }
 
     #[inline(always)]
-    pub fn cross_fma(self: Vector3, other: Vector3) -> Vector3 {
+    pub fn cross_fma(self: SVector3, other: SVector3) -> SVector3 {
         let (a, b) = (self, other);
-        Vector3 {
+        SVector3 {
             x: a.y.mul_add(b.z, -a.z * b.y),
             y: a.z.mul_add(b.x, -a.x * b.z),
             z: a.x.mul_add(b.y, -a.y * b.x),
         }
     }
 
-    pub fn cross(self, other: Vector3) -> Vector3 {
+    pub fn cross(self, other: SVector3) -> SVector3 {
         // Benchmarks show that the FMA version is faster than the
         // naive version (1.9 ns vs 2.1 ns on my Skylake i7). **However**
         // the "fma" codegen feature must be enabled, otherwise the naive
@@ -65,18 +65,18 @@ impl Vector3 {
     }
 
     #[inline(always)]
-    pub fn dot_naive(self, other: Vector3) -> f32 {
+    pub fn dot_naive(self, other: SVector3) -> f32 {
         let (a, b) = (self, other);
         a.x * b.x + a.y * b.y + a.z * b.z
     }
 
     #[inline(always)]
-    pub fn dot_fma(self, other: Vector3) -> f32 {
+    pub fn dot_fma(self, other: SVector3) -> f32 {
         let (a, b) = (self, other);
         a.x.mul_add(b.x, a.y.mul_add(b.y, a.z * b.z))
     }
 
-    pub fn dot(self, other: Vector3) -> f32 {
+    pub fn dot(self, other: SVector3) -> f32 {
         // Benchmarks show that the naive version is faster than the FMA version
         // when the "fma" codegen feature is not enabled, but when it is the
         // performance is similar. The FMA version appears to be slightly more
@@ -92,21 +92,21 @@ impl Vector3 {
         self.norm_squared().sqrt()
     }
 
-    pub fn normalized(self) -> Vector3 {
+    pub fn normalized(self) -> SVector3 {
         let norm_squared = self.norm_squared();
         if norm_squared == 0.0 {
             self
         } else {
-            let norm = norm_squared.sqrt();
-            Vector3 {
-                x: self.x / norm,
-                y: self.y / norm,
-                z: self.z / norm,
+            let rnorm = norm_squared.sqrt().recip();
+            SVector3 {
+                x: self.x * rnorm,
+                y: self.y * rnorm,
+                z: self.z * rnorm,
             }
         }
     }
 
-    pub fn reflect(self, normal: Vector3) -> Vector3 {
+    pub fn reflect(self, normal: SVector3) -> SVector3 {
         self - normal * 2.0 * normal.dot(self)
     }
 
@@ -128,7 +128,7 @@ impl OctaVector3 {
         OctaVector3::new(OctaF32::zero(), OctaF32::zero(), OctaF32::zero())
     }
 
-    pub fn broadcast(a: Vector3) -> OctaVector3 {
+    pub fn broadcast(a: SVector3) -> OctaVector3 {
         OctaVector3 {
             x: OctaF32::broadcast(a.x),
             y: OctaF32::broadcast(a.y),
@@ -139,7 +139,7 @@ impl OctaVector3 {
     /// Builds a octavector by applying the function to the numbers 0..7.
     ///
     /// Note: this is essentially a transpose, avoid in hot code.
-    pub fn generate<F: FnMut(usize) -> Vector3>(mut f: F) -> OctaVector3 {
+    pub fn generate<F: FnMut(usize) -> SVector3>(mut f: F) -> OctaVector3 {
         OctaVector3 {
             x: OctaF32::generate(|i| f(i).x),
             y: OctaF32::generate(|i| f(i).y),
@@ -248,11 +248,11 @@ impl OctaVector3 {
     }
 }
 
-impl Add for Vector3 {
-    type Output = Vector3;
+impl Add for SVector3 {
+    type Output = SVector3;
 
-    fn add(self, other: Vector3) -> Vector3 {
-        Vector3 {
+    fn add(self, other: SVector3) -> SVector3 {
+        SVector3 {
             x: self.x + other.x,
             y: self.y + other.y,
             z: self.z + other.z,
@@ -272,11 +272,11 @@ impl Add for OctaVector3 {
     }
 }
 
-impl Sub for Vector3 {
-    type Output = Vector3;
+impl Sub for SVector3 {
+    type Output = SVector3;
 
-    fn sub(self, other: Vector3) -> Vector3 {
-        Vector3 {
+    fn sub(self, other: SVector3) -> SVector3 {
+        SVector3 {
             x: self.x - other.x,
             y: self.y - other.y,
             z: self.z - other.z,
@@ -296,11 +296,11 @@ impl Sub for OctaVector3 {
     }
 }
 
-impl Neg for Vector3 {
-    type Output = Vector3;
+impl Neg for SVector3 {
+    type Output = SVector3;
 
-    fn neg(self) -> Vector3 {
-        Vector3 {
+    fn neg(self) -> SVector3 {
+        SVector3 {
             x: -self.x,
             y: -self.y,
             z: -self.z,
@@ -308,11 +308,11 @@ impl Neg for Vector3 {
     }
 }
 
-impl Mul<f32> for Vector3 {
-    type Output = Vector3;
+impl Mul<f32> for SVector3 {
+    type Output = SVector3;
 
-    fn mul(self, a: f32) -> Vector3 {
-        Vector3 {
+    fn mul(self, a: f32) -> SVector3 {
+        SVector3 {
             x: self.x * a,
             y: self.y * a,
             z: self.z * a,
@@ -337,8 +337,8 @@ impl Mul<OctaF32> for OctaVector3 {
 // these operations.
 
 #[bench]
-fn bench_cross_naive_x10(bencher: &mut test::Bencher) {
-    let vectors = bench::vector3_pairs(4096);
+fn bench_scross_naive_10(bencher: &mut test::Bencher) {
+    let vectors = bench::svector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
         for _ in 0..10 {
@@ -349,8 +349,8 @@ fn bench_cross_naive_x10(bencher: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_cross_fma_x10(bencher: &mut test::Bencher) {
-    let vectors = bench::vector3_pairs(4096);
+fn bench_scross_fma_10(bencher: &mut test::Bencher) {
+    let vectors = bench::svector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
         for _ in 0..10 {
@@ -361,7 +361,7 @@ fn bench_cross_fma_x10(bencher: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_octa_cross_naive_x10(bencher: &mut test::Bencher) {
+fn bench_octa_cross_naive_10(bencher: &mut test::Bencher) {
     let vectors = bench::octa_vector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
@@ -373,7 +373,7 @@ fn bench_octa_cross_naive_x10(bencher: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_octa_cross_fma_x10(bencher: &mut test::Bencher) {
+fn bench_octa_cross_fma_10(bencher: &mut test::Bencher) {
     let vectors = bench::octa_vector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
@@ -385,8 +385,8 @@ fn bench_octa_cross_fma_x10(bencher: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_dot_naive_x10(bencher: &mut test::Bencher) {
-    let vectors = bench::vector3_pairs(4096);
+fn bench_sdot_naive_10(bencher: &mut test::Bencher) {
+    let vectors = bench::svector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
         for _ in 0..10 {
@@ -397,8 +397,8 @@ fn bench_dot_naive_x10(bencher: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_dot_fma_x10(bencher: &mut test::Bencher) {
-    let vectors = bench::vector3_pairs(4096);
+fn bench_sdot_fma_10(bencher: &mut test::Bencher) {
+    let vectors = bench::svector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
         for _ in 0..10 {
@@ -409,7 +409,7 @@ fn bench_dot_fma_x10(bencher: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_octa_dot_naive_x10(bencher: &mut test::Bencher) {
+fn bench_octa_dot_naive_10(bencher: &mut test::Bencher) {
     let vectors = bench::octa_vector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
@@ -421,7 +421,7 @@ fn bench_octa_dot_naive_x10(bencher: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_octa_dot_fma_x10(bencher: &mut test::Bencher) {
+fn bench_octa_dot_fma_10(bencher: &mut test::Bencher) {
     let vectors = bench::octa_vector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {

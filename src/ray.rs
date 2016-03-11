@@ -2,12 +2,12 @@
 
 use simd::{Mask, OctaF32};
 use std::ops::Neg;
-use vector3::{OctaVector3, Vector3};
+use vector3::{OctaVector3, SVector3};
 
 #[derive(Clone)]
 pub struct Ray {
-    pub origin: Vector3,
-    pub direction: Vector3,
+    pub origin: SVector3,
+    pub direction: SVector3,
 }
 
 #[derive(Clone)]
@@ -18,10 +18,10 @@ pub struct OctaRay {
 
 pub struct Intersection {
     /// The position at which the ray intersected the surface.
-    pub position: Vector3,
+    pub position: SVector3,
 
     /// The surface normal at the intersection point.
-    pub normal: Vector3,
+    pub normal: SVector3,
 
     /// This distance between the ray origin and the position.
     pub distance: f32,
@@ -34,7 +34,7 @@ pub struct OctaIntersection {
 }
 
 impl Ray {
-    pub fn new(origin: Vector3, direction: Vector3) -> Ray {
+    pub fn new(origin: SVector3, direction: SVector3) -> Ray {
         Ray {
             origin: origin,
             direction: direction,

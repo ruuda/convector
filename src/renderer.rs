@@ -2,7 +2,7 @@ use scene::Scene;
 use simd::OctaF32;
 use time::PreciseTime;
 use util::z_order;
-use vector3::{OctaVector3, Vector3};
+use vector3::{OctaVector3, SVector3};
 
 pub struct Renderer {
     scene: Scene,
@@ -27,7 +27,7 @@ impl Renderer {
         let t = self.epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
 
         // Make the light circle around.
-        self.scene.lights[0].position = Vector3 {
+        self.scene.lights[0].position = SVector3 {
             x: t.cos() * 5.0,
             y: (t * 0.3).cos() * 7.0,
             z: t.sin() * 5.0,

@@ -8,18 +8,18 @@
 use aabb::Aabb;
 use ray::{Intersection, OctaIntersection, OctaRay, Ray};
 use simd::OctaF32;
-use vector3::{OctaVector3, Vector3};
+use vector3::{OctaVector3, SVector3};
 
 #[derive(Clone, Debug)]
 pub struct Triangle {
-    pub v1: Vector3,
-    pub v2: Vector3,
-    pub v3: Vector3,
+    pub v1: SVector3,
+    pub v2: SVector3,
+    pub v3: SVector3,
     pub aabb: Aabb,
 }
 
 impl Triangle {
-    pub fn new(v1: Vector3, v2: Vector3, v3: Vector3) -> Triangle {
+    pub fn new(v1: SVector3, v2: SVector3, v3: SVector3) -> Triangle {
         Triangle {
             v1: v1,
             v2: v2,
@@ -28,7 +28,7 @@ impl Triangle {
         }
     }
 
-    pub fn barycenter(&self) -> Vector3 {
+    pub fn barycenter(&self) -> SVector3 {
         (self.v1 + self.v2 + self.v3) * 3.0f32.recip()
     }
 
@@ -149,19 +149,19 @@ impl Triangle {
 #[test]
 fn intersect_triangle() {
     let triangle = Triangle::new(
-        Vector3::new(0.0, 1.0, 1.0),
-        Vector3::new(-1.0, -1.0, 1.0),
-        Vector3::new(1.0, -1.0, 1.0)
+        SVector3::new(0.0, 1.0, 1.0),
+        SVector3::new(-1.0, -1.0, 1.0),
+        SVector3::new(1.0, -1.0, 1.0)
     );
 
     let r1 = Ray {
-        origin: Vector3::zero(),
-        direction: Vector3::new(0.0, 0.0, 1.0),
+        origin: SVector3::zero(),
+        direction: SVector3::new(0.0, 0.0, 1.0),
     };
 
     let r2 = Ray {
-        origin: Vector3::new(-1.0, 0.0, 0.0),
-        direction: Vector3::new(0.0, 0.0, 1.0),
+        origin: SVector3::new(-1.0, 0.0, 0.0),
+        direction: SVector3::new(0.0, 0.0, 1.0),
     };
 
     assert!(triangle.intersect(&r1).is_some());
@@ -171,19 +171,19 @@ fn intersect_triangle() {
 #[test]
 fn octa_intersect_triangle() {
     let triangle = Triangle::new(
-        Vector3::new(0.0, 1.0, 1.0),
-        Vector3::new(-1.0, -1.0, 1.0),
-        Vector3::new(1.0, -1.0, 1.0)
+        SVector3::new(0.0, 1.0, 1.0),
+        SVector3::new(-1.0, -1.0, 1.0),
+        SVector3::new(1.0, -1.0, 1.0)
     );
 
     let r1 = Ray {
-        origin: Vector3::zero(),
-        direction: Vector3::new(0.0, 0.0, 1.0),
+        origin: SVector3::zero(),
+        direction: SVector3::new(0.0, 0.0, 1.0),
     };
 
     let r2 = Ray {
-        origin: Vector3::new(-1.0, 0.0, 0.0),
-        direction: Vector3::new(0.0, 0.0, 1.0),
+        origin: SVector3::new(-1.0, 0.0, 0.0),
+        direction: SVector3::new(0.0, 0.0, 1.0),
     };
 
     let ray = OctaRay::generate(|i| if i % 2 == 0 { r1.clone() } else { r2.clone() });

@@ -2,11 +2,11 @@ use bvh::Bvh;
 use ray::{OctaIntersection, OctaRay};
 use simd::OctaF32;
 use std::f32::consts::PI;
-use vector3::{OctaVector3, Vector3};
+use vector3::{OctaVector3, SVector3};
 use wavefront::Mesh;
 
 pub struct Camera {
-    pub position: Vector3,
+    pub position: SVector3,
     // TODO: Add quaternion orientation.
 
     /// Distance such that a vector at `(1, 0, screen_distance)` makes an angle
@@ -19,7 +19,7 @@ impl Camera {
     /// radians.
     pub fn with_fov(fov: f32) -> Camera {
         Camera {
-            position: Vector3::zero(),
+            position: SVector3::zero(),
             screen_distance: 1.0 / (fov / 2.0).sin(),
         }
     }
@@ -41,7 +41,7 @@ impl Camera {
 }
 
 pub struct Light {
-    pub position: Vector3,
+    pub position: SVector3,
 }
 
 pub struct Scene {

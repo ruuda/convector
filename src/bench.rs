@@ -7,7 +7,7 @@ use rand::distributions::{IndependentSample, Range};
 use ray::{OctaRay, Ray};
 use simd::OctaF32;
 use std::f32::consts;
-use vector3::{OctaVector3, Vector3};
+use vector3::{OctaVector3, SVector3};
 
 /// Generates n random OctaF32s in the range [-1, 1).
 pub fn octa_biunit(n: usize) -> Vec<OctaF32> {
@@ -21,7 +21,7 @@ pub fn octa_biunit(n: usize) -> Vec<OctaF32> {
 }
 
 /// Generates n vectors distributed uniformly on the unit sphere.
-pub fn points_on_sphere(n: usize) -> Vec<Vector3> {
+pub fn points_on_sphere(n: usize) -> Vec<SVector3> {
     let mut rng = rand::thread_rng();
     let phi_range = Range::new(0.0, 2.0 * consts::PI);
     let cos_theta_range = Range::new(-1.0_f32, 1.0);
@@ -29,7 +29,7 @@ pub fn points_on_sphere(n: usize) -> Vec<Vector3> {
     for _ in 0..n {
         let phi = phi_range.ind_sample(&mut rng);
         let theta = cos_theta_range.ind_sample(&mut rng).acos();
-        let vector = Vector3 {
+        let vector = SVector3 {
             x: phi.cos() * theta.sin(),
             y: phi.sin() * theta.sin(),
             z: theta.cos(),
@@ -53,7 +53,7 @@ pub fn octa_points_on_sphere(n: usize) -> Vec<OctaVector3> {
 }
 
 /// Generates n pairs of nonzero vectors.
-pub fn vector3_pairs(n: usize) -> Vec<(Vector3, Vector3)> {
+pub fn svector3_pairs(n: usize) -> Vec<(SVector3, SVector3)> {
     let mut a = points_on_sphere(n);
     let mut b = points_on_sphere(n);
     let pairs = a.drain(..).zip(b.drain(..)).collect();
@@ -75,10 +75,10 @@ pub fn rays_inward(radius: f32, n: usize) -> Vec<Ray> {
 
 /// Generates a random AABB and n rays of which m intersect the box.
 pub fn aabb_with_rays(n: usize, m: usize) -> (Aabb, Vec<Ray>) {
-    let origin = Vector3::new(-1.0, -1.0, -1.0);
-    let size = Vector3::new(2.0, 2.0, 2.0);
+    let origin = SVector3::new(-1.0, -1.0, -1.0);
+    let size = SVector3::new(2.0, 2.0, 2.0);
     let aabb = Aabb::new(origin, size);
-    let up = Vector3::new(0.0, 0.0, 1.0);
+    let up = SVector3::new(0.0, 0.0, 1.0);
     let mut rays = rays_inward(16.0, n);
 
     // Offset the m-n rays that should not intersect the box in a direction
