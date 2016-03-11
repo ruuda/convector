@@ -13,7 +13,7 @@ use {bench, test};
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct OctaF32(pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32);
 
-type Mask = OctaF32;
+pub type Mask = OctaF32;
 
 impl OctaF32 {
     pub fn zero() -> OctaF32 {
