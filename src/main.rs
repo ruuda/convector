@@ -35,7 +35,6 @@ use renderer::Renderer;
 use scene::Scene;
 use stats::GlobalStats;
 use std::slice;
-use time::PreciseTime;
 use ui::Window;
 use util::z_order;
 use wavefront::Mesh;
@@ -76,12 +75,11 @@ fn main() {
     let mut threadpool = scoped_threadpool::Pool::new(num_cpus::get() as u32);
     let mut should_continue = true;
     println!("scene and renderer initialized, entering render loop");
-    let mut frame_start = PreciseTime::now();
 
-    let mut frame_ctr = 0;
-    let trace_log = trace::TraceLog::with_limit(6 * 1024);
+    let mut trace_log = trace::TraceLog::with_limit(6 * 1024);
 
     while should_continue {
+        let stw_frame = trace_log.scoped("render_frame", 0);
 
         renderer.update_scene();
         {
@@ -97,7 +95,7 @@ fn main() {
                 let mut i = 0;
                 for patch in &mut patches {
                     scope.execute(move || {
-                        let _stw = trace_log_ref.scoped("render_patch", frame_ctr, i);
+                        let _stw = trace_log_ref.scoped("render_patch", i);
                         renderer_ref.render_patch(patch, patch_width as u32, x as u32, y as u32);
                     });
 
@@ -112,20 +110,17 @@ fn main() {
                 {
                     // In the mean time, upload the previously rendered frame to
                     // the GPU and display it.
-                    let _stw = trace_log.scoped("display_buffer", frame_ctr, 0);
+                    let _stw = trace_log.scoped("display_buffer", 0);
                     window.display_buffer(frontbuffer, &mut stats);
                 }
 
-                {
-                    let _stw = trace_log.scoped("handle_events", frame_ctr, 0);
-                    should_continue = window.handle_events(&mut stats, &trace_log);
-                }
+                should_continue = window.handle_events(&mut stats, &trace_log);
 
                 // The scope automatically waits for all tasks to complete
                 // before the loop continues.
             });
 
-            let _stw = trace_log.scoped("stitch_patches", frame_ctr, 0);
+            let _stw = trace_log.scoped("stitch_patches", 0);
 
             // Create a new uninitialized buffer to stitch the patches into.
             // Because this will write to every pixel, no uninitialized memory
@@ -152,12 +147,10 @@ fn main() {
             }
 
             frontbuffer = backbuffer;
-            frame_ctr = frame_ctr + 1;
         }
 
-        let now = PreciseTime::now();
-        stats.frame_us.insert_time_us(frame_start.to(now));
-        frame_start = now;
+        stats.frame_us.insert_time_us(stw_frame.take_duration());
+        trace_log.inc_frame_number();
     }
 }
 

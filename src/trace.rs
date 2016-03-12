@@ -1,6 +1,10 @@
 //! This mod writes trace logs that can be inspected with chrome://tracing.
 //! It is intended as a debugging tool, so I can see what all the cores are
 //! doing; how work is scheduled among CPUs and what is blocking.
+//!
+//! Note: this mod is not related to ray tracing, sorry for the name.
+
+// TODO: Integrate this with stats.
 
 use std::collections::VecDeque;
 use std::fs::File;
@@ -8,7 +12,7 @@ use std::io;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use thread_id;
-use time::PreciseTime;
+use time::{Duration, PreciseTime};
 
 struct TraceEvent {
     start: PreciseTime,
@@ -25,6 +29,7 @@ pub struct ScopedTraceEvent {
     frame: u32,
     id: u32,
     log: Arc<Mutex<TraceLogImpl>>,
+    handled: bool,
 }
 
 struct TraceLogImpl {
@@ -35,13 +40,21 @@ struct TraceLogImpl {
 pub struct TraceLog {
     log: Arc<Mutex<TraceLogImpl>>,
     epoch: PreciseTime,
+    frame_number: u32,
 }
 
-impl Drop for ScopedTraceEvent {
-    fn drop(&mut self) {
+impl ScopedTraceEvent {
+    /// Records the event in the trace log and returns its duration.
+    pub fn take_duration(mut self) -> Duration {
+        let end = PreciseTime::now();
+        self.add_to_trace(end);
+        self.start.to(end)
+    }
+
+    fn add_to_trace(&mut self, now: PreciseTime) {
         let event = TraceEvent {
             start: self.start,
-            end: PreciseTime::now(),
+            end: now,
             description: self.description,
             frame: self.frame,
             id: self.id,
@@ -52,6 +65,16 @@ impl Drop for ScopedTraceEvent {
             trace_log_impl.events.pop_front();
         }
         trace_log_impl.events.push_back(event);
+        self.handled = true;
+    }
+}
+
+impl Drop for ScopedTraceEvent {
+    fn drop(&mut self) {
+        if !self.handled {
+            let end = PreciseTime::now();
+            self.add_to_trace(end);
+        }
     }
 }
 
@@ -64,18 +87,25 @@ impl TraceLog {
         TraceLog {
             log: Arc::new(Mutex::new(trace_log_impl)),
             epoch:  PreciseTime::now(),
+            frame_number: 0,
         }
+    }
+
+    /// Increments the frame number.
+    pub fn inc_frame_number(&mut self) {
+        self.frame_number += 1;
     }
 
     /// Starts a new trace event. When the returned value goes out of scope, it
     /// is added to the log with the correct end time.
-    pub fn scoped(&self, description: &'static str, frame: u32, id: u32) -> ScopedTraceEvent {
+    pub fn scoped(&self, description: &'static str, id: u32) -> ScopedTraceEvent {
         ScopedTraceEvent {
             start: PreciseTime::now(),
             description: description,
-            frame: frame,
+            frame: self.frame_number,
             id: id,
             log: self.log.clone(),
+            handled: false,
         }
     }
 

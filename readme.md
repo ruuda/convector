@@ -28,4 +28,12 @@ stuffed all of this away in a makefile, so now you can just run:
 On Windows you might have to execute the commands in the makefile manually, but
 everything should still compile and run.
 
+Controls
+--------
+
+ * Press `q` to quit the application.
+ * Press `s` to print statistics to the console.
+ * Press `t` to write a trace to trace.json.
+   It can be opened with Chrome by going to chrome://tracing.
+
 [rust]: https://rust-lang.org
