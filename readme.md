@@ -15,24 +15,17 @@ required.
 Compiling
 ---------
 
-I use fancy hardware instructions, but LLVM has to be told to use these
-explicitly. When using Cargo normally, there is no way (yet) to do this, so
-`cargo build` and `cargo bench` do not produce optimal code. Instead, one has to
-use the more low-level `cargo rustc` command.
+Normally Cargo can be used to build Rust projects, but I use AVX and FMA
+instructions and LLVM has to be told to use these. There is no way to configure
+this in `Cargo.toml`, so a more low-level command has to be used to compile. I
+stuffed all of this away in a makefile, so now you can just run:
 
-To compile and run the regular binary:
+ * `make` to build in release mode.
+ * `make run` to build and run the release executable.
+ * `make bench` to build and run all benchmarks in release mode.
+ * `make test` to build and run all tests in debug mode.
 
-    $ FEATURES="+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+sse4a,+avx,+avx2,+fma"
-    $ cargo rustc --release -- -C target-feature=$FEATURES
-    $ target/release/infomagr
-
-To benchmark and test:
-
-    $ cargo rustc --release -- --test -C target-feature=$FEATURES
-    $ target/release/infomagr --bench
-    $ target/release/infomagr --test
-
-Note that there is also `target-cpu=native`, but on my machine this produces
-code containing illegal instructions.
+On Windows you might have to execute the commands in the makefile manually, but
+everything should still compile and run.
 
 [rust]: https://rust-lang.org

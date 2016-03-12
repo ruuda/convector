@@ -1,2 +1,29 @@
+# Makefile because Cargo does not support target features at the moment.
+# Usage:
+#
+#  * `make`: build in release mode.
+#  * `make run`: build and run the release executable.
+#  * `make bench`: build and run all benchmarks in release mode.
+#  * `make test`: build and run all tests in debug mode.
+
+codegen_opts = -C target-feature=+avx,+fma
+
+release: target/release/infomagr
+
+bench: target/release/infomagr_bench
+	target/release/infomagr_bench --bench
+
+test: target/debug/infomagr_test
+	target/debug/infomagr_test --test
+
+run: target/release/infomagr
+	target/release/infomagr
+
 target/release/infomagr: src/*.rs
-	cargo rustc --release -- -C target-feature=+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+avx,+avx2
+	cargo rustc --release -- $(codegen_opts)
+
+target/release/infomagr_bench: src/*.rs
+	cargo rustc --release -- --test -o target/release/infomagr_bench $(codegen_opts)
+
+target/debug/infomagr_test: src/*.rs
+	cargo rustc -- --test -o target/debug/infomagr_test $(codegen_opts)
