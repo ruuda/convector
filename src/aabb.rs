@@ -99,7 +99,6 @@ impl Aabb {
     /// Intersects the AABB by intersecting six planes and testing the bounds.
     #[inline(always)]
     fn intersect_flavor_planes(&self, ray: &SRay) -> bool {
-        // TODO: Simd the **** out of this.
         intersect_aabb!(self, ray, x, y, z);
         intersect_aabb!(self, ray, y, z, x);
         intersect_aabb!(self, ray, z, x, y);
@@ -139,7 +138,11 @@ impl Aabb {
 
     // TODO: naming.
     pub fn intersect_any(&self, ray: &MRay) -> bool {
-        // TODO: Could precompute the reciprocal.
+        // Note: this function compiles down to ~65 instructions, taking up ~168
+        // bytes of instruction cache; 3 cache lines.
+
+        // TODO: Could precompute the reciprocal. Or is the compiler smart
+        // enough to hoist and inline anyway? It looks like this is the case.
         let xinv = ray.direction.x.recip();
         let yinv = ray.direction.y.recip();
         let zinv = ray.direction.z.recip();

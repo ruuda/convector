@@ -7,6 +7,7 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use thread_id;
 use time::PreciseTime;
 
 struct TraceEvent {
@@ -15,6 +16,7 @@ struct TraceEvent {
     description: &'static str,
     frame: u32,
     id: u32,
+    tid: u64,
 }
 
 pub struct ScopedTraceEvent {
@@ -43,6 +45,7 @@ impl Drop for ScopedTraceEvent {
             description: self.description,
             frame: self.frame,
             id: self.id,
+            tid: thread_id::get(),
         };
         let mut trace_log_impl = self.log.lock().unwrap();
         if trace_log_impl.events.len() == trace_log_impl.limit {
@@ -79,24 +82,29 @@ impl TraceLog {
     /// Writes the trace as a json string in the trace log format that can be
     /// read by Chrome’s trace viewer (chrome://tracing).
     pub fn export<W: io::Write>(&self, output: &mut W) -> io::Result<()> {
-        try!(write!(output, "{{ \"traceEvents\": ["));
+        try!(write!(output, "{{\"traceEvents\":["));
         let mut is_first = true;
         for event in self.log.lock().unwrap().events.iter() {
             if !is_first {
-                try!(write!(output, ", "));
+                try!(write!(output, ","));
             }
             let ts = self.epoch.to(event.start).num_microseconds().unwrap();
             let dur = event.start.to(event.end).num_microseconds().unwrap();
-            try!(write!(output, "{{ \"name\": \"{0}\", \"cat\": \"\", \
-                                    \"ph\": \"X\", \"ts\": {1}, \"dur\": {2}, \
-                                    \"pid\": 0, \"tid\": {3}, \"args\": {{\
-                                    \"frame\": {4}, \"id\": {5} }} }}",
-                                event.description, ts, dur,
-                                0 /* TODO: Thread ID */,
+            try!(write!(output, "{{\"name\":\"{0}\",\
+                                   \"cat\":\"\",\
+                                   \"ph\":\"X\",\
+                                   \"ts\":{1},\
+                                   \"dur\":{2},\
+                                   \"pid\":0,\
+                                   \"tid\":{3},\
+                                   \"args\":{{\
+                                   \"frame\":{4},\
+                                   \"id\":{5}}}}}",
+                                event.description, ts, dur, event.tid,
                                 event.frame, event.id));
             is_first = false;
         }
-        write!(output, "], \"displayTimeUnit\": \"ms\" }}")
+        write!(output, "],\"displayTimeUnit\":\"ms\"}}")
     }
 
     /// Writes the trace to a json file.

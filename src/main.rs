@@ -11,6 +11,7 @@ extern crate num_cpus;
 extern crate rand;
 extern crate scoped_threadpool;
 extern crate test;
+extern crate thread_id;
 extern crate time;
 
 mod aabb;
@@ -78,7 +79,7 @@ fn main() {
     let mut frame_start = PreciseTime::now();
 
     let mut frame_ctr = 0;
-    let trace_log = trace::TraceLog::with_limit(4096);
+    let trace_log = trace::TraceLog::with_limit(6 * 1024);
 
     while should_continue {
 
