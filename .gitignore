@@ -4,3 +4,6 @@
 # Editor files
 *.swp
 *.swo
+
+# Written trace output
+/trace.json

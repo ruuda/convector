@@ -21,6 +21,7 @@ mod renderer;
 mod scene;
 mod simd;
 mod stats;
+mod trace;
 mod ui;
 mod util;
 mod vector3;
@@ -76,22 +77,30 @@ fn main() {
     println!("scene and renderer initialized, entering render loop");
     let mut frame_start = PreciseTime::now();
 
+    let mut frame_ctr = 0;
+    let trace_log = trace::TraceLog::with_limit(4096);
+
     while should_continue {
 
         renderer.update_scene();
         {
             let mut patches = make_slices(&mut patchbuffer[..], (patch_width * patch_width * 3) as usize);
             let renderer_ref = &renderer;
+            let trace_log_ref = &trace_log;
 
             threadpool.scoped(|scope| {
                 let mut x = 0;
                 let mut y = 0;
 
                 // Queue tasks for the worker threads to render patches.
+                let mut i = 0;
                 for patch in &mut patches {
-                    scope.execute(move ||
-                        renderer_ref.render_patch(patch, patch_width as u32, x as u32, y as u32));
+                    scope.execute(move || {
+                        let _stw = trace_log_ref.scoped("render_patch", frame_ctr, i);
+                        renderer_ref.render_patch(patch, patch_width as u32, x as u32, y as u32);
+                    });
 
+                    i = i + 1;
                     x = x + patch_width;
                     if x >= width {
                         x = 0;
@@ -99,15 +108,23 @@ fn main() {
                     }
                 }
 
-                // In the mean time, upload the previously rendered frame to the
-                // GPU and display it.
-                window.display_buffer(frontbuffer, &mut stats);
+                {
+                    // In the mean time, upload the previously rendered frame to
+                    // the GPU and display it.
+                    let _stw = trace_log.scoped("display_buffer", frame_ctr, 0);
+                    window.display_buffer(frontbuffer, &mut stats);
+                }
 
-                should_continue = window.handle_events(&mut stats);
+                {
+                    let _stw = trace_log.scoped("handle_events", frame_ctr, 0);
+                    should_continue = window.handle_events(&mut stats, &trace_log);
+                }
 
                 // The scope automatically waits for all tasks to complete
                 // before the loop continues.
             });
+
+            let _stw = trace_log.scoped("stitch_patches", frame_ctr, 0);
 
             // Create a new uninitialized buffer to stitch the patches into.
             // Because this will write to every pixel, no uninitialized memory
@@ -134,6 +151,7 @@ fn main() {
             }
 
             frontbuffer = backbuffer;
+            frame_ctr = frame_ctr + 1;
         }
 
         let now = PreciseTime::now();

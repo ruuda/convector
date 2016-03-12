@@ -8,6 +8,7 @@ use glium::texture::{MipmapsOption, RawImage2d, Texture2d};
 use glium::uniforms::MagnifySamplerFilter;
 use stats::GlobalStats;
 use time::PreciseTime;
+use trace::TraceLog;
 
 pub struct Window {
     display: GlutinFacade,
@@ -61,7 +62,7 @@ impl Window {
 
     /// Handles all window events and returns whether the app should continue to
     /// run.
-    pub fn handle_events(&mut self, stats: &GlobalStats) -> bool {
+    pub fn handle_events(&mut self, stats: &GlobalStats, trace_log: &TraceLog) -> bool {
         for ev in self.display.poll_events() {
             match ev {
                 // Window was closed by the user.
@@ -71,6 +72,12 @@ impl Window {
                 // The user pressed 's' for stats.
                 // TODO: Invert dependency, handle_events should not take stats.
                 Event::ReceivedCharacter('s') => stats.print(),
+                // The user pressed 't' for trace.
+                // TODO: Invert dependency, handle_events should not take the trace log.
+                Event::ReceivedCharacter('t') => {
+                    trace_log.export_to_file("trace.json").expect("failed to write trace");
+                    println!("wrote trace to trace.json");
+                },
                 // Something else.
                 _ => ()
             }
