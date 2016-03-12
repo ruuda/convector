@@ -57,9 +57,14 @@ fn build_scene() -> Scene {
 }
 
 fn main() {
+    // The patch size has been tuned for 8 cores. With a resolution of 1280x736 there are 920
+    // patches to be rendered by the worker pool. Increasing the patch size to 64 results in 230
+    // patches, but some patches are very heavy to render and some are practically a no-op, so all
+    // threads might stall because one thread did not yet finish the frame. A patch width of 32 is
+    // a good balance between troughput and latency.
     let width = 1280;
-    let height = 720;
-    let patch_width = 16;
+    let height = 736;
+    let patch_width = 32;
 
     let mut window = Window::new(width, height, "infomagr interactive raytracer");
     let mut renderer = Renderer::new(build_scene(), width, height);
