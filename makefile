@@ -7,6 +7,7 @@
 #  * `make test`: build and run all tests in debug mode.
 
 codegen_opts = -C target-feature=+avx,+fma
+sources = Cargo.lock Cargo.toml src/*.rs
 
 release: target/release/infomagr
 
@@ -19,11 +20,11 @@ test: target/debug/infomagr_test
 run: target/release/infomagr
 	target/release/infomagr
 
-target/release/infomagr: Cargo.toml src/*.rs
+target/release/infomagr: $(sources)
 	cargo rustc --release -- $(codegen_opts)
 
-target/release/infomagr_bench: Cargo.toml src/*.rs
+target/release/infomagr_bench: $(sources)
 	cargo rustc --release -- --test -o target/release/infomagr_bench $(codegen_opts)
 
-target/debug/infomagr_test: Cargo.toml src/*.rs
+target/debug/infomagr_test: $(sources)
 	cargo rustc -- --test -o target/debug/infomagr_test $(codegen_opts)
