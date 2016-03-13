@@ -130,12 +130,14 @@ impl Renderer {
     /// bottom to top.
     fn get_pixel_coords_16x4(&self, x: u32, y: u32) -> ([Mf32; 8], [Mf32; 8]) {
         let scale = Mf32::broadcast(2.0 / self.width as f32);
+        let scale_mul = Mf32(2.0, 4.0, 8.0, 12.0, 0.0, 0.0, 0.0, 0.0) * scale;
+
         let off_x = Mf32(0.0, 1.0, 2.0, 3.0, 0.0, 1.0, 2.0, 3.0);
         let off_y = Mf32(0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0);
-        let base_x = off_x.mul_add(scale, Mf32::broadcast(x as f32 - self.width as f32 * 0.5));
-        let base_y = off_y.mul_add(scale, Mf32::broadcast(y as f32 - self.height as f32 * 0.5));
 
-        let scale_mul = Mf32(2.0, 4.0, 8.0, 12.0, 0.0, 0.0, 0.0, 0.0) * scale;
+        let base_x = scale * (off_x + Mf32::broadcast(x as f32 - self.width as f32 * 0.5));
+        let base_y = scale * (off_y + Mf32::broadcast(y as f32 - self.height as f32 * 0.5));
+
         let xs = [
             base_x,
             base_x,
