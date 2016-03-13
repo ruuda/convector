@@ -3,7 +3,7 @@ name = "infomagr"
 version = "0.1.0"
 dependencies = [
  "filebuffer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glium 0.13.5 (git+https://github.com/tomaka/glium?rev=a37c771)",
+ "glium 0.13.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "scoped_threadpool 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -209,7 +209,7 @@ dependencies = [
 [[package]]
 name = "glium"
 version = "0.13.5"
-source = "git+https://github.com/tomaka/glium?rev=a37c771#a37c77174d4da5285dd68df1b0be22950261c982"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "backtrace 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "gl_generator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",

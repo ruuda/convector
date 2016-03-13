@@ -19,11 +19,11 @@ test: target/debug/infomagr_test
 run: target/release/infomagr
 	target/release/infomagr
 
-target/release/infomagr: src/*.rs
+target/release/infomagr: Cargo.toml src/*.rs
 	cargo rustc --release -- $(codegen_opts)
 
-target/release/infomagr_bench: src/*.rs
+target/release/infomagr_bench: Cargo.toml src/*.rs
 	cargo rustc --release -- --test -o target/release/infomagr_bench $(codegen_opts)
 
-target/debug/infomagr_test: src/*.rs
+target/debug/infomagr_test: Cargo.toml src/*.rs
 	cargo rustc -- --test -o target/debug/infomagr_test $(codegen_opts)
