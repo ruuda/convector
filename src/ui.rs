@@ -34,14 +34,14 @@ impl Window {
         }
     }
 
-    pub fn display_buffer(&mut self, rgb_buffer: Vec<u8>, stats: &mut GlobalStats) {
-        assert_eq!(rgb_buffer.len(), self.width as usize * self.height as usize * 3);
+    pub fn display_buffer(&mut self, rgba_buffer: Vec<u8>, stats: &mut GlobalStats) {
+        assert_eq!(rgba_buffer.len(), self.width as usize * self.height as usize * 4);
 
         let begin_texture = PreciseTime::now();
 
         // Create a texture from the rgb data and upload it to the GPU.
         let dimensions = (self.width, self.height);
-        let texture_data = RawImage2d::from_raw_rgb(rgb_buffer, dimensions);
+        let texture_data = RawImage2d::from_raw_rgba(rgba_buffer, dimensions);
         let texture = Texture2d::with_mipmaps(&self.display,
                                               texture_data,
                                               MipmapsOption::NoMipmap)

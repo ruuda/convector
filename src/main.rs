@@ -3,8 +3,9 @@
 #![warn(missing_docs)]
 #![allow(dead_code)] // TODO: Remove before v0.1.
 
-#![feature(platform_intrinsics, repr_simd, test)]
+#![feature(alloc, heap_api, platform_intrinsics, repr_simd, test)]
 
+extern crate alloc;
 extern crate filebuffer;
 extern crate glium;
 extern crate num_cpus;
@@ -24,14 +25,13 @@ mod simd;
 mod stats;
 mod trace;
 mod ui;
-mod util;
 mod vector3;
 mod wavefront;
 
 #[cfg(test)]
 mod bench;
 
-use renderer::{PatchBuffer, Renderer};
+use renderer::{RenderBuffer, Renderer};
 use scene::Scene;
 use stats::GlobalStats;
 use std::mem;
@@ -70,8 +70,10 @@ fn main() {
     let mut stats = GlobalStats::new();
     let mut trace_log = trace::TraceLog::with_limit(6 * 1024);
     let mut threadpool = scoped_threadpool::Pool::new(num_cpus::get() as u32);
-    let mut backbuffer = PatchBuffer::new_black(width, height, patch_width);
+    let mut backbuffer = RenderBuffer::new(width, height);
     let mut should_continue = true;
+
+    backbuffer.fill_black();
 
     println!("scene and renderer initialized, entering render loop");
 
@@ -81,40 +83,38 @@ fn main() {
 
         renderer.update_scene();
 
-        let new_backbuffer = PatchBuffer::new_uninit(width, height, patch_width);
+        let new_backbuffer = RenderBuffer::new(width, height);
         let frontbuffer = mem::replace(&mut backbuffer, new_backbuffer);
-        let patches = backbuffer.patches();
         let renderer_ref = &renderer;
         let trace_log_ref = &trace_log;
+        let backbuffer_ref = &backbuffer;
 
         threadpool.scoped(|scope| {
-            let mut x = 0;
-            let mut y = 0;
+
+            let w = width / patch_width;
+            let h = height / patch_width;
 
             // Queue tasks for the worker threads to render patches.
-            for (i, patch) in (0..).zip(patches) {
-                scope.execute(move || {
-                    let _stw = trace_log_ref.scoped("render_patch", i);
-                    renderer_ref.render_patch(patch, patch_width as u32, x as u32, y as u32);
-                });
+            for i in 0..w {
+                for j in 0..h {
+                    scope.execute(move || {
+                        let _stw = trace_log_ref.scoped("render_patch", j * w + i);
+                        let x = i * patch_width;
+                        let y = j * patch_width;
 
-                // TODO: DRY.
-                x = x + patch_width;
-                if x >= width {
-                    x = 0;
-                    y = y + patch_width;
+                        // Multiple threads mutably borrow the buffer, which
+                        // could cause races, but all of the patches are
+                        // disjoint, hence this is safe.
+                        let bitmap = unsafe { backbuffer_ref.get_mut_slice() };
+                        renderer_ref.render_patch(bitmap, patch_width, x, y);
+                    });
                 }
             }
 
-            // In the mean time, stitch together the patches from the previous
-            // frame, upload the frame to the GPU, and display it.
-            let stw_stitch = trace_log.scoped("stitch_patches", 0);
-            let frame = frontbuffer.into_bitmap();
-            stw_stitch.take_duration();
-
-            let stw_display = trace_log.scoped("display_buffer", 0);
-            window.display_buffer(frame, &mut stats);
-            stw_display.take_duration();
+            // In the mean time upload the previous frame to the GPU
+            // and display it.
+            let _stw_display = trace_log.scoped("display_buffer", 0);
+            window.display_buffer(frontbuffer.into_bitmap(), &mut stats);
 
             should_continue = window.handle_events(&mut stats, &trace_log);
 

@@ -13,6 +13,11 @@ use {bench, test};
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Mf32(pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32);
 
+
+#[repr(simd)]
+#[derive(Copy, Clone)]
+pub struct Mi32(pub i32, pub i32, pub i32, pub i32, pub i32, pub i32, pub i32, pub i32);
+
 pub type Mask = Mf32;
 
 impl Mf32 {
@@ -117,6 +122,34 @@ impl Mf32 {
     pub fn pick(self, other: Mf32, mask: Mask) -> Mf32 {
         unsafe { x86_mm256_blendv_ps(self, other, mask) }
     }
+
+    /// Converts floating-point numbers to 32-bit signed integers.
+    #[inline(always)]
+    pub fn into_mi32(self) -> Mi32 {
+        unsafe { x86_mm256_cvtps_epi32(self) }
+    }
+}
+
+impl Mi32 {
+    pub fn zero() -> Mi32 {
+        Mi32(0, 0, 0, 0, 0, 0, 0, 0)
+    }
+
+    /// Builds an mi32 by applying the function to the numbers 0..7.
+    pub fn generate<F>(mut f: F) -> Mi32 where F: FnMut(usize) -> i32 {
+        Mi32(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7))
+    }
+
+    /// Applies the function componentwise.
+    pub fn map<F>(self, mut f: F) -> Mi32 where F: FnMut(i32) -> i32 {
+        Mi32(f(self.0), f(self.1), f(self.2), f(self.2),
+             f(self.4), f(self.5), f(self.6), f(self.7))
+    }
+
+    #[inline(always)]
+    pub fn broadcast(x: i32) -> Mi32 {
+        Mi32(x, x, x, x, x, x, x, x)
+    }
 }
 
 impl Add<Mf32> for Mf32 {
@@ -142,6 +175,21 @@ impl BitAnd<Mask> for Mask {
             let b: [u64; 4] = transmute(other);
             let a_and_b = [a[0] & b[0], a[1] & b[1], a[2] & b[2], a[3] & b[3]];
             transmute(a_and_b)
+        }
+    }
+}
+
+impl BitOr<Mi32> for Mi32 {
+    type Output = Mi32;
+
+    #[inline(always)]
+    fn bitor(self, other: Mi32) -> Mi32 {
+        use std::mem::transmute;
+        unsafe {
+            let a: Mask = transmute(self);
+            let b: Mask = transmute(other);
+            let a_or_b = a | b;
+            transmute(a_or_b)
         }
     }
 }
@@ -223,6 +271,7 @@ extern "platform-intrinsic" {
 
     fn x86_mm256_blendv_ps(x: Mf32, y: Mf32, mask: Mask) -> Mf32;
     fn x86_mm256_cmp_ps(x: Mf32, y: Mf32, op: i8) -> Mask;
+    fn x86_mm256_cvtps_epi32(x: Mf32) -> Mi32;
     fn x86_mm256_fmadd_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
     fn x86_mm256_fmsub_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
     fn x86_mm256_max_ps(x: Mf32, y: Mf32) -> Mf32;
