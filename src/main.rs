@@ -43,7 +43,8 @@ fn build_scene() -> Scene {
     use vector3::SVector3;
 
     let suzanne = Mesh::load("suzanne.obj");
-    let mut scene = Scene::from_mesh(&suzanne);
+    let meshes = [suzanne];
+    let mut scene = Scene::from_meshes(&meshes);
 
     scene.camera.position = SVector3::new(0.0, 0.0, 5.0);
 

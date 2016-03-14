@@ -97,14 +97,20 @@ impl Bvh {
         }
     }
 
-    pub fn from_mesh(mesh: &Mesh) -> Bvh {
-        let triangles: Vec<Triangle> = mesh.triangles.iter().map(
-            |&(i1, i2, i3)| {
-                let v1 = mesh.vertices[i1 as usize];
-                let v2 = mesh.vertices[i2 as usize];
-                let v3 = mesh.vertices[i3 as usize];
-                Triangle::new(v1, v2, v3)
-            }).collect();
+    pub fn from_meshes(meshes: &[Mesh]) -> Bvh {
+        let mut triangles = Vec::new();
+
+        for mesh in meshes {
+            let mesh_triangles = mesh.triangles.iter().map(
+                |&(i1, i2, i3)| {
+                    let v1 = mesh.vertices[i1 as usize];
+                    let v2 = mesh.vertices[i2 as usize];
+                    let v3 = mesh.vertices[i3 as usize];
+                    Triangle::new(v1, v2, v3)
+                });
+            triangles.extend(mesh_triangles);
+        }
+
         Bvh::build(triangles)
     }
 

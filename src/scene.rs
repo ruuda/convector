@@ -51,9 +51,9 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn from_mesh(mesh: &Mesh) -> Scene {
+    pub fn from_meshes(meshes: &[Mesh]) -> Scene {
         Scene {
-            bvh: Bvh::from_mesh(mesh),
+            bvh: Bvh::from_meshes(meshes),
             lights: Vec::new(),
             camera: Camera::with_fov(PI * 0.6),
         }
