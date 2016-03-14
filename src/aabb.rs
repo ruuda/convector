@@ -1,6 +1,7 @@
 //! This module implements axis-aligned bounding boxes and related functions.
 
 use ray::{MRay, SRay};
+use simd::{Mask, Mf32};
 use vector3::{MVector3, SVector3};
 
 #[cfg(test)]
@@ -13,28 +14,17 @@ pub struct Aabb {
     pub size: SVector3,
 }
 
-// Intersecting an axis-aligned bounding box is tricky to implement. Below is a
-// macro for intersecting a ray with the two faces of the AABB parallel to the
-// xy-plane. By cyclically permuting x, y, and z, it is possible to intersect
-// all faces, saving a third of the code.
-macro_rules! intersect_aabb {
-    ($aabb: ident, $ray: ident, $x: ident, $y: ident, $z: ident) => {
-        if $ray.direction.$z != 0.0 {
-            let origin_z1 = $aabb.origin.$z - $ray.origin.$z;
-            let origin_z2 = origin_z1 + $aabb.size.$z;
-            let t1 = origin_z1 / $ray.direction.$z;
-            let t2 = origin_z2 / $ray.direction.$z;
-            let i1 = $ray.origin + $ray.direction * t1 - $aabb.origin;
-            let i2 = $ray.origin + $ray.direction * t2 - $aabb.origin;
-            let in_x1 = (0.0 <= i1.$x) && (i1.$x <= $aabb.size.$x);
-            let in_x2 = (0.0 <= i2.$x) && (i2.$x <= $aabb.size.$x);
-            let in_y1 = (0.0 <= i1.$y) && (i1.$y <= $aabb.size.$y);
-            let in_y2 = (0.0 <= i1.$y) && (i1.$y <= $aabb.size.$y);
-            if (t1 >= 0.0 && in_x1 && in_y1) || (t2 >= 0.0 && in_x2 && in_y2) {
-                return true
-            }
-        }
-    }
+/// Caches AABB intersection distances.
+pub struct MAabbIntersection {
+    // The AABB was intersected by the line defined by the ray if tmax > tmin.
+    // The mask contains the result of this comparison. If tmax is negative, the
+    // AABB lies behind the ray entirely.
+    tmin: Mf32,
+    tmax: Mf32,
+
+    // TODO: Is is worth storing this, or is it faster to re-compute when it is
+    // needed?
+    mask: Mask,
 }
 
 impl Aabb {
@@ -83,63 +73,10 @@ impl Aabb {
         self.origin + self.size * 0.5
     }
 
-    /// Returns whether the ray intersects the bounding box.
-    pub fn intersect(&self, ray: &SRay) -> bool {
-        // My measurements show that this is the fastest method to intersect an
-        // AABB by a factor 2 in the frame time.
-        // TODO: Add benchmarks to verify.
-        // TODO: It seems that marking this method #[inline(always)] makes it
-        // a bit faster too (2.8 fps vs 2.9 fps).
-        self.intersect_flavor_planes(ray)
-
-        // Alternative:
-        // self.intersect_flavor_slab(ray).is_some()
-    }
-
-    /// Intersects the AABB by intersecting six planes and testing the bounds.
-    #[inline(always)]
-    fn intersect_flavor_planes(&self, ray: &SRay) -> bool {
-        intersect_aabb!(self, ray, x, y, z);
-        intersect_aabb!(self, ray, y, z, x);
-        intersect_aabb!(self, ray, z, x, y);
-        false
-    }
-
-    /// Intersects the AABB by clipping the t values inside.
-    #[inline(always)]
-    fn intersect_flavor_slab(&self, ray: &SRay) -> Option<f32> {
-        // TODO: The reciprocal could be precomputed per ray.
-        let xinv = ray.direction.x.recip();
-        let yinv = ray.direction.y.recip();
-        let zinv = ray.direction.z.recip();
-
-        let d1 = self.origin - ray.origin;
-        let d2 = d1 + self.size;
-
-        let txmin = f32::min(d1.x * xinv, d2.x * xinv);
-        let txmax = f32::max(d1.x * xinv, d2.x * xinv);
-
-        let tymin = f32::min(d1.y * yinv, d2.y * yinv);
-        let tymax = f32::max(d1.y * yinv, d2.y * yinv);
-
-        let tzmin = f32::min(d1.z * zinv, d2.z * zinv);
-        let tzmax = f32::max(d1.z * zinv, d2.z * zinv);
-
-        // The minimum t in all dimension is the maximum of the per-axis minima.
-        let tmin = f32::max(txmin, f32::max(tymin, tzmin));
-        let tmax = f32::min(txmax, f32::min(tymax, tzmax));
-
-        if tmax >= tmin && tmax >= 0.0 {
-            Some(tmin)
-        } else {
-            None
-        }
-    }
-
-    // TODO: naming.
-    pub fn intersect_any(&self, ray: &MRay) -> bool {
-        // Note: this function compiles down to ~65 instructions, taking up ~168
-        // bytes of instruction cache; 3 cache lines.
+    pub fn intersect(&self, ray: &MRay) -> MAabbIntersection {
+        // Note: this method, in combination with `MAabbIntersection::any()`
+        // compiles down to ~65 instructions, taking up ~168 bytes of
+        // instruction cache; 3 cache lines.
 
         // TODO: Could precompute the reciprocal. Or is the compiler smart
         // enough to hoist and inline anyway? It looks like this is the case.
@@ -166,8 +103,31 @@ impl Aabb {
         let tmin = txmin.max(tymin.max(tzmin));
         let tmax = txmax.min(tymax.min(tzmax));
 
-        let mask = tmax.geq(tmin);
-        tmax.any_positive_masked(mask)
+        MAabbIntersection {
+            tmin: tmin,
+            tmax: tmax,
+            mask: tmax.geq(tmin),
+        }
+    }
+}
+
+impl MAabbIntersection {
+    /// Returns whether any of the rays intersected the AABB.
+    pub fn any(&self) -> bool {
+        // If there was an intersection in front of the ray, then tmax will
+        // definitely be positive. The mask is only set for the rays that
+        // actually intersected the bounding box.
+        self.tmax.any_positive_masked(self.mask)
+    }
+
+    /// Returns whether for all rays that intersect the AABB, the given distance
+    /// is smaller than the distance to the AABB.
+    pub fn is_further_away_than(&self, distance: Mf32) -> bool {
+        // If distance < self.min (when false should be returned for the ray),
+        // the comparison results in positive 0.0. If distance < self.min for
+        // any of the values for which the mask is set, then for that ray the
+        // AABB is not further away.
+        distance.geq(self.tmin).any_positive_masked(self.mask)
     }
 }
 
@@ -198,98 +158,63 @@ fn intersect_aabb() {
         origin: SVector3::zero(),
         direction: SVector3::new(2.0, 3.0, 5.0).normalized(),
     };
-    assert!(aabb.intersect(&r1));
-    assert!(!aabb.intersect(&-r1));
+    let mr1 = MRay::broadcast(&r1);
+    assert!(aabb.intersect(&mr1).any());
+    assert!(!aabb.intersect(&-mr1).any());
 
     // Intersects forwards but not backwards.
     let r2 = SRay {
         origin: SVector3::zero(),
         direction: SVector3::new(1.0, 4.0, 5.0).normalized(),
     };
-    assert!(aabb.intersect(&r2));
-    assert!(!aabb.intersect(&-r2));
+    let mr2 = MRay::broadcast(&r2);
+    assert!(aabb.intersect(&mr2).any());
+    assert!(!aabb.intersect(&-mr2).any());
 
     // Intersects neither forwards nor backwards.
     let r3 = SRay {
         origin: SVector3::zero(),
         direction: SVector3::new(2.0, 3.0, 0.0).normalized(),
     };
-    assert!(!aabb.intersect(&r3));
-    assert!(!aabb.intersect(&-r3));
+    let mr3 = MRay::broadcast(&r3);
+    assert!(!aabb.intersect(&mr3).any());
+    assert!(!aabb.intersect(&-mr3).any());
 
     // Intersects both forwards and backwards (origin is inside the aabb).
     let r4 = SRay {
         origin: SVector3::new(0.2, 1.2, 2.2),
         direction: SVector3::new(1.0, 1.0, 0.0).normalized(),
     };
-    assert!(aabb.intersect(&r4));
-    assert!(aabb.intersect(&-r4));
+    let mr4 = MRay::broadcast(&r4);
+    assert!(aabb.intersect(&mr4).any());
+    assert!(aabb.intersect(&-mr4).any());
 
     // Intersects both forwards and backwards (origin is inside the aabb).
     let r5 = SRay {
-        origin: SVector3::new(0.0, 2.0, 3.5),
+        origin: SVector3::new(0.01, 2.0, 3.5),
         direction: SVector3::new(0.0, 0.0, 1.0).normalized(),
     };
-    assert!(aabb.intersect(&r5));
-    assert!(aabb.intersect(&-r5));
+    let mr5 = MRay::broadcast(&r5);
+    assert!(aabb.intersect(&mr5).any());
+    assert!(aabb.intersect(&-mr5).any());
 }
 
 #[bench]
-fn bench_intersect_flavor_planes_p100_s(b: &mut test::Bencher) {
-    let (aabb, rays) = bench::aabb_with_srays(4096, 4096);
-    let mut rays_it = rays.iter().cycle();
-    b.iter(|| {
-        let isect = aabb.intersect_flavor_planes(rays_it.next().unwrap());
-        test::black_box(isect);
-    });
-}
-
-#[bench]
-fn bench_intersect_flavor_planes_p50_s(b: &mut test::Bencher) {
-    let (aabb, rays) = bench::aabb_with_srays(4096, 2048);
-    let mut rays_it = rays.iter().cycle();
-    b.iter(|| {
-        let isect = aabb.intersect_flavor_planes(rays_it.next().unwrap());
-        test::black_box(isect);
-    });
-}
-
-#[bench]
-fn bench_intersect_flavor_slab_p100_s(b: &mut test::Bencher) {
-    let (aabb, rays) = bench::aabb_with_srays(4096, 4096);
-    let mut rays_it = rays.iter().cycle();
-    b.iter(|| {
-        let isect = aabb.intersect_flavor_slab(rays_it.next().unwrap());
-        test::black_box(isect);
-    });
-}
-
-#[bench]
-fn bench_intersect_flavor_slab_p50_s(b: &mut test::Bencher) {
-    let (aabb, rays) = bench::aabb_with_srays(4096, 2048);
-    let mut rays_it = rays.iter().cycle();
-    b.iter(|| {
-        let isect = aabb.intersect_flavor_slab(rays_it.next().unwrap());
-        test::black_box(isect);
-    });
-}
-
-#[bench]
-fn bench_intersect_flavor_slab_p100_m(b: &mut test::Bencher) {
+fn bench_intersect_p100(b: &mut test::Bencher) {
     let (aabb, rays) = bench::aabb_with_mrays(4096, 4096);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
-        let isect = aabb.intersect_any(rays_it.next().unwrap());
-        test::black_box(isect);
+        let isect = aabb.intersect(rays_it.next().unwrap());
+        test::black_box(isect.any());
     });
 }
 
 #[bench]
-fn bench_intersect_flavor_slab_p50_m(b: &mut test::Bencher) {
+fn bench_intersect_p50(b: &mut test::Bencher) {
     let (aabb, rays) = bench::aabb_with_mrays(4096, 2048);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
-        let isect = aabb.intersect_any(rays_it.next().unwrap());
-        test::black_box(isect);
+        let isect = aabb.intersect(rays_it.next().unwrap());
+        test::black_box(isect.any());
     });
 }

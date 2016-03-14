@@ -43,6 +43,13 @@ impl SRay {
 }
 
 impl MRay {
+    pub fn broadcast(ray: &SRay) -> MRay {
+        MRay {
+            origin: MVector3::broadcast(ray.origin),
+            direction: MVector3::broadcast(ray.direction),
+        }
+    }
+
     /// Builds an mray by applying the function to the numbers 0..7.
     ///
     /// Note: this is essentially a transpose, avoid in hot code.
@@ -71,13 +78,13 @@ impl MIntersection {
     }
 }
 
-impl Neg for SRay {
-    type Output = SRay;
+impl Neg for MRay {
+    type Output = MRay;
 
-    fn neg(self) -> SRay {
-        SRay {
+    fn neg(self) -> MRay {
+        MRay {
             origin: self.origin,
-            direction: -self.direction,
+            direction: MVector3::zero() - self.direction,
         }
     }
 }

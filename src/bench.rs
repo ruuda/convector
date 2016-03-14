@@ -111,7 +111,8 @@ fn aabb_with_srays_respects_probability() {
     let (aabb, rays) = aabb_with_srays(4096, 2048);
     let mut n = 0;
     for ray in &rays {
-        if aabb.intersect(ray) {
+        let mray = MRay::broadcast(ray);
+        if aabb.intersect(&mray).any() {
             n += 1;
         }
     }

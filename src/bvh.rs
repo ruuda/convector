@@ -118,16 +118,26 @@ impl Bvh {
         // TODO: Get rid of this heap allocation in the hot path.
         let mut nodes = Vec::new();
 
-        if self.root.aabb.intersect_any(ray) {
-            nodes.push(&self.root);
+        let root_isect = self.root.aabb.intersect(ray);
+        if root_isect.any() {
+            nodes.push((root_isect, &self.root));
         }
 
-        // TODO: Store distance and early out.
-        while let Some(node) = nodes.pop() {
+        while let Some((aabb_isect, node)) = nodes.pop() {
+            // If the AABB is further away than the current nearest
+            // intersection, then nothing inside the node can yield
+            // a closer intersection, so we can skip the node.
+            if aabb_isect.is_further_away_than(isect.distance) {
+                // TODO: Can this actually be a break, if the nodes are sorted
+                // by distance somehow?
+                continue
+            }
+
             if node.geometry.is_empty() {
                 for child in &node.children {
-                    if child.aabb.intersect_any(ray) {
-                        nodes.push(child);
+                    let child_isect = child.aabb.intersect(ray);
+                    if child_isect.any() {
+                        nodes.push((child_isect, child));
                     }
                 }
             } else {
