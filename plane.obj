@@ -1,0 +1,9 @@
+# A simple xy-plane with normal in the positive z-direction.
+# 4 vertices, 2 triangles
+
+v -3.0 -3.0 0.0
+v 3.0 -3.0 0.0
+v 3.0 3.0 0.0
+v -3.0 3.0 0.0
+
+f 1 2 3 4
