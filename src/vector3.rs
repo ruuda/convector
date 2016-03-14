@@ -215,6 +215,11 @@ impl MVector3 {
         self.dot(self)
     }
 
+    /// Returns ||self||.
+    pub fn norm(self) -> Mf32 {
+        self.norm_squared().sqrt()
+    }
+
     /// Returns 1 / ||self||.
     pub fn rnorm(self) -> Mf32 {
         self.norm_squared().rsqrt()

@@ -1,6 +1,6 @@
 use bvh::Bvh;
 use ray::{MIntersection, MRay};
-use simd::Mf32;
+use simd::{Mask, Mf32};
 use std::f32::consts::PI;
 use vector3::{MVector3, SVector3};
 use wavefront::Mesh;
@@ -59,6 +59,9 @@ impl Scene {
         }
     }
 
+    /// Returns the interections with the shortest distance along the ray.
+    ///
+    /// Intersects the sky if no other geometry was intersected.
     pub fn intersect_nearest(&self, ray: &MRay) -> MIntersection {
         let huge_distance = Mf32::broadcast(1.0e5);
         let far_away = MIntersection {
@@ -68,5 +71,13 @@ impl Scene {
             // TODO: Set sky/far away material.
         };
         self.bvh.intersect_nearest(ray, far_away)
+    }
+
+    /// Returns whether there is any geometry along the ray.
+    ///
+    /// This is intended for occlusion testing. The exact location of the
+    /// intersection is not computed.
+    pub fn intersect_any(&self, ray: &MRay, max_dist: Mf32) -> Mask {
+        self.bvh.intersect_any(ray, max_dist)
     }
 }

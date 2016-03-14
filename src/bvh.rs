@@ -3,6 +3,7 @@
 use aabb::Aabb;
 use geometry::Triangle;
 use ray::{MIntersection, MRay};
+use simd::{Mask, Mf32};
 use std::cmp::PartialOrd;
 use vector3::{Axis, SVector3};
 use wavefront::Mesh;
@@ -131,5 +132,16 @@ impl Bvh {
         }
 
         isect
+    }
+
+    pub fn intersect_any(&self, ray: &MRay, max_dist: Mf32) -> Mask {
+        let isect = MIntersection {
+            position: ray.direction.mul_add(max_dist, ray.origin),
+            normal: ray.direction,
+            distance: max_dist,
+            // TODO: Set sky/far away material.
+        };
+        let isect = self.intersect_nearest(ray, isect);
+        max_dist.geq(isect.distance)
     }
 }

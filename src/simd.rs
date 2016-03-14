@@ -22,11 +22,16 @@ pub type Mask = Mf32;
 
 impl Mf32 {
     pub fn zero() -> Mf32 {
-        Mf32(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        Mf32::broadcast(0.0)
     }
 
     pub fn one() -> Mf32 {
-        Mf32(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+        Mf32::broadcast(1.0)
+    }
+
+    /// A small value that can be used tolerate numerical imprecision.
+    pub fn epsilon() -> Mf32 {
+        Mf32::broadcast(1.0e-5)
     }
 
     /// Builds an mf32 by applying the function to the numbers 0..7.
@@ -36,8 +41,6 @@ impl Mf32 {
 
     #[inline(always)]
     pub fn broadcast(x: f32) -> Mf32 {
-        // TODO: Investigate whether an intrinsic might be faster.
-        // unsafe { x86_mm256_broadcast_ss(&x) }
         Mf32(x, x, x, x, x, x, x, x)
     }
 
@@ -72,6 +75,11 @@ impl Mf32 {
     #[inline(always)]
     pub fn rsqrt(self) -> Mf32 {
         unsafe { x86_mm256_rsqrt_ps(self) }
+    }
+
+    #[inline(always)]
+    pub fn sqrt(self) -> Mf32 {
+        unsafe { x86_mm256_sqrt_ps(self) }
     }
 
     #[inline(always)]
@@ -278,6 +286,7 @@ extern "platform-intrinsic" {
     fn x86_mm256_min_ps(x: Mf32, y: Mf32) -> Mf32;
     fn x86_mm256_rcp_ps(x: Mf32) -> Mf32;
     fn x86_mm256_rsqrt_ps(x: Mf32) -> Mf32;
+    fn x86_mm256_sqrt_ps(x: Mf32) -> Mf32;
     fn x86_mm256_testc_ps(x: Mf32, y: Mf32) -> i32;
 }
 

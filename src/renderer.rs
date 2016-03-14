@@ -1,5 +1,6 @@
 use alloc::heap;
-use scene::Scene;
+use ray::{MIntersection, MRay};
+use scene::{Light, Scene};
 use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
 use std::mem;
@@ -219,27 +220,57 @@ impl Renderer {
         }
     }
 
+    /// Returns the contribution of the light to the irradiance at the surface
+    /// of intersection.
+    fn get_irradiance(&self, isect: &MIntersection, light: &Light) -> Mf32 {
+        // Set up a shadow ray.
+        let light_pos = MVector3::broadcast(light.position);
+        let to_isect = isect.position - light_pos;
+        let distance_squared = to_isect.norm_squared();
+        let distance = distance_squared.sqrt();
+
+        // The inverse distance can be computed as `distance.recip()` or as
+        // `distance_squared.rsqrt()`. According to the Intel intrinsics guide,
+        // both an rcp and rsqrt have a latency of 7 and a throughput of 1, but
+        // the rsqrt way has one less data dependency.
+        let inv_dist = distance_squared.rsqrt();
+        let direction = to_isect * inv_dist;
+        let ray = MRay {
+            origin: light_pos,
+            direction: direction,
+        };
+
+        // Test for occlusion. Remove an epsilon from the max distance, to make
+        // sure we don't intersect the surface we intend to shade.
+        let mask = self.scene.intersect_any(&ray, distance - Mf32::epsilon());
+
+        // Cosine of angle between surface normal and light direction, or 0 if
+        // the light is behind the surface. The sign of the dot product is
+        // reversed because direction goes from the light to the surface, not
+        // from surface to the light.
+        let cos_alpha = (Mf32::zero() - isect.normal.dot(direction)).max(Mf32::zero());
+
+        // Power falls off as one over distance squared.
+        let falloff = inv_dist * inv_dist;
+
+        // The bitwise and could be computed with falloff, with cos_alpha, or
+        // with their product. Falloff requires the least computation, so by
+        // doing the bitwise and with falloff we get the shortest dependency
+        // chain.
+        cos_alpha * (falloff & mask)
+    }
+
     fn render_pixels(&self, x: Mf32, y: Mf32) -> MVector3 {
         let ray = self.scene.camera.get_ray(x, y);
-        let mut color = MVector3::zero();
         let isect = self.scene.intersect_nearest(&ray);
 
+        let mut color = MVector3::zero();
+
         for ref light in &self.scene.lights {
-            let light_pos = MVector3::broadcast(light.position);
-            let to_light = light_pos - isect.position;
-            // TODO: shadow rays.
-            let dist_cos_alpha = isect.normal.dot(to_light).max(Mf32::zero());
-
-            // Compensate for the norm factor in dist_cos_alpha, then
-            // incorporate the inverse square falloff.
-            let rnorm = to_light.rnorm();
-            let strength = (dist_cos_alpha * rnorm) * (rnorm * rnorm);
-
-            color = MVector3 {
-                x: strength * Mf32::broadcast(10.0),
-                y: Mf32::zero(),
-                z: Mf32::zero(),
-            };
+            // TODO: Do not hard-code color.
+            let light_color = MVector3::new(Mf32::broadcast(20.0), Mf32::zero(), Mf32::zero());
+            let irradiance = self.get_irradiance(&isect, light);
+            color = light_color.mul_add(irradiance, color);
         }
 
         color

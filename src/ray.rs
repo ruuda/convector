@@ -54,9 +54,8 @@ impl MRay {
     }
 
     pub fn advance_epsilon(&self) -> MRay {
-        let epsilon = Mf32::broadcast(1.0e-5);
         MRay {
-            origin: self.direction.mul_add(epsilon, self.origin),
+            origin: self.direction.mul_add(Mf32::epsilon(), self.origin),
             direction: self.direction,
         }
     }
