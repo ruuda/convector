@@ -85,6 +85,8 @@ impl Aabb {
         let zinv = ray.direction.z.recip();
 
         let d1 = MVector3::broadcast(self.origin) - ray.origin;
+        // TODO: Change the representation of Aabb to contain d2 directly. This
+        // will shorten the dependency chain.
         let d2 = d1 + MVector3::broadcast(self.size);
 
         let (tx1, tx2) = (d1.x * xinv, d2.x * xinv);

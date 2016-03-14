@@ -115,8 +115,14 @@ impl Bvh {
     }
 
     pub fn intersect_nearest(&self, ray: &MRay, mut isect: MIntersection) -> MIntersection {
-        // TODO: Get rid of this heap allocation in the hot path.
-        let mut nodes = Vec::new();
+        // Keep a stack of nodes that still need to be intersected. This does
+        // involve a heap allocation, but that is not so bad. Using a small
+        // on-stack vector from the smallvec crate (which falls back to heap
+        // allocation if it grows) actually reduced performance by about 5 fps.
+        // If there is an upper bound on the BVH depth, then perhaps manually
+        // rolling an on-stack (memory) stack (data structure) could squeeze out
+        // a few more fps.
+        let mut nodes = Vec::with_capacity(10);
 
         let root_isect = self.root.aabb.intersect(ray);
         if root_isect.any() {
@@ -128,8 +134,6 @@ impl Bvh {
             // intersection, then nothing inside the node can yield
             // a closer intersection, so we can skip the node.
             if aabb_isect.is_further_away_than(isect.distance) {
-                // TODO: Can this actually be a break, if the nodes are sorted
-                // by distance somehow?
                 continue
             }
 
