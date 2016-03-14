@@ -1,6 +1,6 @@
 //! This module implements axis-aligned bounding boxes and related functions.
 
-use ray::{MRay, SRay};
+use ray::MRay;
 use simd::{Mask, Mf32};
 use vector3::{MVector3, SVector3};
 
@@ -148,6 +148,8 @@ fn aabb_center() {
 
 #[test]
 fn intersect_aabb() {
+    use ray::SRay;
+
     let aabb = Aabb {
         origin: SVector3::new(0.0, 1.0, 2.0),
         size: SVector3::new(1.0, 2.0, 3.0),
