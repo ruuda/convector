@@ -145,9 +145,8 @@ impl Bvh {
             position: ray.direction.mul_add(max_dist, ray.origin),
             normal: ray.direction,
             distance: max_dist,
-            // TODO: Set sky/far away material.
         };
         let isect = self.intersect_nearest(ray, isect);
-        max_dist.geq(isect.distance)
+        isect.distance.geq(max_dist - Mf32::epsilon())
     }
 }
