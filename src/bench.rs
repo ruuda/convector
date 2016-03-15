@@ -76,8 +76,8 @@ pub fn rays_inward(radius: f32, n: usize) -> Vec<SRay> {
 /// Generates a random AABB and n rays of which m intersect the box.
 pub fn aabb_with_srays(n: usize, m: usize) -> (Aabb, Vec<SRay>) {
     let origin = SVector3::new(-1.0, -1.0, -1.0);
-    let size = SVector3::new(2.0, 2.0, 2.0);
-    let aabb = Aabb::new(origin, size);
+    let far = SVector3::new(1.0, 1.0, 1.0);
+    let aabb = Aabb::new(origin, far);
     let up = SVector3::new(0.0, 0.0, 1.0);
     let mut rays = rays_inward(16.0, n);
 

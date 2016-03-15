@@ -11,7 +11,9 @@ use {bench, test};
 #[derive(Clone, Debug)]
 pub struct Aabb {
     pub origin: SVector3,
-    pub size: SVector3,
+
+    /// The origin plus the size.
+    pub far: SVector3,
 }
 
 /// Caches AABB intersection distances.
@@ -28,10 +30,10 @@ pub struct MAabbIntersection {
 }
 
 impl Aabb {
-    pub fn new(origin: SVector3, size: SVector3) -> Aabb {
+    pub fn new(origin: SVector3, far: SVector3) -> Aabb {
         Aabb {
             origin: origin,
-            size: size,
+            far: far,
         }
     }
 
@@ -52,7 +54,7 @@ impl Aabb {
             max.z = f32::max(max.z, point.z);
         }
 
-        Aabb::new(min, max - min)
+        Aabb::new(min, max)
     }
 
     /// Returns the smallest bounding box that contains all input boxes.
@@ -60,17 +62,22 @@ impl Aabb {
         let xmin = f32::min(a.origin.x, b.origin.x);
         let ymin = f32::min(a.origin.y, b.origin.y);
         let zmin = f32::min(a.origin.z, b.origin.z);
-        let xmax = f32::max(a.origin.x + a.size.x, b.origin.x + b.size.x);
-        let ymax = f32::max(a.origin.y + a.size.y, b.origin.y + b.size.y);
-        let zmax = f32::max(a.origin.z + a.size.z, b.origin.z + b.size.z);
+        let xmax = f32::max(a.far.x, b.far.x);
+        let ymax = f32::max(a.far.y, b.far.y);
+        let zmax = f32::max(a.far.z, b.far.z);
         let origin = SVector3::new(xmin, ymin, zmin);
-        let size = SVector3::new(xmax - xmin, ymax - ymin, zmax - zmin);
-        Aabb::new(origin, size)
+        let far = SVector3::new(xmax, ymax, zmax);
+        Aabb::new(origin, far)
     }
 
     /// Returns the center of the bounding box.
     pub fn center(&self) -> SVector3 {
-        self.origin + self.size * 0.5
+        (self.origin + self.far) * 0.5
+    }
+
+    /// Returns the size of the bounding box.
+    pub fn size(&self) -> SVector3 {
+        self.far - self.origin
     }
 
     pub fn intersect(&self, ray: &MRay) -> MAabbIntersection {
@@ -85,9 +92,7 @@ impl Aabb {
         let zinv = ray.direction.z.recip();
 
         let d1 = MVector3::broadcast(self.origin) - ray.origin;
-        // TODO: Change the representation of Aabb to contain d2 directly. This
-        // will shorten the dependency chain.
-        let d2 = d1 + MVector3::broadcast(self.size);
+        let d2 = MVector3::broadcast(self.far) - ray.origin;
 
         let (tx1, tx2) = (d1.x * xinv, d2.x * xinv);
         let txmin = tx1.min(tx2);
@@ -135,16 +140,16 @@ impl MAabbIntersection {
 
 #[test]
 fn aabb_enclose_aabbs() {
-    let a = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(4.0, 5.0, 6.0));
-    let b = Aabb::new(SVector3::new(0.0, 3.0, 2.0), SVector3::new(9.0, 3.0, 7.0));
+    let a = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(5.0, 7.0, 9.0));
+    let b = Aabb::new(SVector3::new(0.0, 3.0, 2.0), SVector3::new(9.0, 6.0, 9.0));
     let ab = Aabb::enclose_aabbs(&a, &b);
     assert_eq!(ab.origin, SVector3::new(0.0, 2.0, 2.0));
-    assert_eq!(ab.size, SVector3::new(9.0, 5.0, 7.0));
+    assert_eq!(ab.far, SVector3::new(9.0, 7.0, 9.0));
 }
 
 #[test]
 fn aabb_center() {
-    let aabb = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(4.0, 5.0, 6.0));
+    let aabb = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(5.0, 7.0, 9.0));
     assert_eq!(aabb.center(), SVector3::new(3.0, 4.5, 6.0));
 }
 
@@ -154,7 +159,7 @@ fn intersect_aabb() {
 
     let aabb = Aabb {
         origin: SVector3::new(0.0, 1.0, 2.0),
-        size: SVector3::new(1.0, 2.0, 3.0),
+        far: SVector3::new(1.0, 3.0, 5.0),
     };
 
     // Intersects forwards but not backwards.

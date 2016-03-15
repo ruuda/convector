@@ -42,16 +42,16 @@ fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
     }
 
     // Split along the axis in which the box is largest.
-    let mut size = centroid_aabb.size.x;
+    let mut size = centroid_aabb.size().x;
     let mut axis = Axis::X;
 
-    if centroid_aabb.size.y > size {
-        size = centroid_aabb.size.y;
+    if centroid_aabb.size().y > size {
+        size = centroid_aabb.size().y;
         axis = Axis::Y;
     }
 
-    if centroid_aabb.size.z > size {
-        size = centroid_aabb.size.z;
+    if centroid_aabb.size().z > size {
+        size = centroid_aabb.size().z;
         axis = Axis::Z;
     }
 
