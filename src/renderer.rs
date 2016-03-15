@@ -273,6 +273,9 @@ impl Renderer {
             color = light_color.mul_add(irradiance, color);
         }
 
+        // TODO: Remove this depth in the blue component debugging thing.
+        color = color + MVector3::new(Mf32::zero(), Mf32::zero(), isect.distance.recip());
+
         color
     }
 }
