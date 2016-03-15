@@ -53,21 +53,16 @@ impl Triangle {
         // direction D is normalized, then t is the distance from the ray origin
         // to the plane. There is no need to normalize the triangle normal at
         // this point, because it appears both in the numerator and denominator.
-        let normal_denorm = e2.cross(e1);
+        let normal_denorm = e1.cross(e2);
         let from_ray = v0 - ray.origin;
         let denom = ray.direction.dot(normal_denorm).recip();
         let t = from_ray.dot(normal_denorm) * denom;
-
-        // Compute the position of the intersection relative to the triangle
-        // origin.
-        let isect_pos = ray.direction.mul_add(t, ray.origin);
-        let isect_rel = isect_pos - v0;
 
         // Express the location of the intersection in terms of the basis for
         // the plane given by (-e1, e2). The computation of u and v is based on
         // the method in this paper (there they are called alpha and beta):
         // https://www.cs.utah.edu/~aek/research/triangle.pdf
-        let cross = from_ray.cross(ray.direction);
+        let cross = ray.direction.cross(from_ray);
         let u = cross.dot(e2) * denom;
         let v = cross.dot(e1) * denom;
 
@@ -92,7 +87,7 @@ impl Triangle {
         let mask_closer = t.geq(isect.distance);
 
         let new_isect = MIntersection {
-            position: isect_pos,
+            position: ray.direction.mul_add(t, ray.origin),
             normal: normal_denorm.normalized(),
             distance: t
         };
