@@ -51,10 +51,11 @@ impl Triangle {
         // with the plane, solve the equation (O + tD) . normal = c, where O
         // is the origin of the ray and D the direction. Note: if the ray
         // direction D is normalized, then t is the distance from the ray origin
-        // to the plane.
-        let normal = e1.cross(e2).normalized(); // TODO: Can precompute at the cost of cache pressure. Is it worth it?
+        // to the plane. There is no need to normalize the triangle normal at
+        // this point, because it appears both in the numerator and denominator.
+        let normal_denorm = e1.cross(e2);
         let to_origin = v0 - ray.origin;
-        let t = to_origin.dot(normal) / ray.direction.dot(normal);
+        let t = to_origin.dot(normal_denorm) / ray.direction.dot(normal_denorm);
 
         // Compute the position of the intersection relative to the triangle
         // origin.
@@ -92,7 +93,7 @@ impl Triangle {
 
         let new_isect = MIntersection {
             position: isect_pos,
-            normal: normal,
+            normal: normal_denorm.normalized(),
             distance: t
         };
 
