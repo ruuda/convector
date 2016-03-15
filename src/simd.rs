@@ -106,22 +106,26 @@ impl Mf32 {
         unsafe { x86_mm256_cmp_ps(self, other, 21) }
     }
 
-    /// Returns whether any of the values not masked out is positive.
+    /// Returns whether all of the values not masked out are negative.
+    ///
+    /// Note that a value is negative if its sign bit is set.
     #[inline(always)]
-    pub fn any_positive_masked(self, mask: Mask) -> bool {
+    pub fn all_sign_bits_negative_masked(self, mask: Mask) -> bool {
         use std::mem::transmute;
         // The testc intrinsic computes `(not self) and mask`, and then returns
         // 1 if all resulting sign bits are 0, or 0 otherwise. If a value is
-        // positive, the sign bit will be 0, so `not self` will have sign bit 1.
+        // negative, the sign bit will be 1, so `not self` will have sign bit 0.
         // Mask out the values that we are not interested in, then testc returns
-        // 1 if there were no positive values, so negate the result. Also, we
-        // know that the returned value is either 0 or 1, so there is no need
-        // for a comparison, just interpret the bytes as a boolean.
-        let no_positive: bool = unsafe {
-            transmute(x86_mm256_testc_ps(self, mask) as i8)
-        };
+        // 1 if there were no positive values. Also, we know that the returned
+        // value is either 0 or 1, so there is no need for a comparison, just
+        // interpret the least significant byte of the result as a boolean.
+        unsafe { transmute(x86_mm256_testc_ps(self, mask) as i8) }
+    }
 
-        !no_positive
+    /// Returns whether any of the values not masked out is positive.
+    #[inline(always)]
+    pub fn any_sign_bit_positive_masked(self, mask: Mask) -> bool {
+        !self.all_sign_bits_negative_masked(mask)
     }
 
     /// Picks the component of self if the sign bit in the mask is 0,
@@ -324,17 +328,17 @@ fn mf32_broadcast_ps() {
 }
 
 #[test]
-fn mf32_any_positive_masked() {
+fn mf32_any_sign_bit_positive_masked() {
     use std::mem::transmute;
     let a = Mf32(-2.0, -1.0, -0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
     let f1: f32 = unsafe { transmute(0xffffffff_u32) };
     let f0: f32 = 0.0;
 
-    assert!(a.any_positive_masked(Mf32(f1, f0, f1, f1, f1, f0, f0, f0)));
-    assert!(a.any_positive_masked(Mf32(f1, f0, f1, f1, f0, f0, f0, f0)));
-    assert!(!a.any_positive_masked(Mf32(f1, f0, f1, f0, f0, f0, f0, f0)));
-    assert!(!a.any_positive_masked(Mf32(f1, f1, f0, f0, f0, f0, f0, f0)));
-    assert!(a.any_positive_masked(Mf32(f1, f0, f0, f1, f0, f0, f0, f0)));
+    assert!(a.any_sign_bit_positive_masked(Mf32(f1, f0, f1, f1, f1, f0, f0, f0)));
+    assert!(a.any_sign_bit_positive_masked(Mf32(f1, f0, f1, f1, f0, f0, f0, f0)));
+    assert!(!a.any_sign_bit_positive_masked(Mf32(f1, f0, f1, f0, f0, f0, f0, f0)));
+    assert!(!a.any_sign_bit_positive_masked(Mf32(f1, f1, f0, f0, f0, f0, f0, f0)));
+    assert!(a.any_sign_bit_positive_masked(Mf32(f1, f0, f0, f1, f0, f0, f0, f0)));
 }
 
 #[bench]

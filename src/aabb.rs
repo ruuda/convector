@@ -119,17 +119,17 @@ impl MAabbIntersection {
         // If there was an intersection in front of the ray, then tmax will
         // definitely be positive. The mask is only set for the rays that
         // actually intersected the bounding box.
-        self.tmax.any_positive_masked(self.mask)
+        self.tmax.any_sign_bit_positive_masked(self.mask)
     }
 
     /// Returns whether for all rays that intersect the AABB, the given distance
     /// is smaller than the distance to the AABB.
     pub fn is_further_away_than(&self, distance: Mf32) -> bool {
-        // If distance < self.min (when false should be returned for the ray),
+        // If distance < self.tmin (when false should be returned for the ray),
         // the comparison results in positive 0.0. If distance < self.min for
         // any of the values for which the mask is set, then for that ray the
-        // AABB is not further away.
-        distance.geq(self.tmin).any_positive_masked(self.mask)
+        // AABB is not further away. Hence all sign bits must be negative.
+        self.tmin.geq(distance).all_sign_bits_negative_masked(self.mask)
     }
 }
 
