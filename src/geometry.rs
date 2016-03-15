@@ -42,8 +42,8 @@ impl Triangle {
         // converse is true.
         // TODO: Add a proper benchmark.
         let v0 = MVector3::broadcast(self.v0);
-        let e1 = MVector3::broadcast(self.v1 - self.v0);
-        let e2 = MVector3::broadcast(self.v2 - self.v0);
+        let e1 = MVector3::broadcast(self.v0 - self.v2);
+        let e2 = MVector3::broadcast(self.v1 - self.v0);
 
         // All points P on the plane in which the triangle lies satisfy the
         // equation (P . normal) = c for a unique constant c determined by the
@@ -53,9 +53,10 @@ impl Triangle {
         // direction D is normalized, then t is the distance from the ray origin
         // to the plane. There is no need to normalize the triangle normal at
         // this point, because it appears both in the numerator and denominator.
-        let normal_denorm = e1.cross(e2);
-        let to_origin = v0 - ray.origin;
-        let t = to_origin.dot(normal_denorm) / ray.direction.dot(normal_denorm);
+        let normal_denorm = e2.cross(e1);
+        let from_ray = v0 - ray.origin;
+        let denom = ray.direction.dot(normal_denorm).recip();
+        let t = from_ray.dot(normal_denorm) * denom;
 
         // Compute the position of the intersection relative to the triangle
         // origin.
@@ -63,13 +64,12 @@ impl Triangle {
         let isect_rel = isect_pos - v0;
 
         // Express the location of the intersection in terms of the basis for
-        // the plane given by (e1, e2).
-        let d = e1.dot(e2);
-        let e1_nsq = e1.norm_squared();
-        let e2_nsq = e2.norm_squared();
-        let factor = d.mul_sub(d, e1_nsq * e2_nsq).recip();
-        let u = d.mul_sub(isect_rel.dot(e2), e2_nsq * isect_rel.dot(e1)) * factor;
-        let v = d.mul_sub(isect_rel.dot(e1), e1_nsq * isect_rel.dot(e2)) * factor;
+        // the plane given by (-e1, e2). The computation of u and v is based on
+        // the method in this paper (there they are called alpha and beta):
+        // https://www.cs.utah.edu/~aek/research/triangle.pdf
+        let cross = from_ray.cross(ray.direction);
+        let u = cross.dot(e2) * denom;
+        let v = cross.dot(e1) * denom;
 
         // In this coordinate system, the triangle is the set of points such
         // { (u, v) in plane | u >= 0 and v >= 0 and u + v <= 1 }
@@ -134,9 +134,15 @@ fn intersect_triangle() {
 
     let isect = triangle.intersect_full(&ray, far);
 
+    println!("distance is {}", isect.distance.0);
     assert!(isect.distance.0 < 1.01);
     assert!(isect.distance.0 > 0.99);
     assert_eq!(isect.distance.1, 1e5);
+
+    let up = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
+    let should_be_origin = isect.position - up;
+    let should_be_zero = should_be_origin.norm_squared();
+    assert!(should_be_zero.0 < 0.01);
 }
 
 #[bench]
