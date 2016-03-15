@@ -6,7 +6,7 @@
 //! intersection code to be inlined.
 
 use aabb::Aabb;
-use ray::{MIntersection, MRay, SIntersection, SRay};
+use ray::{MIntersection, MRay};
 use simd::Mf32;
 use vector3::{MVector3, SVector3};
 
@@ -30,56 +30,6 @@ impl Triangle {
 
     pub fn barycenter(&self) -> SVector3 {
         (self.v1 + self.v2 + self.v3) * 3.0f32.recip()
-    }
-
-    pub fn intersect(&self, ray: &SRay) -> Option<SIntersection> {
-        let e1 = self.v2 - self.v1;
-        let e2 = self.v3 - self.v1;
-
-        // All points P on the plane in which the triangle lies satisfy the
-        // equation (P . normal) = c for a unique constant c determined by the
-        // plane. (The dot denotes the dot product here.) To intersect the ray
-        // with the plane, solve the equation (O + tD) . normal = c, where O
-        // is the origin of the ray and D the direction. Note: if the ray
-        // direction D is normalized, then t is the distance from the ray origin
-        // to the plane.
-        let normal = e1.cross(e2).normalized();
-        let t = (self.v1.dot(normal) - ray.origin.dot(normal)) /
-            ray.direction.dot(normal);
-
-        // Do not intersect backwards. Also, if t = 0.0 then the ray originated
-        // from this triangle, so in that case we don't want to intersect it.
-        if t <= 0.0 {
-            return None
-        }
-
-        // Compute the position of the intersection relative to the triangle
-        // origin.
-        let isect_pos = ray.origin + ray.direction * t;
-        let isect_rel = isect_pos - self.v1;
-
-        // Express the location of the intersection in terms of the basis for
-        // the plane given by (e1, e2).
-        let d = e1.dot(e2);
-        let e1_nsq = e1.norm_squared();
-        let e2_nsq = e2.norm_squared();
-        let denom = d * d - e1_nsq * e2_nsq;
-        let u = (d * isect_rel.dot(e2) - e2_nsq * isect_rel.dot(e1)) / denom;
-        let v = (d * isect_rel.dot(e1) - e1_nsq * isect_rel.dot(e2)) / denom;
-
-        // In this coordinate system, the triangle is the set of points such
-        // { (u, v) in plane | u >= 0 and v >= 0 and u + v <= 1 }
-
-        if u < 0.0 || v < 0.0 || u + v > 1.0 {
-            None
-        } else {
-            let isect = SIntersection {
-                position: isect_pos,
-                normal: normal,
-                distance: t,
-            };
-            Some(isect)
-        }
     }
 
     pub fn intersect_full(&self, ray: &MRay, isect: MIntersection) -> MIntersection {
@@ -147,29 +97,9 @@ impl Triangle {
 }
 
 #[test]
-fn intersect_triangle_s() {
-    let triangle = Triangle::new(
-        SVector3::new(0.0, 1.0, 1.0),
-        SVector3::new(-1.0, -1.0, 1.0),
-        SVector3::new(1.0, -1.0, 1.0)
-    );
+fn intersect_triangle() {
+    use ray::SRay;
 
-    let r1 = SRay {
-        origin: SVector3::zero(),
-        direction: SVector3::new(0.0, 0.0, 1.0),
-    };
-
-    let r2 = SRay {
-        origin: SVector3::new(-1.0, 0.0, 0.0),
-        direction: SVector3::new(0.0, 0.0, 1.0),
-    };
-
-    assert!(triangle.intersect(&r1).is_some());
-    assert!(triangle.intersect(&r2).is_none());
-}
-
-#[test]
-fn intersect_triangle_m() {
     let triangle = Triangle::new(
         SVector3::new(0.0, 1.0, 1.0),
         SVector3::new(-1.0, -1.0, 1.0),

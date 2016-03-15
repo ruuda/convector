@@ -16,20 +16,14 @@ pub struct MRay {
     pub direction: MVector3,
 }
 
-pub struct SIntersection {
+pub struct MIntersection {
     /// The position at which the ray intersected the surface.
-    pub position: SVector3,
+    pub position: MVector3,
 
     /// The surface normal at the intersection point.
-    pub normal: SVector3,
+    pub normal: MVector3,
 
     /// This distance between the ray origin and the position.
-    pub distance: f32,
-}
-
-pub struct MIntersection {
-    pub position: MVector3,
-    pub normal: MVector3,
     pub distance: Mf32,
 }
 

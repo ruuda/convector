@@ -88,10 +88,6 @@ impl SVector3 {
         self.dot(self)
     }
 
-    pub fn norm(self) -> f32 {
-        self.norm_squared().sqrt()
-    }
-
     pub fn normalized(self) -> SVector3 {
         let norm_squared = self.norm_squared();
         if norm_squared == 0.0 {
@@ -213,11 +209,6 @@ impl MVector3 {
     /// Returns ||self|| * ||self||.
     pub fn norm_squared(self) -> Mf32 {
         self.dot(self)
-    }
-
-    /// Returns ||self||.
-    pub fn norm(self) -> Mf32 {
-        self.norm_squared().sqrt()
     }
 
     /// Returns 1 / ||self||.

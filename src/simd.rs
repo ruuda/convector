@@ -44,11 +44,6 @@ impl Mf32 {
         Mf32(x, x, x, x, x, x, x, x)
     }
 
-    pub fn as_slice(&self) -> &[f32; 8] {
-        use std::mem;
-        unsafe { mem::transmute(self) }
-    }
-
     #[inline(always)]
     pub fn mul_add(self, factor: Mf32, term: Mf32) -> Mf32 {
         unsafe { x86_mm256_fmadd_ps(self, factor, term) }
@@ -145,11 +140,6 @@ impl Mf32 {
 impl Mi32 {
     pub fn zero() -> Mi32 {
         Mi32(0, 0, 0, 0, 0, 0, 0, 0)
-    }
-
-    /// Builds an mi32 by applying the function to the numbers 0..7.
-    pub fn generate<F>(mut f: F) -> Mi32 where F: FnMut(usize) -> i32 {
-        Mi32(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7))
     }
 
     /// Applies the function componentwise.
