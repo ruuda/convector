@@ -12,31 +12,35 @@ use vector3::{MVector3, SVector3};
 
 #[derive(Clone, Debug)]
 pub struct Triangle {
+    pub v0: SVector3,
     pub v1: SVector3,
     pub v2: SVector3,
-    pub v3: SVector3,
     pub aabb: Aabb,
 }
 
 impl Triangle {
-    pub fn new(v1: SVector3, v2: SVector3, v3: SVector3) -> Triangle {
+    pub fn new(v0: SVector3, v1: SVector3, v2: SVector3) -> Triangle {
         Triangle {
+            v0: v0,
             v1: v1,
             v2: v2,
-            v3: v3,
-            aabb: Aabb::enclose_points(&[v1, v2, v3]),
+            aabb: Aabb::enclose_points(&[v0, v1, v2]),
         }
     }
 
     pub fn barycenter(&self) -> SVector3 {
-        (self.v1 + self.v2 + self.v3) * 3.0f32.recip()
+        (self.v0 + self.v1 + self.v2) * 3.0f32.recip()
     }
 
     pub fn intersect_full(&self, ray: &MRay, isect: MIntersection) -> MIntersection {
-        // TODO: Switch to edge representation so this is computed already.
-        let e1 = MVector3::broadcast(self.v2 - self.v1);
-        let e2 = MVector3::broadcast(self.v3 - self.v1);
-        let v1 = MVector3::broadcast(self.v1);
+        // One would expect that if the triangle were represented as
+        // (v0, e1, e2) instead of (v0, v1, v2), that would be faster because we
+        // could avoid the subtractions here. My measurements show that the
+        // converse is true.
+        // TODO: Add a proper benchmark.
+        let v0 = MVector3::broadcast(self.v0);
+        let e1 = MVector3::broadcast(self.v1 - self.v0);
+        let e2 = MVector3::broadcast(self.v2 - self.v0);
 
         // All points P on the plane in which the triangle lies satisfy the
         // equation (P . normal) = c for a unique constant c determined by the
@@ -46,13 +50,13 @@ impl Triangle {
         // direction D is normalized, then t is the distance from the ray origin
         // to the plane.
         let normal = e1.cross(e2).normalized(); // TODO: Can precompute at the cost of cache pressure. Is it worth it?
-        let t = (v1.dot(normal) - ray.origin.dot(normal)) /
+        let t = (v0.dot(normal) - ray.origin.dot(normal)) /
             ray.direction.dot(normal);
 
         // Compute the position of the intersection relative to the triangle
         // origin.
         let isect_pos = ray.direction.mul_add(t, ray.origin);
-        let isect_rel = isect_pos - v1;
+        let isect_rel = isect_pos - v0;
 
         // Express the location of the intersection in terms of the basis for
         // the plane given by (e1, e2).
