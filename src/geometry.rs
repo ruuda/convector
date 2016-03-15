@@ -53,8 +53,8 @@ impl Triangle {
         // direction D is normalized, then t is the distance from the ray origin
         // to the plane.
         let normal = e1.cross(e2).normalized(); // TODO: Can precompute at the cost of cache pressure. Is it worth it?
-        let t = (v0.dot(normal) - ray.origin.dot(normal)) /
-            ray.direction.dot(normal);
+        let to_origin = v0 - ray.origin;
+        let t = to_origin.dot(normal) / ray.direction.dot(normal);
 
         // Compute the position of the intersection relative to the triangle
         // origin.
