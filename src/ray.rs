@@ -37,6 +37,13 @@ impl SRay {
 }
 
 impl MRay {
+    pub fn new(origin: MVector3, direction: MVector3) -> MRay {
+        MRay {
+            origin: origin,
+            direction: direction,
+        }
+    }
+
     pub fn broadcast(ray: &SRay) -> MRay {
         MRay {
             origin: MVector3::broadcast(ray.origin),

@@ -10,6 +10,9 @@ use ray::{MIntersection, MRay};
 use simd::Mf32;
 use vector3::{MVector3, SVector3};
 
+#[cfg(test)]
+use {bench, test};
+
 #[derive(Clone, Debug)]
 pub struct Triangle {
     pub v0: SVector3,
@@ -133,4 +136,45 @@ fn intersect_triangle() {
     assert!(isect.distance.0 < 1.01);
     assert!(isect.distance.0 > 0.99);
     assert_eq!(isect.distance.1, 1e5);
+}
+
+#[bench]
+fn bench_intersect_full_8_mrays_per_tri(b: &mut test::Bencher) {
+    let rays = bench::mrays_inward(4096 / 8);
+    let tris = bench::triangles(4096);
+    let mut rays_it = rays.iter().cycle();
+    let mut tris_it = tris.iter().cycle();
+    b.iter(|| {
+        let triangle = tris_it.next().unwrap();
+        for _ in 0..8 {
+            let ray = rays_it.next().unwrap();
+            let isect = MIntersection {
+                position: MVector3::zero(),
+                normal: MVector3::zero(),
+                distance: Mf32::broadcast(1e5),
+            };
+            test::black_box(triangle.intersect_full(&ray, isect));
+        }
+    });
+}
+
+#[bench]
+fn bench_intersect_full_8_tris_per_mray(b: &mut test::Bencher) {
+    let rays = bench::mrays_inward(4096 / 8);
+    let tris = bench::triangles(4096);
+    let mut rays_it = rays.iter().cycle();
+    let mut tris_it = tris.iter().cycle();
+    b.iter(|| {
+        let ray = rays_it.next().unwrap();
+        let mut isect = MIntersection {
+            position: MVector3::zero(),
+            normal: MVector3::zero(),
+            distance: Mf32::broadcast(1e5),
+        };
+        for _ in 0..8 {
+            let triangle = tris_it.next().unwrap();
+            isect = triangle.intersect_full(&ray, isect);
+        }
+        test::black_box(isect);
+    });
 }

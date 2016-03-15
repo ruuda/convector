@@ -1,6 +1,7 @@
 //! This module generates test data for the benchmarks.
 
 use aabb::Aabb;
+use geometry::Triangle;
 use rand;
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
@@ -104,6 +105,31 @@ pub fn aabb_with_mrays(n: usize, m: usize) -> (Aabb, Vec<MRay>) {
                      .map(|rs| MRay::generate(|i| rs[i].clone()))
                      .collect();
     (aabb, mrays)
+}
+
+/// Generates n triangles with vertices on the unit sphere.
+pub fn triangles(n: usize) -> Vec<Triangle> {
+    let v0s = points_on_sphere_s(n);
+    let v1s = points_on_sphere_s(n);
+    let v2s = points_on_sphere_s(n);
+    v0s.iter()
+       .zip(v1s.iter().zip(v2s.iter()))
+       .map(|(&v0, (&v1, &v2))| Triangle::new(v0, v1, v2))
+       .collect()
+}
+
+/// Generates n mrays originating from a sphere of radius 10, pointing inward.
+pub fn mrays_inward(n: usize) -> Vec<MRay> {
+    let origins = points_on_sphere_m(n);
+    let dests = points_on_sphere_m(n);
+    origins.iter()
+           .zip(dests.iter())
+           .map(|(&from, &to)| {
+               let origin = from * Mf32::broadcast(10.0);
+               let direction = (to - from).normalized();
+               MRay::new(origin, direction)
+           })
+           .collect()
 }
 
 #[test]
