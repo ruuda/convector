@@ -45,29 +45,28 @@ impl Aabb {
         let mut min = points[0];
         let mut max = points[0];
 
-        for point in points.iter().skip(1) {
-            min.x = f32::min(min.x, point.x);
-            min.y = f32::min(min.y, point.y);
-            min.z = f32::min(min.z, point.z);
-            max.x = f32::max(max.x, point.x);
-            max.y = f32::max(max.y, point.y);
-            max.z = f32::max(max.z, point.z);
+        for &point in points.iter().skip(1) {
+            min = SVector3::min(min, point);
+            max = SVector3::max(max, point);
         }
 
         Aabb::new(min, max)
     }
 
     /// Returns the smallest bounding box that contains all input boxes.
-    pub fn enclose_aabbs(a: &Aabb, b: &Aabb) -> Aabb {
-        let xmin = f32::min(a.origin.x, b.origin.x);
-        let ymin = f32::min(a.origin.y, b.origin.y);
-        let zmin = f32::min(a.origin.z, b.origin.z);
-        let xmax = f32::max(a.far.x, b.far.x);
-        let ymax = f32::max(a.far.y, b.far.y);
-        let zmax = f32::max(a.far.z, b.far.z);
-        let origin = SVector3::new(xmin, ymin, zmin);
-        let far = SVector3::new(xmax, ymax, zmax);
-        Aabb::new(origin, far)
+    pub fn enclose_aabbs<'a, I>(aabbs: I) -> Aabb where I: IntoIterator<Item = &'a Aabb> {
+        let mut it = aabbs.into_iter();
+        let first = it.next().expect("enclosure must enclose at least one AABB");
+
+        let mut min = first.origin;
+        let mut max = first.far;
+
+        while let Some(aabb) = it.next() {
+            min = SVector3::min(min, aabb.origin);
+            max = SVector3::max(max, aabb.far);
+        }
+
+        Aabb::new(min, max)
     }
 
     /// Returns the center of the bounding box.
@@ -142,7 +141,7 @@ impl MAabbIntersection {
 fn aabb_enclose_aabbs() {
     let a = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(5.0, 7.0, 9.0));
     let b = Aabb::new(SVector3::new(0.0, 3.0, 2.0), SVector3::new(9.0, 6.0, 9.0));
-    let ab = Aabb::enclose_aabbs(&a, &b);
+    let ab = Aabb::enclose_aabbs(&[a, b]);
     assert_eq!(ab.origin, SVector3::new(0.0, 2.0, 2.0));
     assert_eq!(ab.far, SVector3::new(9.0, 7.0, 9.0));
 }

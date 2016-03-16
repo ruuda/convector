@@ -1,6 +1,7 @@
 //! Implements vectors in R3.
 
 use simd::{Mask, Mf32};
+use std::f32;
 use std::ops::{Add, Sub, Neg, Mul};
 
 #[cfg(test)]
@@ -111,6 +112,24 @@ impl SVector3 {
             Axis::X => self.x,
             Axis::Y => self.y,
             Axis::Z => self.z,
+        }
+    }
+
+    /// Returns the coordinatewise minimum of the two vectors.
+    pub fn min(self, other: SVector3) -> SVector3 {
+        SVector3 {
+            x: f32::min(self.x, other.x),
+            y: f32::min(self.y, other.y),
+            z: f32::min(self.z, other.z),
+        }
+    }
+
+    /// Returns the coordinatewise maximum of the two vectors.
+    pub fn max(self, other: SVector3) -> SVector3 {
+        SVector3 {
+            x: f32::max(self.x, other.x),
+            y: f32::max(self.y, other.y),
+            z: f32::max(self.z, other.z),
         }
     }
 }

@@ -21,12 +21,8 @@ pub struct Bvh {
 }
 
 fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
-    let mut aabb = Aabb::new(SVector3::zero(), SVector3::zero());
-
     // Compute the bounding box that encloses all triangles.
-    for triangle in triangles.iter() {
-        aabb = Aabb::enclose_aabbs(&aabb, &triangle.aabb);
-    }
+    let aabb = Aabb::enclose_aabbs(triangles.iter().map(|tri| &tri.aabb));
 
     let centroids: Vec<SVector3> = triangles.iter().map(|tri| tri.aabb.center()).collect();
     let centroid_aabb = Aabb::enclose_points(&centroids[..]);
