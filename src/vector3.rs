@@ -21,7 +21,7 @@ pub struct MVector3 {
     pub z: Mf32,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Axis {
     X,
     Y,

@@ -20,6 +20,7 @@ pub struct Bvh {
 }
 
 /// Reference to a triangle used during BVH construction.
+#[derive(Debug)]
 struct TriangleRef {
     aabb: Aabb,
     barycenter: SVector3,
@@ -219,7 +220,7 @@ impl InterimNode {
         }
 
         // Partition the triangles into two child nodes.
-        let pred = |tri: &TriangleRef| tri.barycenter.get_coord(best_split_axis) < best_split_at;
+        let pred = |tri: &TriangleRef| tri.barycenter.get_coord(best_split_axis) <= best_split_at;
         // TODO: remove type annotation.
         let (left_tris, right_tris): (Vec<_>, Vec<_>) = self.triangles.drain(..).partition(pred);
 
@@ -228,8 +229,11 @@ impl InterimNode {
         // cost ... so this should not occur.
         if left_tris.is_empty() || right_tris.is_empty() {
             println!("one of the sides was empty!");
-            println!("no split cost: {}, best split cost: {}, left tris: {}, right tris: {}",
-                     no_split_cost, best_split_cost, left_tris.len(), right_tris.len());
+            println!("no split cost: {}", no_split_cost);
+            println!("best split cost: {}", best_split_cost);
+            println!("split at: {} on {:?} axis", best_split_at, best_split_axis);
+            println!("left tris: {:?}", left_tris);
+            println!("right tris: {:?}", right_tris);
         }
 
         let left = InterimNode::from_triangle_refs(left_tris);
@@ -290,10 +294,12 @@ impl Bvh {
 
         let mut root = InterimNode::from_triangle_refs(trirefs);
 
-        // TODO: Get the values from benchmarks.
+        // The values here are based on benchmarks. You can run `make bench` to
+        // run these benchmarks. By plugging in the results for your rig you
+        // might be able to achieve slightly better performance.
         let heuristic = SurfaceAreaHeuristic {
-            aabb_intersection_cost: 1.0,
-            triangle_intersection_cost: 1.0,
+            aabb_intersection_cost: 40.0,
+            triangle_intersection_cost: 300.0,
         };
 
         // Build the BVH of interim nodes.
