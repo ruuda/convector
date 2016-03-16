@@ -24,6 +24,7 @@ impl Window {
             .with_dimensions(width, height)
             .with_title(From::from(title))
             .with_srgb(Some(true)) // Automatically convert RGB -> sRGB.
+            .with_vsync()
             .build_glium()
             .expect("failed to create gl window");
 
