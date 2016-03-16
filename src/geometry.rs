@@ -58,6 +58,18 @@ impl Triangle {
         let denom = ray.direction.dot(normal_denorm).recip();
         let t = from_ray.dot(normal_denorm) * denom;
 
+        // If the potential intersection is further away than the current
+        // intersection for all of the rays, it is possible to early out. This
+        // cranks up the number of branches from 209M/s to 256M/s and the
+        // misprediction rate from 0.66% to 1.11%. Surprisingly, there is no
+        // significant effect on the framerate. It appears that the early out
+        // wins almost exactly cancel the mispredict penalty on my Skylake i7.
+        // I opt for not poisioning the branch prediction cache here.
+
+        // if (t - isect.distance).all_sign_bits_positive() {
+        //     return isect
+        // }
+
         // Express the location of the intersection in terms of the basis for
         // the plane given by (-e1, e2). The computation of u and v is based on
         // the method in this paper (there they are called alpha and beta):

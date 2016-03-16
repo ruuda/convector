@@ -101,6 +101,14 @@ impl Mf32 {
         unsafe { x86_mm256_cmp_ps(self, other, 21) }
     }
 
+    /// Returns whether any of the values is negative.
+    #[inline(always)]
+    pub fn all_sign_bits_positive(self) -> bool {
+        // The mask contains the sign bits packed into an i32. If the mask is
+        // zero, then all sign bits were 0, so all numbers were positive.
+        unsafe { x86_mm256_movemask_ps(self) == 0 }
+    }
+
     /// Returns whether all of the values not masked out are negative.
     ///
     /// Note that a value is negative if its sign bit is set.
@@ -278,6 +286,7 @@ extern "platform-intrinsic" {
     fn x86_mm256_fmsub_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
     fn x86_mm256_max_ps(x: Mf32, y: Mf32) -> Mf32;
     fn x86_mm256_min_ps(x: Mf32, y: Mf32) -> Mf32;
+    fn x86_mm256_movemask_ps(x: Mf32) -> i32;
     fn x86_mm256_rcp_ps(x: Mf32) -> Mf32;
     fn x86_mm256_rsqrt_ps(x: Mf32) -> Mf32;
     fn x86_mm256_sqrt_ps(x: Mf32) -> Mf32;
