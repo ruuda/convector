@@ -58,6 +58,14 @@ struct SurfaceAreaHeuristic {
     triangle_intersection_cost: f32,
 }
 
+/// My own improvement over the classic surface area heuristic. See `aabb_cost`
+/// implementation for more details.
+struct TreeSurfaceAreaHeuristic {
+    aabb_intersection_cost: f32,
+    triangle_intersection_cost: f32,
+    intersection_probability: f32,
+}
+
 impl TriangleRef {
     fn from_triangle(index: usize, tri: &Triangle) -> TriangleRef {
         TriangleRef {
@@ -273,15 +281,39 @@ impl Heuristic for SurfaceAreaHeuristic {
         // Without further information, the best guess for the probability
         // that the bounding box was hit, given that the parent was already
         // intersected, is the ratio of their areas.
-        let p = aabb.area() / parent_aabb.area();
+        let ac_ap = aabb.area() / parent_aabb.area();
 
         // We have to test all of the triangles, but only if the bounding box
         // was intersected, so weigh with the probability.
-        fixed_cost + p * self.tris_cost(num_tris)
+        fixed_cost + ac_ap * self.tris_cost(num_tris).log2()
     }
 
     fn tris_cost(&self, num_tris: usize) -> f32 {
-        num_tris as f32 * self.triangle_intersection_cost
+        (num_tris as f32) * self.triangle_intersection_cost
+    }
+}
+
+impl Heuristic for TreeSurfaceAreaHeuristic {
+    fn aabb_cost(&self, parent_aabb: &Aabb, aabb: &Aabb, num_tris: usize) -> f32 {
+        // The SAH adds the cost of intersecting all the triangles, but for a
+        // non-leaf node, it is rarely the case that they all will be
+        // intersected. Instead, assume that the triangles are organized into a
+        // balanced BVH with two triangles per leaf. If you work out the math
+        // (see pdf), the following expression is what comes out:
+
+        let ac_ap = aabb.area() / parent_aabb.area();
+        let p = self.intersection_probability;
+        let n = num_tris as f32;
+        let m = n.log2();
+
+        let aabb_term = 1.0 + ac_ap * (2.0 * p - n * p.powf(m)) / (p - 2.0 * p * p);
+        let tri_term = n * p.powf(m - 1.0) * ac_ap;
+
+        aabb_term * self.aabb_intersection_cost + tri_term * self.triangle_intersection_cost
+    }
+
+    fn tris_cost(&self, num_tris: usize) -> f32 {
+        (num_tris as f32) * self.triangle_intersection_cost
     }
 }
 
@@ -297,9 +329,10 @@ impl Bvh {
         // The values here are based on benchmarks. You can run `make bench` to
         // run these benchmarks. By plugging in the results for your rig you
         // might be able to achieve slightly better performance.
-        let heuristic = SurfaceAreaHeuristic {
+        let heuristic = TreeSurfaceAreaHeuristic {
             aabb_intersection_cost: 40.0,
             triangle_intersection_cost: 300.0,
+            intersection_probability: 0.5, // TODO: Tweak this value.
         };
 
         // Build the BVH of interim nodes.
