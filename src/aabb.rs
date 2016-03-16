@@ -37,15 +37,23 @@ impl Aabb {
         }
     }
 
+    pub fn zero() -> Aabb {
+        Aabb {
+            origin: SVector3::zero(),
+            far: SVector3::zero(),
+        }
+    }
+
     /// Returns the smalles axis-aligned bounding box that contains all input
     /// points.
-    pub fn enclose_points(points: &[SVector3]) -> Aabb {
-        assert!(points.len() > 0);
+    pub fn enclose_points<'a, I>(points: I) -> Aabb where I: IntoIterator<Item = &'a SVector3> {
+        let mut it = points.into_iter();
+        let &first = it.next().expect("enclosure must encluse at least one point");
 
-        let mut min = points[0];
-        let mut max = points[0];
+        let mut min = first;
+        let mut max = first;
 
-        for &point in points.iter().skip(1) {
+        while let Some(&point) = it.next() {
             min = SVector3::min(min, point);
             max = SVector3::max(max, point);
         }
@@ -66,6 +74,13 @@ impl Aabb {
             max = SVector3::max(max, aabb.far);
         }
 
+        Aabb::new(min, max)
+    }
+
+    /// Returns the bounding box extended to contain the point.
+    pub fn extend_point(&self, point: SVector3) -> Aabb {
+        let min = SVector3::min(point, self.origin);
+        let max = SVector3::max(point, self.far);
         Aabb::new(min, max)
     }
 
@@ -150,6 +165,22 @@ fn aabb_enclose_aabbs() {
 fn aabb_center() {
     let aabb = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(5.0, 7.0, 9.0));
     assert_eq!(aabb.center(), SVector3::new(3.0, 4.5, 6.0));
+}
+
+#[test]
+fn aabb_extend_point() {
+    let aabb = Aabb::new(SVector3::zero(), SVector3::one());
+    let p = SVector3::new(0.5, 0.5, 1.5);
+    let aabb_p = aabb.extend_point(p);
+
+    assert_eq!(aabb_p.origin, SVector3::zero());
+    assert_eq!(aabb_p.far, SVector3::new(1.0, 1.0, 1.5));
+
+    let q = SVector3::new(-0.2, 1.2, 1.0);
+    let aabb_pq = aabb_p.extend_point(q);
+
+    assert_eq!(aabb_pq.origin, SVector3::new(-0.2, 0.0, 0.0));
+    assert_eq!(aabb_pq.far, SVector3::new(1.0, 1.2, 1.5));
 }
 
 #[test]

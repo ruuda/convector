@@ -37,6 +37,10 @@ impl SVector3 {
         SVector3::new(0.0, 0.0, 0.0)
     }
 
+    pub fn one() -> SVector3 {
+        SVector3::new(1.0, 1.0, 1.0)
+    }
+
     #[inline(always)]
     pub fn cross_naive(self: SVector3, other: SVector3) -> SVector3 {
         let (a, b) = (self, other);
