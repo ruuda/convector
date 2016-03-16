@@ -20,6 +20,176 @@ pub struct Bvh {
     root: BvhNode,
 }
 
+/// Reference to a triangle used during BVH construction.
+struct TriangleRef {
+    aabb: Aabb,
+    barycenter: SVector3,
+    index: usize,
+}
+
+/// A node used during BVH construction.
+struct InterimNode {
+    /// Bounding box of the triangles in the node.
+    outer_aabb: Aabb,
+
+    /// Bounding box of the barycenters of the triangles in the node.
+    inner_aabb: Aabb,
+
+    children: Vec<InterimNode>,
+    triangles: Vec<TriangleRef>,
+}
+
+struct Bin<'a> {
+    triangles: Vec<&'a TriangleRef>,
+    aabb: Option<Aabb>,
+}
+
+trait Heuristic {
+    /// Given that a ray has intersected the parent bounding box, estimates the
+    /// cost of intersecting the child bounding box and the triangles in it.
+    fn aabb_cost(&self, parent_aabb: &Aabb, aabb: &Aabb, num_tris: usize) -> f32;
+
+    /// Estimates the cost of intersecting the given number of triangles.
+    fn tris_cost(&self, num_tris: usize) -> f32;
+}
+
+impl<'a> Bin<'a> {
+    fn new() -> Bin<'a> {
+        Bin {
+            triangles: Vec::new(),
+            aabb: None,
+        }
+    }
+
+    pub fn push(&mut self, tri: &'a TriangleRef) {
+        self.triangles.push(tri);
+        self.aabb = match self.aabb {
+            Some(ref aabb) => Some(Aabb::enclose_aabbs(&[aabb.clone(), tri.aabb.clone()])),
+            None => Some(tri.aabb.clone()),
+        };
+    }
+}
+
+impl InterimNode {
+    fn from_triangle_refs(trirefs: Vec<TriangleRef>) -> InterimNode {
+        InterimNode {
+            outer_aabb: Aabb::enclose_aabbs(trirefs.iter().map(|tr| &tr.aabb)),
+            inner_aabb: Aabb::enclose_points(trirefs.iter().map(|tr| &tr.barycenter)),
+            children: Vec::new(),
+            triangles: trirefs,
+        }
+    }
+
+    fn inner_aabb_origin_and_size(&self, axis: Axis) -> (f32, f32) {
+        let min = self.inner_aabb.origin.get_coord(axis);
+        let max = self.inner_aabb.far.get_coord(axis);
+        let size = max - min;
+        (min, size)
+    }
+
+    /// Puts triangles into bins along the specified axis.
+    fn bin_triangles<'a>(&'a self, bins: &mut [Bin<'a>], axis: Axis) {
+        // Compute the bounds of the bins.
+        let (min, size) = self.inner_aabb_origin_and_size(axis);
+
+        // Put the triangles in bins.
+        for tri in &self.triangles {
+            let coord = tri.barycenter.get_coord(axis);
+            let index = ((bins.len() as f32) * (coord - min) / size).floor() as usize;
+            bins[index].push(tri);
+
+            // If a lot of geometry ends up in one bin, binning is
+            // apparently not effective.
+            if bins[index].triangles.len() > self.triangles.len() / 8 {
+                println!("warning: triangle distribution is very non-uniform");
+                println!("         binning will not be effective");
+            }
+        }
+    }
+
+    /// Returs the bounding box enclosing the bin bounding boxes.
+    fn enclose_bins(bins: &[Bin]) -> Aabb {
+        let aabbs = bins.iter()
+                        .filter(|bin| bin.triangles.len() > 0)
+                        .map(|bin| bin.aabb.as_ref().unwrap());
+
+        Aabb::enclose_aabbs(aabbs)
+    }
+
+    /// Returns the bin index such that for the cheapest split, all bins with a
+    /// lower index should go into one node. Also returns the cost of the split.
+    fn find_cheapest_split<H>(&self, heuristic: &H, bins: &[Bin]) -> (usize, f32) where H: Heuristic {
+        let mut best_split_at = 0;
+        let mut best_split_cost = 0.0;
+        let mut is_first = false;
+
+        for i in 1..bins.len() - 1 {
+            let left_bins = &bins[..i];
+            let left_aabb = InterimNode::enclose_bins(left_bins);
+            let left_count = left_bins.iter().map(|b| b.triangles.len()).sum();
+
+            let right_bins = &bins[i..];
+            let right_aabb = InterimNode::enclose_bins(right_bins);
+            let right_count = left_bins.iter().map(|b| b.triangles.len()).sum();
+
+            let left_cost = heuristic.aabb_cost(&self.outer_aabb, &left_aabb, left_count);
+            let right_cost = heuristic.aabb_cost(&self.outer_aabb, &right_aabb, right_count);
+            let cost = left_cost + right_cost;
+
+            if cost < best_split_cost || is_first {
+                best_split_cost = cost;
+                best_split_at = i;
+                is_first = false;
+            }
+        }
+
+        (best_split_at, best_split_cost)
+    }
+
+    /// Splits the node if that is would be beneficial according to the
+    /// heuristic.
+    fn split<H>(&mut self, heuristic: &H) where H: Heuristic {
+        let mut best_split_axis = Axis::X;
+        let mut best_split_at = 0.0;
+        let mut best_split_cost = 0.0;
+        let mut is_first = false;
+
+        // Find the cheapest split.
+        for &axis in &[Axis::X, Axis::Y, Axis::Z] {
+            let mut bins: Vec<Bin> = (0..64).map(|_| Bin::new()).collect();
+
+            self.bin_triangles(&mut bins, axis);
+            let (index, cost) = self.find_cheapest_split(heuristic, &bins);
+
+            if cost < best_split_cost || is_first {
+                let (min, size) = self.inner_aabb_origin_and_size(axis);
+                best_split_axis = axis;
+                best_split_at = min + size / (bins.len() as f32) * (index as f32);
+                best_split_cost = cost;
+                is_first = false;
+            }
+        }
+
+        // Do not split if the split node is more expensive than the unsplit
+        // one.
+        let no_split_cost = heuristic.tris_cost(self.triangles.len());
+        if no_split_cost < best_split_cost {
+            return
+        }
+
+        // Partition the triangles into two child nodes.
+        let pred = |tri: &TriangleRef| tri.barycenter.get_coord(best_split_axis) < best_split_at;
+        let (left_tris, right_tris) = self.triangles.drain(..).partition(pred);
+
+        let left = InterimNode::from_triangle_refs(left_tris);
+        let right = InterimNode::from_triangle_refs(right_tris);
+
+        // TODO: Perhaps make child with biggest surface area go first.
+        self.children.push(left);
+        self.children.push(right);
+    }
+}
+
 fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
     // Compute the bounding box that encloses all triangles.
     let aabb = Aabb::enclose_aabbs(triangles.iter().map(|tri| &tri.aabb));
@@ -84,8 +254,23 @@ fn build_bvh_node(triangles: &mut [Triangle]) -> BvhNode {
     }
 }
 
+impl TriangleRef {
+    fn from_triangle(index: usize, tri: &Triangle) -> TriangleRef {
+        TriangleRef {
+            aabb: Aabb::enclose_points(&[tri.v0, tri.v1, tri.v2]),
+            barycenter: tri.barycenter(),
+            index: index,
+        }
+    }
+}
+
 impl Bvh {
     pub fn build(mut triangles: Vec<Triangle>) -> Bvh {
+        // Actual triangles are not important to the BVH, convert them to AABBs.
+        // let trirefs = (0..).zip(triangles.iter())
+        //                    .map(|(i, tri)| TriangleRef::from_triangle(i, tri))
+        //                    .collect();
+
         // TODO: Use rayon for data parallelism here.
         let root = build_bvh_node(&mut triangles);
         Bvh {
