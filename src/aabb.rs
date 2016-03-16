@@ -94,6 +94,15 @@ impl Aabb {
         self.far - self.origin
     }
 
+    /// Returns the surface area of the bounding box.
+    pub fn area(&self) -> f32 {
+        let s = self.size();
+        let x = s.y * s.z;
+        let y = s.z * s.x;
+        let z = s.x * s.y;
+        2.0 * (x + y + z)
+    }
+
     pub fn intersect(&self, ray: &MRay) -> MAabbIntersection {
         // Note: this method, in combination with `MAabbIntersection::any()`
         // compiles down to ~65 instructions, taking up ~168 bytes of
