@@ -55,7 +55,7 @@ impl Scene {
         Scene {
             bvh: Bvh::from_meshes(meshes),
             lights: Vec::new(),
-            camera: Camera::with_fov(PI * 0.6),
+            camera: Camera::with_fov(PI * 0.3),
         }
     }
 
