@@ -42,8 +42,8 @@ fn build_scene() -> Scene {
     use scene::Light;
     use vector3::SVector3;
 
-    // let plane = Mesh::load("plane.obj");
-    let suzanne = Mesh::load("suzanne.obj");
+    // let plane = Mesh::load("models/plane.obj");
+    let suzanne = Mesh::load("models/suzanne.obj");
     let meshes = [suzanne]; //[plane, suzanne];
     let mut scene = Scene::from_meshes(&meshes);
 
