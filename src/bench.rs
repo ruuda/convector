@@ -118,6 +118,16 @@ pub fn triangles(n: usize) -> Vec<Triangle> {
        .collect()
 }
 
+/// Generates n bounding boxes with two vertices on the unit sphere.
+pub fn aabbs(n: usize) -> Vec<Aabb> {
+    let v0s = points_on_sphere_s(n);
+    let v1s = points_on_sphere_s(n);
+    v0s.iter()
+       .zip(v1s.iter())
+       .map(|(&v0, &v1)| Aabb::new(SVector3::min(v0, v1), SVector3::max(v0, v1)))
+       .collect()
+}
+
 /// Generates n mrays originating from a sphere of radius 10, pointing inward.
 pub fn mrays_inward(n: usize) -> Vec<MRay> {
     let origins = points_on_sphere_m(n);

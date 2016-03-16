@@ -266,3 +266,34 @@ fn bench_intersect_p50(b: &mut test::Bencher) {
         test::black_box(isect.any());
     });
 }
+
+#[bench]
+fn bench_intersect_8_mrays_per_aabb(b: &mut test::Bencher) {
+    let rays = bench::mrays_inward(4096 / 8);
+    let aabbs = bench::aabbs(4096);
+    let mut rays_it = rays.iter().cycle();
+    let mut aabbs_it = aabbs.iter().cycle();
+    b.iter(|| {
+        let aabb = aabbs_it.next().unwrap();
+        for _ in 0..8 {
+            let isect = aabb.intersect(rays_it.next().unwrap());
+            test::black_box(isect.any());
+        }
+    });
+}
+
+#[bench]
+fn bench_intersect_8_aabbs_per_mray(b: &mut test::Bencher) {
+    let rays = bench::mrays_inward(4096 / 8);
+    let aabbs = bench::aabbs(4096);
+    let mut rays_it = rays.iter().cycle();
+    let mut aabbs_it = aabbs.iter().cycle();
+    b.iter(|| {
+        let ray = rays_it.next().unwrap();
+        for _ in 0..8 {
+            let aabb = aabbs_it.next().unwrap();
+            let isect = aabb.intersect(ray);
+            test::black_box(isect.any());
+        }
+    });
+}
