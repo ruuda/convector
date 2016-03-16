@@ -6,8 +6,9 @@ Interactive ray tracer. Copyright 2016 Ruud van Asseldonk.
 Requirements
 ------------
 
-Hardware: a CPU that supports the AVX and FMA instructions is required. In
-practice this means Haswell or later.
+Hardware: a CPU that supports the AVX instructions is required. In practice this
+means Sandy Bridge os later. FMA instructions can be taken advantage of too,
+those are Haswell or later.
 
 Software: a nightly version of the [Rust programming language][rust] is
 required.
@@ -24,6 +25,9 @@ stuffed all of this away in a makefile, so now you can just run:
  * `make run` to build and run the release executable.
  * `make bench` to build and run all benchmarks in release mode.
  * `make test` to build and run all tests in debug mode.
+
+If you do not want to use the FMA instructions, remove the `+fma` from the
+codegen options in the makefile.
 
 On Windows you might have to execute the commands in the makefile manually, but
 everything should still compile and run.

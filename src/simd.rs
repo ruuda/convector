@@ -282,8 +282,6 @@ extern "platform-intrinsic" {
     fn x86_mm256_blendv_ps(x: Mf32, y: Mf32, mask: Mask) -> Mf32;
     fn x86_mm256_cmp_ps(x: Mf32, y: Mf32, op: i8) -> Mask;
     fn x86_mm256_cvtps_epi32(x: Mf32) -> Mi32;
-    fn x86_mm256_fmadd_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
-    fn x86_mm256_fmsub_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
     fn x86_mm256_max_ps(x: Mf32, y: Mf32) -> Mf32;
     fn x86_mm256_min_ps(x: Mf32, y: Mf32) -> Mf32;
     fn x86_mm256_movemask_ps(x: Mf32) -> i32;
@@ -291,6 +289,24 @@ extern "platform-intrinsic" {
     fn x86_mm256_rsqrt_ps(x: Mf32) -> Mf32;
     fn x86_mm256_sqrt_ps(x: Mf32) -> Mf32;
     fn x86_mm256_testc_ps(x: Mf32, y: Mf32) -> i32;
+}
+
+#[cfg(target_feature = "fma")]
+extern "platform-intrinsic" {
+    fn x86_mm256_fmadd_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
+    fn x86_mm256_fmsub_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
+}
+
+// If the FMA instructions are not enabled, fall back to a separate mul and add
+// or sub. These still use the AVX intrinsics.
+#[cfg(not(target_feature = "fma"))]
+unsafe fn x86_mm256_fmadd_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32 {
+    x * y + z
+}
+
+#[cfg(not(target_feature = "fma"))]
+unsafe fn x86_mm256_fmsub_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32 {
+    x * y - z
 }
 
 #[test]
