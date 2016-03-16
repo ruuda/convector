@@ -35,7 +35,7 @@ impl Triangle {
         (self.v0 + self.v1 + self.v2) * 3.0f32.recip()
     }
 
-    pub fn intersect_full(&self, ray: &MRay, isect: MIntersection) -> MIntersection {
+    pub fn intersect(&self, ray: &MRay, isect: MIntersection) -> MIntersection {
         // One would expect that if the triangle were represented as
         // (v0, e1, e2) instead of (v0, v1, v2), that would be faster because we
         // could avoid the subtractions here. My measurements show that the
@@ -139,7 +139,7 @@ fn intersect_triangle() {
         distance: Mf32::broadcast(1e5),
     };
 
-    let isect = triangle.intersect_full(&ray, far);
+    let isect = triangle.intersect(&ray, far);
 
     println!("distance is {}", isect.distance.0);
     assert!(isect.distance.0 < 1.01);
@@ -153,7 +153,7 @@ fn intersect_triangle() {
 }
 
 #[bench]
-fn bench_intersect_full_8_mrays_per_tri(b: &mut test::Bencher) {
+fn bench_intersect_8_mrays_per_tri(b: &mut test::Bencher) {
     let rays = bench::mrays_inward(4096 / 8);
     let tris = bench::triangles(4096);
     let mut rays_it = rays.iter().cycle();
@@ -167,13 +167,13 @@ fn bench_intersect_full_8_mrays_per_tri(b: &mut test::Bencher) {
                 normal: MVector3::zero(),
                 distance: Mf32::broadcast(1e5),
             };
-            test::black_box(triangle.intersect_full(&ray, isect));
+            test::black_box(triangle.intersect(&ray, isect));
         }
     });
 }
 
 #[bench]
-fn bench_intersect_full_8_tris_per_mray(b: &mut test::Bencher) {
+fn bench_intersect_8_tris_per_mray(b: &mut test::Bencher) {
     let rays = bench::mrays_inward(4096 / 8);
     let tris = bench::triangles(4096);
     let mut rays_it = rays.iter().cycle();
@@ -187,7 +187,7 @@ fn bench_intersect_full_8_tris_per_mray(b: &mut test::Bencher) {
         };
         for _ in 0..8 {
             let triangle = tris_it.next().unwrap();
-            isect = triangle.intersect_full(&ray, isect);
+            isect = triangle.intersect(&ray, isect);
         }
         test::black_box(isect);
     });

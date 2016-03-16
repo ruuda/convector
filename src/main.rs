@@ -17,13 +17,13 @@ extern crate time;
 
 mod aabb;
 mod bvh;
-mod geometry;
 mod ray;
 mod renderer;
 mod scene;
 mod simd;
 mod stats;
 mod trace;
+mod triangle;
 mod ui;
 mod vector3;
 mod wavefront;

@@ -1,10 +1,10 @@
 //! Implements a bounding volume hierarchy.
 
 use aabb::Aabb;
-use geometry::Triangle;
 use ray::{MIntersection, MRay};
 use simd::{Mask, Mf32};
 use std::cmp::PartialOrd;
+use triangle::Triangle;
 use vector3::{Axis, SVector3};
 use wavefront::Mesh;
 
@@ -146,7 +146,7 @@ impl Bvh {
                 }
             } else {
                 for triangle in &node.geometry {
-                    isect = triangle.intersect_full(ray, isect);
+                    isect = triangle.intersect(ray, isect);
                 }
             }
         }

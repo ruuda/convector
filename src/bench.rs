@@ -1,13 +1,13 @@
 //! This module generates test data for the benchmarks.
 
 use aabb::Aabb;
-use geometry::Triangle;
 use rand;
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
 use ray::{MRay, SRay};
 use simd::Mf32;
 use std::f32::consts;
+use triangle::Triangle;
 use vector3::{MVector3, SVector3};
 
 /// Generates n random Mf32s in the range [-1, 1).
