@@ -55,7 +55,13 @@ impl Triangle {
         // this point, because it appears both in the numerator and denominator.
         let normal_denorm = e1.cross(e2);
         let from_ray = v0 - ray.origin;
-        let denom = ray.direction.dot(normal_denorm).recip();
+
+        // Use a true division (_mm256_div_ps), not the reciprocal approximation
+        // (_mm256_rcp_ps) because the approximation is too inaccurate and
+        // causes visual artifacts. The alternative is to use the approximation
+        // with one Newton iteration, but that is slightly slower than just
+        // doing the division.
+        let denom = Mf32::one() / ray.direction.dot(normal_denorm);
         let t = from_ray.dot(normal_denorm) * denom;
 
         // If the potential intersection is further away than the current
