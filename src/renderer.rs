@@ -1,10 +1,10 @@
-use alloc::heap;
 use ray::{MIntersection, MRay};
 use scene::{Light, Scene};
 use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
 use std::mem;
 use time::PreciseTime;
+use util;
 use vector3::{MVector3, SVector3};
 
 pub struct Renderer {
@@ -29,17 +29,9 @@ impl RenderBuffer {
 
         // There are 8 RGBA pixels in one mi32.
         let num_elems = (width as usize) * (height as usize) / 8;
-        let num_bytes = num_elems * 32;
 
-        // It is important that the buffer is aligned to a cache line, so the
-        // renderer can write entire cache lines at a time.
-        let align = 64;
-
-        let vec = unsafe {
-            let buffer = heap::allocate(num_bytes, align);
-            let mi32_ptr: *mut Mi32 = mem::transmute(buffer);
-            Vec::from_raw_parts(mi32_ptr, num_elems, num_elems)
-        };
+        let mut vec = util::cache_line_aligned_vec(num_elems);
+        unsafe { vec.set_len(num_elems); }
 
         RenderBuffer {
             buffer: UnsafeCell::new(vec),
