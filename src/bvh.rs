@@ -460,8 +460,12 @@ impl Bvh {
         // a few more fps.
         let mut stack = Vec::with_capacity(10);
 
-        let root_0 = &self.nodes[0];
-        let root_1 = &self.nodes[1];
+        // A note about `get_unchecked`: array indexing in Rust is checked by
+        // default, but by construction all indices in the BVH are valid, so
+        // let's not waste instructions on those bounds checks.
+
+        let root_0 = unsafe { self.nodes.get_unchecked(0) };
+        let root_1 = unsafe { self.nodes.get_unchecked(1) };
         let root_isect_0 = root_0.aabb.intersect(ray);
         let root_isect_1 = root_1.aabb.intersect(ray);
 
@@ -482,8 +486,8 @@ impl Bvh {
 
             if node.len == 0 {
                 // This is an internal node.
-                let child_0 = &self.nodes[node.index as usize + 0];
-                let child_1 = &self.nodes[node.index as usize + 1];
+                let child_0 = unsafe { self.nodes.get_unchecked(node.index as usize + 0) };
+                let child_1 = unsafe { self.nodes.get_unchecked(node.index as usize + 1) };
                 let child_isect_0 = child_0.aabb.intersect(ray);
                 let child_isect_1 = child_1.aabb.intersect(ray);
 
@@ -495,9 +499,8 @@ impl Bvh {
                     stack.push((child_isect_1, child_1));
                 }
             } else {
-                let i = node.index as usize;
-                let len = node.len as usize;
-                for triangle in &self.triangles[i..i + len] {
+                for i in node.index..node.index + node.len {
+                    let triangle = unsafe { self.triangles.get_unchecked(i as usize) };
                     isect = triangle.intersect(ray, isect);
                 }
             }
