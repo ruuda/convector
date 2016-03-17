@@ -269,10 +269,9 @@ impl Renderer {
         let mut color = MVector3::zero();
 
         for ref light in &self.scene.lights {
-            // TODO: Do not hard-code color.
-            let light_color = MVector3::new(Mf32::broadcast(20.0), Mf32::zero(), Mf32::zero());
+            let power = MVector3::broadcast(light.power);
             let irradiance = self.get_irradiance(&isect, light);
-            color = light_color.mul_add(irradiance, color);
+            color = power.mul_add(irradiance, color);
         }
 
         color

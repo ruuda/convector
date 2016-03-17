@@ -46,6 +46,9 @@ impl Camera {
 
 pub struct Light {
     pub position: SVector3,
+
+    /// Power for the red, green, and blue components.
+    pub power: SVector3,
 }
 
 pub struct Scene {
