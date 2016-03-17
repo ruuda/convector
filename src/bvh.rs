@@ -313,6 +313,20 @@ impl InterimNode {
 
         if !self.children.is_empty() {
             assert_eq!(2, self.children.len());
+
+            // Make sure that the node with the smallest surface area is the
+            // first child. The first child will be tested first, and if an
+            // intersection is found, the second child might not be intersected
+            // at all. This also ensures that the least-probable path is
+            // consecutive in memory. It is counter-intuitive: I would expect
+            // performance to be better if the most probably child was tested
+            // first. Nevertheless, the benchmarks don't lie. Flip the
+            // comparison and observe how intersection times increase by 200 ns
+            // (10-3% depending on the scene size).
+            if self.children[0].outer_aabb.area() > self.children[1].outer_aabb.area() {
+                self.children.swap(0, 1);
+            }
+
             let (left, right) = self.children.split_at_mut(1);
 
             // Recursively split the children. Use Rayon to put the work up
@@ -376,7 +390,6 @@ impl InterimNode {
             nodes.push(BvhNode::new());
 
             // Recursively crystallize the child nodes.
-            // TODO: Order by surface area.
             self.children[0].crystallize(source_triangles, nodes, sorted_triangles, child_index + 0);
             self.children[1].crystallize(source_triangles, nodes, sorted_triangles, child_index + 1);
 
@@ -585,7 +598,6 @@ impl Bvh {
                 let child_isect_0 = child_0.aabb.intersect(ray);
                 let child_isect_1 = child_1.aabb.intersect(ray);
 
-                // TODO: Order by distance?
                 if child_isect_0.any() {
                     stack.push((child_isect_0, child_0));
                 }
