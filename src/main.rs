@@ -50,7 +50,7 @@ fn build_scene() -> Scene {
     let meshes = [bunny]; //[plane, suzanne];
     let mut scene = Scene::from_meshes(&meshes);
 
-    scene.camera.position = SVector3::new(0.0, 0.0, 25.0);
+    scene.camera.position = SVector3::new(0.0, 5.0, 25.0);
 
     let light = Light {
         position: SVector3::new(5.0, 0.0, 6.0),

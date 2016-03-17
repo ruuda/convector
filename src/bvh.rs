@@ -208,11 +208,7 @@ impl InterimNode {
         // Consider every split position after the first non-empty bin, until
         // right before the last non-empty bin.
         let first = bins.iter().position(|bin| !bin.triangles.is_empty()).unwrap() + 1;
-
-        // TODO: By restricting the last index here omitting the + 1, I get a
-        // performance increase, even though more split positions are
-        // considered. Apparently the heuristic is not very good.
-        let last = bins.iter().rposition(|bin| !bin.triangles.is_empty()).unwrap();
+        let last = bins.iter().rposition(|bin| !bin.triangles.is_empty()).unwrap() + 1;
 
         assert!(first != last);
 
@@ -223,7 +219,7 @@ impl InterimNode {
 
             let right_bins = &bins[i..];
             let right_aabb = InterimNode::enclose_bins(right_bins);
-            let right_count = left_bins.iter().map(|b| b.triangles.len()).sum();
+            let right_count = right_bins.iter().map(|b| b.triangles.len()).sum();
 
             let left_cost = heuristic.aabb_cost(&self.outer_aabb, &left_aabb, left_count);
             let right_cost = heuristic.aabb_cost(&self.outer_aabb, &right_aabb, right_count);
@@ -464,7 +460,7 @@ impl Bvh {
         let heuristic = TreeSurfaceAreaHeuristic {
             aabb_intersection_cost: 40.0,
             triangle_intersection_cost: 120.0,
-            intersection_probability: 0.1,
+            intersection_probability: 0.8,
         };
 
         // Build the BVH of interim nodes.
