@@ -70,7 +70,7 @@ pub fn mvector3_pairs(n: usize) -> Vec<(MVector3, MVector3)> {
 }
 
 /// Generates rays with origin on a sphere, pointing to the origin.
-pub fn rays_inward(radius: f32, n: usize) -> Vec<SRay> {
+pub fn srays_inward(radius: f32, n: usize) -> Vec<SRay> {
     points_on_sphere_s(n).iter().map(|&x| SRay::new(x * radius, -x)).collect()
 }
 
@@ -80,7 +80,7 @@ pub fn aabb_with_srays(n: usize, m: usize) -> (Aabb, Vec<SRay>) {
     let far = SVector3::new(1.0, 1.0, 1.0);
     let aabb = Aabb::new(origin, far);
     let up = SVector3::new(0.0, 0.0, 1.0);
-    let mut rays = rays_inward(16.0, n);
+    let mut rays = srays_inward(16.0, n);
 
     // Offset the m-n rays that should not intersect the box in a direction
     // perpendicular to the ray.
@@ -136,7 +136,23 @@ pub fn mrays_inward(n: usize) -> Vec<MRay> {
            .zip(dests.iter())
            .map(|(&from, &to)| {
                let origin = from * Mf32::broadcast(10.0);
-               let direction = (to - from).normalized();
+               let direction = (to - origin).normalized();
+               MRay::new(origin, direction)
+           })
+           .collect()
+}
+
+/// Generates n mrays originating from a sphere of radius 10, pointing inward.
+/// The rays share the origin and point roughly in the same direction.
+pub fn mrays_inward_coherent(n: usize) -> Vec<MRay> {
+    let origins = points_on_sphere_s(n);
+    let dests = points_on_sphere_m(n);
+    origins.iter()
+           .zip(dests.iter())
+           .map(|(&from, &to)| {
+               let origin = MVector3::broadcast(from * 10.0);
+               let dest = to * Mf32::broadcast(0.5);
+               let direction = (dest - origin).normalized();
                MRay::new(origin, direction)
            })
            .collect()
