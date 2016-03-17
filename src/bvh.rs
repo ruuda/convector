@@ -128,12 +128,11 @@ impl InterimNode {
 
     /// Puts triangles into bins along the specified axis.
     fn bin_triangles<'a>(&'a self, bins: &mut [Bin<'a>], axis: Axis) {
-        // If there are not so many triangles, consider every split position
-        // instead.
-        // if self.triangles.len() <= bins.len() {
-        //     self.bin_triangles_uniform(bins, axis);
-        //     return
-        // }
+        // If there are not so many triangles, we might as well try all of the
+        // split positions.
+        if self.triangles.len() <= bins.len() / 2 {
+            return self.bin_triangles_uniform(bins, axis);
+        }
 
         // Compute the bounds of the bins.
         let (min, size) = self.inner_aabb_origin_and_size(axis);
@@ -150,9 +149,9 @@ impl InterimNode {
             // based on percentiles.
             let num_tris = self.triangles.len();
             if bins[index].triangles.len() > num_tris / 8 && num_tris > bins.len() {
-                println!("warning: triangle distribution is very non-uniform");
-                println!("         binning will not be effective");
-                println!("         number of triangles: {}", num_tris);
+                // Clear the bins before trying again.
+                for bin in &mut bins[..] { bin.clear(); }
+                return self.bin_triangles_uniform(bins, axis);
             }
         }
     }
@@ -173,10 +172,14 @@ impl InterimNode {
             a.partial_cmp(&b).unwrap()
         });
 
-        let tris_per_bin = (triptrs.len() + bins.len() / 2) / bins.len();
+        let tris_per_bin = (triptrs.len() + bins.len() - 1) / bins.len();
         let tris_per_bin = if tris_per_bin == 0 { 1 } else { tris_per_bin };
 
+        // Be sure not to lose any triangles.
+        assert!(tris_per_bin * bins.len() >= triptrs.len());
+
         for (bin, tris) in bins.iter_mut().zip(triptrs.chunks(tris_per_bin)) {
+            assert!(bin.triangles.is_empty());
             for tri in tris {
                 bin.push(tri)
             }
@@ -249,14 +252,13 @@ impl InterimNode {
         }
 
         let (best_split_cost, left_tris, right_tris) = {
+            let mut bins: Vec<Bin> = (0..64).map(|_| Bin::new()).collect();
             let mut best_split = (Vec::new(), Vec::new());
             let mut best_split_cost = 0.0;
             let mut is_first = true;
 
             // Find the cheapest split.
             for &axis in &[Axis::X, Axis::Y, Axis::Z] {
-                let mut bins: Vec<Bin> = (0..64).map(|_| Bin::new()).collect();
-
                 self.bin_triangles(&mut bins, axis);
 
                 if InterimNode::are_bins_valid(&bins) {
@@ -270,9 +272,9 @@ impl InterimNode {
                         best_split_cost = cost;
                         is_first = false;
                     }
-                } else {
-                    // Consider a different splitting strategy?
                 }
+
+                for bin in &mut bins[..] { bin.clear(); }
             }
 
             // Something must have set the cost.
@@ -482,7 +484,7 @@ impl Bvh {
         let mut nodes = util::cache_line_aligned_vec(num_nodes);
         let mut sorted_triangles = Vec::with_capacity(num_tris);
 
-        println!("done constructing bvh, crystallizing ...");
+        println!("done building bvh, crystallizing ...");
 
         // Write the tree of interim nodes that is all over the heap currently,
         // neatly packed into the buffers that we just allocated.
