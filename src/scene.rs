@@ -7,11 +7,14 @@ use wavefront::Mesh;
 
 pub struct Camera {
     pub position: SVector3,
-    // TODO: Add quaternion orientation.
 
     /// Distance such that a vector at `(1, 0, screen_distance)` makes an angle
     /// of the desired field of view with `(-1, 0, screen_distance)`.
-    pub screen_distance: f32,
+    screen_distance: f32,
+
+    // TODO: Do this properly, add an orientation quaternion.
+    rotation_x: f32,
+    rotation_y: f32,
 }
 
 impl Camera {
@@ -20,12 +23,20 @@ impl Camera {
         Camera {
             position: SVector3::zero(),
             screen_distance: 1.0 / (PI / 6.0).sin(),
+            rotation_x: 1.0,
+            rotation_y: 0.0,
         }
     }
 
     /// Sets the desired horizontal field of view in radians.
     pub fn set_fov(&mut self, fov: f32) {
         self.screen_distance = 1.0 / (fov / 2.0).sin();
+    }
+
+    /// Sets the rotation of the camera in the xz-plane.
+    pub fn set_rotation(&mut self, radians: f32) {
+        self.rotation_x = radians.cos();
+        self.rotation_y = radians.sin();
     }
 
     /// Returns a camera ray for the given screen coordinates.
@@ -35,11 +46,21 @@ impl Camera {
     pub fn get_ray(&self, x: Mf32, y: Mf32) -> MRay {
         let dist = Mf32::broadcast(-self.screen_distance);
         let origin = MVector3::broadcast(self.position);
-        let direction = MVector3::new(x, y, dist).normalized();
-        // TODO: Transform direction with orientation quaternion.
+        let dir_src = MVector3::new(x, y, dist).normalized();
+
+        // A dirty hack to make the scene more interesting, I should really use
+        // a quaternion instead.
+        let mx = Mf32::broadcast(self.rotation_x);
+        let my = Mf32::broadcast(self.rotation_y);
+
+        let dir = MVector3 {
+            x: dir_src.x.mul_sub(mx, dir_src.z * my),
+            y: dir_src.y,
+            z: dir_src.x.mul_add(my, dir_src.z * mx),
+        };
         MRay {
             origin: origin,
-            direction: direction,
+            direction: dir,
         }
     }
 }

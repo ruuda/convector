@@ -105,6 +105,14 @@ impl Renderer {
             y: (t * 0.3).cos() * 2.0 + 5.0,
             z: t.sin() * r,
         };
+
+        let alpha = t * 0.25;
+        self.scene.camera.set_rotation(alpha);
+        self.scene.camera.position = SVector3 {
+            x: -25.0 * alpha.sin(),
+            y: 5.0,
+            z: 25.0 * alpha.cos(),
+        };
     }
 
     pub fn toggle_debug_view(&mut self) {
