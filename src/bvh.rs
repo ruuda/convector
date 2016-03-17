@@ -674,3 +674,33 @@ fn bench_intersect_coherent_mray_suzanne(b: &mut test::Bencher) {
         test::black_box(isect);
     });
 }
+
+#[bench]
+fn bench_intersect_decoherent_mray_bunny(b: &mut test::Bencher) {
+    use wavefront::Mesh;
+    let bunny = Mesh::load("models/stanford_bunny.obj");
+    let bvh = Bvh::from_meshes(&[bunny]);
+    let rays = bench::mrays_inward(4096 / 8);
+    let mut rays_it = rays.iter().cycle();
+    b.iter(|| {
+        let ray = rays_it.next().unwrap();
+        let far = Mf32::broadcast(1e5);
+        let isect = bvh.intersect_any(ray, far);
+        test::black_box(isect);
+    });
+}
+
+#[bench]
+fn bench_intersect_coherent_mray_bunny(b: &mut test::Bencher) {
+    use wavefront::Mesh;
+    let bunny = Mesh::load("models/stanford_bunny.obj");
+    let bvh = Bvh::from_meshes(&[bunny]);
+    let rays = bench::mrays_inward_coherent(4096 / 8);
+    let mut rays_it = rays.iter().cycle();
+    b.iter(|| {
+        let ray = rays_it.next().unwrap();
+        let far = Mf32::broadcast(1e5);
+        let isect = bvh.intersect_any(ray, far);
+        test::black_box(isect);
+    });
+}
