@@ -15,13 +15,17 @@ pub struct Camera {
 }
 
 impl Camera {
-    /// Creates a new camera for the desired horizontal field of view in
-    /// radians.
-    pub fn with_fov(fov: f32) -> Camera {
+    /// Creates a camera at the origin with 60 degrees field of view.
+    pub fn new() -> Camera {
         Camera {
             position: SVector3::zero(),
-            screen_distance: 1.0 / (fov / 2.0).sin(),
+            screen_distance: 1.0 / (PI / 6.0).sin(),
         }
+    }
+
+    /// Sets the desired horizontal field of view in radians.
+    pub fn set_fov(&mut self, fov: f32) {
+        self.screen_distance = 1.0 / (fov / 2.0).sin();
     }
 
     /// Returns a camera ray for the given screen coordinates.
@@ -55,7 +59,7 @@ impl Scene {
         Scene {
             bvh: Bvh::from_meshes(meshes),
             lights: Vec::new(),
-            camera: Camera::with_fov(PI * 0.3),
+            camera: Camera::new(),
         }
     }
 
