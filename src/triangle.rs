@@ -39,8 +39,11 @@ impl Triangle {
         // converse is true.
         // TODO: Add a proper benchmark.
         let v0 = MVector3::broadcast(self.v0);
-        let e1 = MVector3::broadcast(self.v0 - self.v2);
-        let e2 = MVector3::broadcast(self.v1 - self.v0);
+
+        // Note: broadcasting before doing the subtract, although it seems to
+        // silly, improves performance by ~5 ns per intersection (25%).
+        let e1 = MVector3::broadcast(self.v0) - MVector3::broadcast(self.v2);
+        let e2 = MVector3::broadcast(self.v1) - MVector3::broadcast(self.v0);
 
         // All points P on the plane in which the triangle lies satisfy the
         // equation (P . normal) = c for a unique constant c determined by the
