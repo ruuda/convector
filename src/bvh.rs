@@ -27,6 +27,12 @@ struct BvhNode {
 pub struct Bvh {
     nodes: Vec<BvhNode>,
     triangles: Vec<Triangle>,
+
+    /// Average ratio of bounding box surface area to parent surface area.
+    avg_area_ratio: f32,
+
+    /// Average number of triangles per leaf.
+    avg_tris_per_leaf: f32,
 }
 
 /// Reference to a triangle used during BVH construction.
@@ -448,7 +454,6 @@ impl BvhNode {
 
 impl Bvh {
     pub fn build(source_triangles: &[Triangle]) -> Bvh {
-        println!("building bvh ...");
         // Actual triangles are not important to the BVH, convert them to AABBs.
         let trirefs = (0..).zip(source_triangles.iter())
                            .map(|(i, tri)| TriangleRef::from_triangle(i, tri))
@@ -484,8 +489,6 @@ impl Bvh {
         let mut nodes = util::cache_line_aligned_vec(num_nodes);
         let mut sorted_triangles = Vec::with_capacity(num_tris);
 
-        println!("done building bvh, crystallizing ...");
-
         // Write the tree of interim nodes that is all over the heap currently,
         // neatly packed into the buffers that we just allocated.
         let left = &root.children[0];
@@ -496,18 +499,15 @@ impl Bvh {
         left.crystallize(&source_triangles, &mut nodes, &mut sorted_triangles, 0);
         right.crystallize(&source_triangles, &mut nodes, &mut sorted_triangles, 1);
 
-        // Print some statistics about the BVH:
+        // Gather some statistics.
         let num_leaves = root.count_leaves();
-        let tris_per_leaf = (num_tris as f32) / (num_leaves as f32);
         let area_ratio_sum = root.summed_area_ratio();
-        let avg_area_ratio = area_ratio_sum / (num_nodes as f32);
-        println!("bvh statistics:");
-        println!("  average triangles per leaf: {:0.2}", tris_per_leaf);
-        println!("  average child area / parent area: {:0.2}", avg_area_ratio);
 
         Bvh {
             nodes: nodes,
             triangles: sorted_triangles,
+            avg_area_ratio: area_ratio_sum / (num_nodes as f32),
+            avg_tris_per_leaf: (num_tris as f32) / (num_leaves as f32),
         }
     }
 
@@ -526,6 +526,12 @@ impl Bvh {
         }
 
         Bvh::build(&triangles)
+    }
+
+    pub fn print_stats(&self) {
+        println!("bvh statistics:");
+        println!("  average triangles per leaf: {:0.2}", self.avg_tris_per_leaf);
+        println!("  average child area / parent area: {:0.2}", self.avg_area_ratio);
     }
 
     /// Returns the nearest intersection closer than the provided intersection.
