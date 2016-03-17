@@ -5,7 +5,6 @@
 //! It avoids a virtual method call, which in turn enables the triangle
 //! intersection code to be inlined.
 
-use aabb::Aabb;
 use ray::{MIntersection, MRay};
 use simd::Mf32;
 use vector3::{MVector3, SVector3};
@@ -18,7 +17,6 @@ pub struct Triangle {
     pub v0: SVector3,
     pub v1: SVector3,
     pub v2: SVector3,
-    pub aabb: Aabb,
 }
 
 impl Triangle {
@@ -27,7 +25,6 @@ impl Triangle {
             v0: v0,
             v1: v1,
             v2: v2,
-            aabb: Aabb::enclose_points(&[v0, v1, v2]),
         }
     }
 
