@@ -508,7 +508,7 @@ impl Bvh {
         let right = &root.children[1];
         nodes.push(BvhNode::new());
         nodes.push(BvhNode::new());
-        // TODO: Order these by area.
+
         left.crystallize(&source_triangles, &mut nodes, &mut sorted_triangles, 0);
         right.crystallize(&source_triangles, &mut nodes, &mut sorted_triangles, 1);
 

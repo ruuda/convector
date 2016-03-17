@@ -4,7 +4,7 @@
 //! use this to the full extent. (Otherwise it will not use AVX but two SSE
 //! adds, for instance.)
 
-use std::ops::{Add, BitAnd, BitOr, Div, Mul, Not, Sub};
+use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
 
 #[cfg(test)]
 use {bench, test};
@@ -229,21 +229,6 @@ impl Mul<Mf32> for Mf32 {
     #[inline(always)]
     fn mul(self, other: Mf32) -> Mf32 {
         unsafe { simd_mul(self, other) }
-    }
-}
-
-impl Not for Mask {
-    type Output = Mask;
-
-    #[inline(always)]
-    fn not(self) -> Mask {
-        use std::mem::transmute;
-        // TODO: Verify that this generates concise assembly.
-        unsafe {
-            let a: [u64; 4] = transmute(self);
-            let bitwise_not_a = [!a[0], !a[1], !a[2], !a[3]];
-            transmute(bitwise_not_a)
-        }
     }
 }
 
