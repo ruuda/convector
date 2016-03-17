@@ -60,13 +60,6 @@ impl MRay {
             direction: MVector3::generate(|i| f(i).direction),
         }
     }
-
-    pub fn advance_epsilon(&self) -> MRay {
-        MRay {
-            origin: self.direction.mul_add(Mf32::epsilon(), self.origin),
-            direction: self.direction,
-        }
-    }
 }
 
 impl MIntersection {

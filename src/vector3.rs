@@ -107,10 +107,6 @@ impl SVector3 {
         }
     }
 
-    pub fn reflect(self, normal: SVector3) -> SVector3 {
-        self - normal * 2.0 * normal.dot(self)
-    }
-
     pub fn get_coord(self, axis: Axis) -> f32 {
         match axis {
             Axis::X => self.x,
@@ -210,23 +206,13 @@ impl MVector3 {
         self.dot_naive(other)
     }
 
-    #[inline(always)]
-    pub fn mul_add_naive(self, factor: Mf32, other: MVector3) -> MVector3 {
-        self * factor + other
-    }
-
-    #[inline(always)]
-    pub fn mul_add_fma(self, factor: Mf32, other: MVector3) -> MVector3 {
+    /// Scalar multiplication and vector add using fused multiply-add.
+    pub fn mul_add(self, factor: Mf32, other: MVector3) -> MVector3 {
         MVector3 {
             x: self.x.mul_add(factor, other.x),
             y: self.y.mul_add(factor, other.y),
             z: self.z.mul_add(factor, other.z),
         }
-    }
-
-    /// Scalar multiplication and vector add using fused multiply-add.
-    pub fn mul_add(self, factor: Mf32, other: MVector3) -> MVector3 {
-        self.mul_add_fma(factor, other)
     }
 
     /// Returns ||self|| * ||self||.

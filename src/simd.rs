@@ -88,13 +88,6 @@ impl Mf32 {
     }
 
     #[inline(always)]
-    pub fn leq(self, other: Mf32) -> Mask {
-        // Operation 26 is a not greater than comparison, unordered,
-        // non-signalling.
-        unsafe { x86_mm256_cmp_ps(self, other, 26) }
-    }
-
-    #[inline(always)]
     pub fn geq(self, other: Mf32) -> Mask {
         // Operation 21 is a not less than comparison, unordered,
         // non-signalling.

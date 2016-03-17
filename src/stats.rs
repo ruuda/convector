@@ -68,13 +68,6 @@ impl Stats {
     pub fn min(&self) -> u32 {
         self.values[0]
     }
-
-    /// Returns the maximum of the stored values.
-    ///
-    /// Panics if no values are present.
-    pub fn max(&self) -> u32 {
-        self.values[self.values.len() - 1]
-    }
 }
 
 /// A collection of global stats that the app keeps track of.
