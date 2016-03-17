@@ -394,8 +394,8 @@ impl Bvh {
         // might be able to achieve slightly better performance.
         let heuristic = TreeSurfaceAreaHeuristic {
             aabb_intersection_cost: 40.0,
-            triangle_intersection_cost: 300.0,
-            intersection_probability: 0.5, // TODO: Tweak this value.
+            triangle_intersection_cost: 120.0,
+            intersection_probability: 0.1, // TODO: Tweak this value.
         };
 
         // Build the BVH of interim nodes.
