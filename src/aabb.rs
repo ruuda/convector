@@ -108,8 +108,9 @@ impl Aabb {
         // compiles down to ~65 instructions, taking up ~168 bytes of
         // instruction cache; 3 cache lines.
 
-        // TODO: Could precompute the reciprocal. Or is the compiler smart
-        // enough to hoist and inline anyway? It looks like this is the case.
+        // Note: the compiler is smart enough to inline this method and compute
+        // these reciprocals only once per ray, so there is no need to clutter
+        // the code by passing around precomputed values.
         let xinv = ray.direction.x.recip();
         let yinv = ray.direction.y.recip();
         let zinv = ray.direction.z.recip();
