@@ -195,7 +195,6 @@ impl InterimNode {
     fn split<H>(&mut self, heuristic: &H) where H: Heuristic {
         // If there is only one triangle, splitting does not make sense.
         if self.triangles.len() <= 1 {
-            println!("warning: attempted to split single-triangle node");
             return
         }
 
