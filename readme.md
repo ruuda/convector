@@ -12,7 +12,7 @@ Requirements
 ------------
 
 Hardware: a CPU that supports the AVX instructions is required. In practice this
-means Sandy Bridge os later. FMA instructions can be taken advantage of too,
+means Sandy Bridge or later. FMA instructions can be taken advantage of too,
 those are Haswell or later.
 
 Software: a recent nightly version of the
