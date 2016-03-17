@@ -526,7 +526,11 @@ impl Bvh {
         Bvh::build(&triangles)
     }
 
-    pub fn intersect_nearest(&self, ray: &MRay, mut isect: MIntersection) -> MIntersection {
+    /// Returns the nearest intersection closer than the provided intersection.
+    /// Also returns the number of AABBs intersected and the number of triangles
+    /// intersected.
+    #[inline(always)]
+    pub fn intersect_nearest_impl(&self, ray: &MRay, mut isect: MIntersection) -> (MIntersection, u32, u32) {
         // Keep a stack of nodes that still need to be intersected. This does
         // involve a heap allocation, but that is not so bad. Using a small
         // on-stack vector from the smallvec crate (which falls back to heap
@@ -535,6 +539,11 @@ impl Bvh {
         // rolling an on-stack (memory) stack (data structure) could squeeze out
         // a few more fps.
         let mut stack = Vec::with_capacity(10);
+
+        // Counters for debug view. In normal code these are not used, so LLVM
+        // will eliminate them I hope.
+        let mut numi_aabb = 2;
+        let mut numi_tri = 0;
 
         // A note about `get_unchecked`: array indexing in Rust is checked by
         // default, but by construction all indices in the BVH are valid, so
@@ -562,6 +571,7 @@ impl Bvh {
 
             if node.len == 0 {
                 // This is an internal node.
+                numi_aabb += 2;
                 let child_0 = unsafe { self.nodes.get_unchecked(node.index as usize + 0) };
                 let child_1 = unsafe { self.nodes.get_unchecked(node.index as usize + 1) };
                 let child_isect_0 = child_0.aabb.intersect(ray);
@@ -578,11 +588,24 @@ impl Bvh {
                 for i in node.index..node.index + node.len {
                     let triangle = unsafe { self.triangles.get_unchecked(i as usize) };
                     isect = triangle.intersect(ray, isect);
+                    numi_tri += 1;
                 }
             }
         }
 
+        (isect, numi_aabb, numi_tri)
+    }
+
+    pub fn intersect_nearest(&self, ray: &MRay, isect: MIntersection) -> MIntersection {
+        let (isect, _, _) = self.intersect_nearest_impl(ray, isect);
         isect
+    }
+
+    /// Returns the number of AABBs and the number of triangles intersected to
+    /// find the closest intersection.
+    pub fn intersect_debug(&self, ray: &MRay, isect: MIntersection) -> (u32, u32) {
+        let (_, numi_aabb, numi_tri) = self.intersect_nearest_impl(ray, isect);
+        (numi_aabb, numi_tri)
     }
 
     pub fn intersect_any(&self, ray: &MRay, max_dist: Mf32) -> Mask {

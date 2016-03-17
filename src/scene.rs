@@ -77,6 +77,18 @@ impl Scene {
         self.bvh.intersect_nearest(ray, far_away)
     }
 
+    /// Returns the number of AABBs and triangles intersected to find the
+    /// nearest intersection.
+    pub fn intersect_debug(&self, ray: &MRay) -> (u32, u32) {
+        let huge_distance = Mf32::broadcast(1.0e5);
+        let far_away = MIntersection {
+            position: ray.direction.mul_add(huge_distance, ray.origin),
+            normal: ray.direction,
+            distance: huge_distance,
+        };
+        self.bvh.intersect_debug(ray, far_away)
+    }
+
     /// Returns whether there is any geometry along the ray.
     ///
     /// This is intended for occlusion testing. The exact location of the

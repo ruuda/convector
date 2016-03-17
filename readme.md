@@ -35,6 +35,9 @@ everything should still compile and run.
 Controls
 --------
 
+ * Press `d` to toggle debug view.
+   The green channel shows the number of AABB intersections,
+   the blue channel shows the number of triangle intersections.
  * Press `q` to quit the application.
  * Press `s` to print statistics to the console.
  * Press `t` to write a trace to trace.json.

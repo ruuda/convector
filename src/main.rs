@@ -37,7 +37,7 @@ use renderer::{RenderBuffer, Renderer};
 use scene::Scene;
 use stats::GlobalStats;
 use std::mem;
-use ui::Window;
+use ui::{Action, Window};
 use wavefront::Mesh;
 
 fn build_scene() -> Scene {
@@ -88,6 +88,12 @@ fn main() {
 
         renderer.update_scene();
 
+        match window.handle_events(&mut stats, &trace_log) {
+            Action::Quit => should_continue = false,
+            Action::ToggleDebugView => renderer.toggle_debug_view(),
+            Action::None => { }
+        }
+
         let new_backbuffer = RenderBuffer::new(width, height);
         let frontbuffer = mem::replace(&mut backbuffer, new_backbuffer);
         let renderer_ref = &renderer;
@@ -120,8 +126,6 @@ fn main() {
             // and display it.
             let _stw_display = trace_log.scoped("display_buffer", 0);
             window.display_buffer(frontbuffer.into_bitmap(), &mut stats);
-
-            should_continue = window.handle_events(&mut stats, &trace_log);
 
             // The scope automatically waits for all tasks to complete
             // before the loop continues.

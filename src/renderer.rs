@@ -12,6 +12,7 @@ pub struct Renderer {
     width: u32,
     height: u32,
     epoch: PreciseTime,
+    enable_debug_view: bool,
 }
 
 /// The buffer that an image is rendered into.
@@ -88,6 +89,7 @@ impl Renderer {
             width: width,
             height: height,
             epoch: PreciseTime::now(),
+            enable_debug_view: false,
         }
     }
 
@@ -102,6 +104,10 @@ impl Renderer {
             y: (t * 0.3).cos() * 7.0,
             z: t.sin() * 5.0,
         };
+    }
+
+    pub fn toggle_debug_view(&mut self) {
+        self.enable_debug_view = !self.enable_debug_view;
     }
 
     /// Returns the screen coordinates of the block of 16x4 pixels where (x, y)
@@ -158,7 +164,11 @@ impl Renderer {
     fn render_block_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32) {
         // Render pixels, get f32 colors.
         let (xs, ys) = self.get_pixel_coords_16x4(x, y);
-        let rgbs = generate_slice8(|i| self.render_pixels(xs[i], ys[i]));
+        let rgbs = if self.enable_debug_view {
+            generate_slice8(|i| self.render_pixels_debug(xs[i], ys[i]))
+        } else {
+            generate_slice8(|i| self.render_pixels(xs[i], ys[i]))
+        };
 
         // Convert f32 colors to i32 colors in the range 0-255.
         let range = Mf32::broadcast(255.0);
@@ -266,5 +276,15 @@ impl Renderer {
         }
 
         color
+    }
+
+    fn render_pixels_debug(&self, x: Mf32, y: Mf32) -> MVector3 {
+        let ray = self.scene.camera.get_ray(x, y);
+        let (numi_aabb, numi_tri) = self.scene.intersect_debug(&ray);
+
+        let g = Mf32::broadcast((numi_aabb as f32).log2() * 0.1);
+        let b = Mf32::broadcast((numi_tri as f32).log2() * 0.1);
+
+        MVector3::new(Mf32::zero(), g, b)
     }
 }

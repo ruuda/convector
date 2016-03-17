@@ -16,6 +16,12 @@ pub struct Window {
     height: u32,
 }
 
+pub enum Action {
+    None,
+    Quit,
+    ToggleDebugView,
+}
+
 impl Window {
     /// Opens a new window using Glutin.
     pub fn new(width: u32, height: u32, title: &str) -> Window {
@@ -61,15 +67,16 @@ impl Window {
         stats.draw_vsync_us.insert_time_us(begin_draw.to(end_draw));
     }
 
-    /// Handles all window events and returns whether the app should continue to
-    /// run.
-    pub fn handle_events(&mut self, stats: &GlobalStats, trace_log: &TraceLog) -> bool {
+    /// Handles all window events and returns an action to be performed.
+    pub fn handle_events(&mut self, stats: &GlobalStats, trace_log: &TraceLog) -> Action {
         for ev in self.display.poll_events() {
             match ev {
                 // Window was closed by the user.
-                Event::Closed => return false,
+                Event::Closed => return Action::Quit,
+                // The user pressed 'd' to toggle debug view.
+                Event::ReceivedCharacter('d') => return Action::ToggleDebugView,
                 // The user pressed 'q' for quit.
-                Event::ReceivedCharacter('q') => return false,
+                Event::ReceivedCharacter('q') => return Action::Quit,
                 // The user pressed 's' for stats.
                 // TODO: Invert dependency, handle_events should not take stats.
                 Event::ReceivedCharacter('s') => stats.print(),
@@ -83,6 +90,6 @@ impl Window {
                 _ => ()
             }
         }
-        true
+        Action::None
     }
 }
