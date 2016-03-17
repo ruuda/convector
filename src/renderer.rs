@@ -99,10 +99,11 @@ impl Renderer {
         let t = self.epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
 
         // Make the light circle around.
+        let r = 7.0 + (t * 0.4).sin();
         self.scene.lights[0].position = SVector3 {
-            x: t.cos() * 5.0,
-            y: (t * 0.3).cos() * 7.0,
-            z: t.sin() * 5.0,
+            x: t.cos() * r,
+            y: (t * 0.3).cos() * 2.0 + 5.0,
+            z: t.sin() * r,
         };
     }
 
