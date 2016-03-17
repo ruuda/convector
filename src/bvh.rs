@@ -4,19 +4,26 @@ use aabb::Aabb;
 use ray::{MIntersection, MRay};
 use simd::{Mask, Mf32};
 use triangle::Triangle;
+use util;
 use vector3::{Axis, SVector3};
 use wavefront::Mesh;
 
 /// One node in a bounding volume hierarchy.
 struct BvhNode {
     aabb: Aabb,
-    children: Vec<BvhNode>,
-    geometry: Vec<Triangle>,
+
+    /// For leaf nodes, the index of the first triangle, for internal nodes, the
+    /// index of the first child. The second child is at `index + 1`.
+    index: u32,
+
+    /// For leaf nodes, the number of triangle, zero for internal nodes.
+    len: u32,
 }
 
 /// A bounding volume hierarchy.
 pub struct Bvh {
-    root: BvhNode,
+    nodes: Vec<BvhNode>,
+    triangles: Vec<Triangle>,
 }
 
 /// Reference to a triangle used during BVH construction.
@@ -261,13 +268,58 @@ impl InterimNode {
         }
     }
 
+    /// Returns the number of triangle refs in the leaves.
+    fn count_triangles(&self) -> usize {
+        let child_tris: usize = self.children.iter().map(|ch| ch.count_triangles()).sum();
+        let self_tris = self.triangles.len();
+        child_tris + self_tris
+    }
+
+    /// Returns the number of nodes in the BVH, including self.
+    fn count_nodes(&self) -> usize {
+        let child_count: usize = self.children.iter().map(|ch| ch.count_nodes()).sum();
+        1 + child_count
+    }
+
     /// Converts the interim representation that was useful for building the BVH
     /// into a representation that is optimized for traversing the BVH.
-    fn crystallize(mut self, triangles: &[Triangle]) -> BvhNode {
-        BvhNode {
-            aabb: self.outer_aabb,
-            children: self.children.drain(..).map(|x| x.crystallize(triangles)).collect(),
-            geometry: self.triangles.drain(..).map(|t| triangles[t.index].clone()).collect(),
+    fn crystallize(&self,
+                   source_triangles: &[Triangle],
+                   nodes: &mut Vec<BvhNode>,
+                   sorted_triangles: &mut Vec<Triangle>,
+                   into_index: usize) {
+        // Nodes must always be pushed in pairs to keep siblings on the same
+        // cache line.
+        assert_eq!(0, nodes.len() % 2);
+
+        nodes[into_index].aabb = self.outer_aabb.clone();
+
+        if self.triangles.is_empty() {
+            // This is an internal node.
+            assert_eq!(2, self.children.len());
+
+            // Allocate two new nodes for the children.
+            let child_index = nodes.len();
+            nodes.push(BvhNode::new());
+            nodes.push(BvhNode::new());
+
+            // Recursively crystallize the child nodes.
+            // TODO: Order by surface area.
+            self.children[0].crystallize(source_triangles, nodes, sorted_triangles, child_index + 0);
+            self.children[1].crystallize(source_triangles, nodes, sorted_triangles, child_index + 1);
+
+            nodes[into_index].index = child_index as u32;
+            nodes[into_index].len = 0;
+        } else {
+            // This is a leaf node.
+            assert_eq!(0, self.children.len());
+
+            nodes[into_index].index = sorted_triangles.len() as u32;
+            nodes[into_index].len = self.triangles.len() as u32;
+
+            // Copy the triangles into the triangle buffer.
+            let tris = self.triangles.iter().map(|triref| source_triangles[triref.index].clone());
+            sorted_triangles.extend(tris);
         }
     }
 }
@@ -317,10 +369,21 @@ impl Heuristic for TreeSurfaceAreaHeuristic {
     }
 }
 
+impl BvhNode {
+    /// Returns a zeroed node, to be filled later.
+    fn new() -> BvhNode {
+        BvhNode {
+            aabb: Aabb::zero(),
+            index: 0,
+            len: 0,
+        }
+    }
+}
+
 impl Bvh {
-    pub fn build(triangles: Vec<Triangle>) -> Bvh {
+    pub fn build(source_triangles: &[Triangle]) -> Bvh {
         // Actual triangles are not important to the BVH, convert them to AABBs.
-        let trirefs = (0..).zip(triangles.iter())
+        let trirefs = (0..).zip(source_triangles.iter())
                            .map(|(i, tri)| TriangleRef::from_triangle(i, tri))
                            .collect();
 
@@ -338,8 +401,35 @@ impl Bvh {
         // Build the BVH of interim nodes.
         root.split_recursive(&heuristic);
 
+        // There should be at least one split, because crystallized nodes are
+        // stored in pairs. There is no single root, there are two roots. (Or,
+        // the root is implicit and its bounding box is infinite, if you like.)
+        assert_eq!(2, root.children.len());
+
+        // Allocate one buffer for the BVH nodes and one for the triangles. For
+        // better data locality, the source triangles are reordered. Also, a
+        // triangle might be included in multiple nodes. In that case it is
+        // simply duplicated in the new buffer. The node buffer is aligned to a
+        // cache line: nodes are always accessed in pairs, and one pair fits
+        // exactly in one cache line.
+        let num_tris = root.count_triangles();
+        let num_nodes = root.count_nodes();
+        let mut nodes = util::cache_line_aligned_vec(num_nodes);
+        let mut sorted_triangles = Vec::with_capacity(num_tris);
+
+        // Write the tree of interim nodes that is all over the heap currently,
+        // neatly packed into the buffers that we just allocated.
+        let left = &root.children[0];
+        let right = &root.children[1];
+        nodes.push(BvhNode::new());
+        nodes.push(BvhNode::new());
+        // TODO: Order these by area.
+        left.crystallize(&source_triangles, &mut nodes, &mut sorted_triangles, 0);
+        right.crystallize(&source_triangles, &mut nodes, &mut sorted_triangles, 1);
+
         Bvh {
-            root: root.crystallize(&triangles)
+            nodes: nodes,
+            triangles: sorted_triangles,
         }
     }
 
@@ -357,7 +447,7 @@ impl Bvh {
             triangles.extend(mesh_triangles);
         }
 
-        Bvh::build(triangles)
+        Bvh::build(&triangles)
     }
 
     pub fn intersect_nearest(&self, ray: &MRay, mut isect: MIntersection) -> MIntersection {
@@ -368,14 +458,21 @@ impl Bvh {
         // If there is an upper bound on the BVH depth, then perhaps manually
         // rolling an on-stack (memory) stack (data structure) could squeeze out
         // a few more fps.
-        let mut nodes = Vec::with_capacity(10);
+        let mut stack = Vec::with_capacity(10);
 
-        let root_isect = self.root.aabb.intersect(ray);
-        if root_isect.any() {
-            nodes.push((root_isect, &self.root));
+        let root_0 = &self.nodes[0];
+        let root_1 = &self.nodes[1];
+        let root_isect_0 = root_0.aabb.intersect(ray);
+        let root_isect_1 = root_1.aabb.intersect(ray);
+
+        if root_isect_0.any() {
+            stack.push((root_isect_0, root_0));
+        }
+        if root_isect_1.any() {
+            stack.push((root_isect_1, root_1));
         }
 
-        while let Some((aabb_isect, node)) = nodes.pop() {
+        while let Some((aabb_isect, node)) = stack.pop() {
             // If the AABB is further away than the current nearest
             // intersection, then nothing inside the node can yield
             // a closer intersection, so we can skip the node.
@@ -383,15 +480,24 @@ impl Bvh {
                 continue
             }
 
-            if node.geometry.is_empty() {
-                for child in &node.children {
-                    let child_isect = child.aabb.intersect(ray);
-                    if child_isect.any() {
-                        nodes.push((child_isect, child));
-                    }
+            if node.len == 0 {
+                // This is an internal node.
+                let child_0 = &self.nodes[node.index as usize + 0];
+                let child_1 = &self.nodes[node.index as usize + 1];
+                let child_isect_0 = child_0.aabb.intersect(ray);
+                let child_isect_1 = child_1.aabb.intersect(ray);
+
+                // TODO: Order by distance?
+                if child_isect_0.any() {
+                    stack.push((child_isect_0, child_0));
+                }
+                if child_isect_1.any() {
+                    stack.push((child_isect_1, child_1));
                 }
             } else {
-                for triangle in &node.geometry {
+                let i = node.index as usize;
+                let len = node.len as usize;
+                for triangle in &self.triangles[i..i + len] {
                     isect = triangle.intersect(ray, isect);
                 }
             }
