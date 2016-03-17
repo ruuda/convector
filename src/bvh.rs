@@ -538,6 +538,12 @@ impl Bvh {
     }
 
     pub fn intersect_any(&self, ray: &MRay, max_dist: Mf32) -> Mask {
+        // This is actually just doing a full BVH intersection. I tried to do an
+        // early out here; stop when all rays intersect at least something,
+        // instead of finding the nearest intersection, but I could not measure
+        // a performance improvement. `intersect_nearest` does try very hard not
+        // to intersect more than necessary, and apparently that is good enough
+        // already.
         let isect = MIntersection {
             position: ray.direction.mul_add(max_dist, ray.origin),
             normal: ray.direction,
