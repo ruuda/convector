@@ -60,11 +60,11 @@ fn build_scene() -> Scene {
 
     scene.lights.push(Light {
         position: SVector3::new(5.0, 0.0, 6.0),
-        power: SVector3::new(2.4, 2.2, 2.0),
+        power: SVector3::new(4.8, 4.4, 4.0),
     });
     scene.lights.push(Light {
         position: SVector3::new(0.0, 15.0, 0.0),
-        power: SVector3::new(13.0, 0.0, 0.0),
+        power: SVector3::new(13.0, 0.0, 5.0),
     });
 
     scene
