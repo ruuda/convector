@@ -24,8 +24,8 @@ pub struct MAabbIntersection {
     tmin: Mf32,
     tmax: Mf32,
 
-    // TODO: Is is worth storing this, or is it faster to re-compute when it is
-    // needed?
+    // The mask can be computed from tmin and tmax, but benchmarks show that it
+    // is slightly faster to store it, than to re-compute it when needed.
     mask: Mask,
 }
 
