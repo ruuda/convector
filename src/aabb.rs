@@ -177,6 +177,13 @@ fn aabb_center() {
 }
 
 #[test]
+fn aabb_area() {
+    // Width: 4, height: 5, depth: 6.
+    let aabb = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(5.0, 7.0, 9.0));
+    assert_eq!(40.0 + 60.0 + 48.0, aabb.area());
+}
+
+#[test]
 fn aabb_extend_point() {
     let aabb = Aabb::new(SVector3::zero(), SVector3::one());
     let p = SVector3::new(0.5, 0.5, 1.5);
