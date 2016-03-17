@@ -177,13 +177,10 @@ impl BitAnd<Mask> for Mask {
     #[inline(always)]
     fn bitand(self, other: Mask) -> Mask {
         use std::mem::transmute;
-        // The _mm256_and_ps intrinsic is not available as an LLVM intrinsic;
-        // the bitwise and operations are different.
-        // TODO: Verify that this emits a vandps instruction though.
         unsafe {
-            let a: [u64; 4] = transmute(self);
-            let b: [u64; 4] = transmute(other);
-            let a_and_b = [a[0] & b[0], a[1] & b[1], a[2] & b[2], a[3] & b[3]];
+            let a: Mi32 = transmute(self);
+            let b: Mi32 = transmute(other);
+            let a_and_b = simd_and(a, b);
             transmute(a_and_b)
         }
     }
@@ -194,13 +191,7 @@ impl BitOr<Mi32> for Mi32 {
 
     #[inline(always)]
     fn bitor(self, other: Mi32) -> Mi32 {
-        use std::mem::transmute;
-        unsafe {
-            let a: Mask = transmute(self);
-            let b: Mask = transmute(other);
-            let a_or_b = a | b;
-            transmute(a_or_b)
-        }
+        unsafe { simd_or(self, other) }
     }
 }
 
@@ -210,13 +201,10 @@ impl BitOr<Mask> for Mask {
     #[inline(always)]
     fn bitor(self, other: Mask) -> Mask {
         use std::mem::transmute;
-        // The _mm256_or_ps intrinsic is not available as an LLVM intrinsic;
-        // the bitwise and operations are different.
-        // TODO: Verify that this emits a vorps instruction though.
         unsafe {
-            let a: [u64; 4] = transmute(self);
-            let b: [u64; 4] = transmute(other);
-            let a_or_b = [a[0] | b[0], a[1] | b[1], a[2] | b[2], a[3] | b[3]];
+            let a: Mi32 = transmute(self);
+            let b: Mi32 = transmute(other);
+            let a_or_b = simd_or(a, b);
             transmute(a_or_b)
         }
     }
@@ -270,6 +258,9 @@ extern "platform-intrinsic" {
     // This is `_mm256_add_ps` when compiled for AVX.
     fn simd_add<T>(x: T, y: T) -> T;
 
+    // This is `_mm256_and_ps` when compiled for AVX.
+    fn simd_and<T>(x: T, y: T) -> T;
+
     // This is `_mm256_div_ps` when compiled for AVX.
     fn simd_div<T>(x: T, y: T) -> T;
 
@@ -278,6 +269,9 @@ extern "platform-intrinsic" {
 
     // This is `_mm256_mul_ps` when compiled for AVX.
     fn simd_mul<T>(x: T, y: T) -> T;
+
+    // This is `_mm256_or_ps` when compiled for AVX.
+    fn simd_or<T>(x: T, y: T) -> T;
 
     fn x86_mm256_blendv_ps(x: Mf32, y: Mf32, mask: Mask) -> Mf32;
     fn x86_mm256_cmp_ps(x: Mf32, y: Mf32, op: i8) -> Mask;
