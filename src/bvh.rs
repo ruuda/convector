@@ -19,7 +19,7 @@ struct BvhNode {
     /// index of the first child. The second child is at `index + 1`.
     index: u32,
 
-    /// For leaf nodes, the number of triangle, zero for internal nodes.
+    /// For leaf nodes, the number of triangles, zero for internal nodes.
     len: u32,
 }
 
