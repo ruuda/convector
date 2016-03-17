@@ -132,9 +132,11 @@ impl InterimNode {
 
             // If a lot of geometry ends up in one bin, binning is
             // apparently not effective.
-            if bins[index].triangles.len() > self.triangles.len() / 8 {
+            let num_tris = self.triangles.len();
+            if bins[index].triangles.len() > num_tris / 8 && num_tris > bins.len() {
                 println!("warning: triangle distribution is very non-uniform");
                 println!("         binning will not be effective");
+                println!("         number of triangles: {}", num_tris);
             }
         }
     }
@@ -212,7 +214,6 @@ impl InterimNode {
                 let (index, cost) = self.find_cheapest_split(heuristic, &bins);
 
                 if cost < best_split_cost || is_first {
-                    println!("replaced previous split cost {} with {}", best_split_cost, cost);
                     let (min, size) = self.inner_aabb_origin_and_size(axis);
                     best_split_axis = axis;
                     best_split_at = min + size / (bins.len() as f32) * (index as f32);
@@ -279,6 +280,22 @@ impl InterimNode {
     fn count_nodes(&self) -> usize {
         let child_count: usize = self.children.iter().map(|ch| ch.count_nodes()).sum();
         1 + child_count
+    }
+
+    /// Returns the number of leaf nodes in the BVH.
+    fn count_leaves(&self) -> usize {
+        let leaf_count: usize = self.children.iter().map(|ch| ch.count_leaves()).sum();
+        let self_leaf = if self.children.is_empty() { 1 } else { 0 };
+        self_leaf + leaf_count
+    }
+
+    /// Returns the ratio of the parent area to the child node area,
+    /// summed over all the nodes.
+    fn summed_area_ratio(&self) -> f32 {
+        let child_contribution: f32 = self.children.iter().map(|ch| ch.summed_area_ratio()).sum();
+        let self_area = self.outer_aabb.area();
+        let child_sum: f32 = self.children.iter().map(|ch| ch.outer_aabb.area() / self_area).sum();
+        child_sum + child_contribution
     }
 
     /// Converts the interim representation that was useful for building the BVH
@@ -382,6 +399,7 @@ impl BvhNode {
 
 impl Bvh {
     pub fn build(source_triangles: &[Triangle]) -> Bvh {
+        println!("building bvh ...");
         // Actual triangles are not important to the BVH, convert them to AABBs.
         let trirefs = (0..).zip(source_triangles.iter())
                            .map(|(i, tri)| TriangleRef::from_triangle(i, tri))
@@ -417,6 +435,8 @@ impl Bvh {
         let mut nodes = util::cache_line_aligned_vec(num_nodes);
         let mut sorted_triangles = Vec::with_capacity(num_tris);
 
+        println!("done constructing bvh, crystallizing ...");
+
         // Write the tree of interim nodes that is all over the heap currently,
         // neatly packed into the buffers that we just allocated.
         let left = &root.children[0];
@@ -426,6 +446,15 @@ impl Bvh {
         // TODO: Order these by area.
         left.crystallize(&source_triangles, &mut nodes, &mut sorted_triangles, 0);
         right.crystallize(&source_triangles, &mut nodes, &mut sorted_triangles, 1);
+
+        // Print some statistics about the BVH:
+        let num_leaves = root.count_leaves();
+        let tris_per_leaf = (num_tris as f32) / (num_leaves as f32);
+        let area_ratio_sum = root.summed_area_ratio();
+        let avg_area_ratio = area_ratio_sum / (num_nodes as f32);
+        println!("bvh statistics:");
+        println!("  average triangles per leaf: {:0.2}", tris_per_leaf);
+        println!("  average child area / parent area: {:0.2}", avg_area_ratio);
 
         Bvh {
             nodes: nodes,
