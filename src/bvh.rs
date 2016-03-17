@@ -51,7 +51,7 @@ struct Bin<'a> {
     aabb: Option<Aabb>,
 }
 
-trait Heuristic {
+trait Heuristic: Sync {
     /// Given that a ray has intersected the parent bounding box, estimates the
     /// cost of intersecting the child bounding box and the triangles in it.
     fn aabb_cost(&self, parent_aabb: &Aabb, aabb: &Aabb, num_tris: usize) -> f32;
@@ -261,10 +261,19 @@ impl InterimNode {
 
     /// Recursively splits the node, constructing the BVH.
     fn split_recursive<H>(&mut self, heuristic: &H) where H: Heuristic {
-        // TODO: This would be an excellent candidate for Rayon I think.
+        use rayon;
         self.split(heuristic);
-        for child_node in &mut self.children {
-            child_node.split_recursive(heuristic);
+
+        if !self.children.is_empty() {
+            assert_eq!(2, self.children.len());
+            let (left, right) = self.children.split_at_mut(1);
+
+            // Recursively split the children. Use Rayon to put the work up for
+            // grabs with work stealing, for parallel BVH construction.
+            rayon::join(
+                || left[0].split_recursive(heuristic),
+                || right[0].split_recursive(heuristic)
+            );
         }
     }
 
