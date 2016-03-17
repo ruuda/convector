@@ -51,7 +51,8 @@ struct InterimNode {
 
 struct Bin<'a> {
     triangles: Vec<&'a TriangleRef>,
-    aabb: Option<Aabb>,
+    outer_aabb: Option<Aabb>,
+    inner_aabb: Option<Aabb>,
 }
 
 trait Heuristic: Sync {
@@ -90,16 +91,27 @@ impl<'a> Bin<'a> {
     fn new() -> Bin<'a> {
         Bin {
             triangles: Vec::new(),
-            aabb: None,
+            outer_aabb: None,
+            inner_aabb: None,
         }
     }
 
     pub fn push(&mut self, tri: &'a TriangleRef) {
         self.triangles.push(tri);
-        self.aabb = match self.aabb {
+        self.outer_aabb = match self.outer_aabb {
             Some(ref aabb) => Some(Aabb::enclose_aabbs(&[aabb.clone(), tri.aabb.clone()])),
             None => Some(tri.aabb.clone()),
         };
+        self.inner_aabb = match self.inner_aabb {
+            Some(ref aabb) => Some(aabb.extend_point(tri.barycenter)),
+            None => Some(Aabb::enclose_points(&[tri.barycenter])),
+        };
+    }
+
+    pub fn clear(&mut self) {
+        self.triangles.clear();
+        self.outer_aabb = None;
+        self.inner_aabb = None;
     }
 }
 
@@ -133,8 +145,9 @@ impl InterimNode {
             let index = if index < bins.len() { index } else { bins.len() - 1 };
             bins[index].push(tri);
 
-            // If a lot of geometry ends up in one bin, binning is
-            // apparently not effective.
+            // If a lot of geometry ends up in one bin, binning is apparently
+            // not effective. In that case, fall back to sorting and try splits
+            // based on percentiles.
             let num_tris = self.triangles.len();
             if bins[index].triangles.len() > num_tris / 8 && num_tris > bins.len() {
                 println!("warning: triangle distribution is very non-uniform");
@@ -144,11 +157,37 @@ impl InterimNode {
         }
     }
 
+    /// Puts roughly the same number of triangles in every bin, sorted by the
+    /// coordinate along the specified axis. This is O(n log n) instead of O(n)
+    /// due to sorting.
+    fn bin_triangles_uniform<'a>(&'a self, bins: &mut [Bin<'a>], axis: Axis) {
+        // Create a vector of pointers to the triangle refs and sort them on
+        // coordinate.
+        let mut triptrs: Vec<&TriangleRef> = self.triangles.iter().map(|tri| tri).collect();
+        triptrs.sort_by(|t1, t2| {
+            let a = t1.barycenter.get_coord(axis);
+            let b = t2.barycenter.get_coord(axis);
+            // Rust is very pedantic about the fact that there is no total order
+            // on f32, but NaNs in this data would be a bug so jump through the
+            // hoop.
+            a.partial_cmp(&b).unwrap()
+        });
+
+        let tris_per_bin = (triptrs.len() + bins.len() / 2) / bins.len();
+        let tris_per_bin = if tris_per_bin == 0 { 1 } else { tris_per_bin };
+
+        for (bin, tris) in bins.iter_mut().zip(triptrs.chunks(tris_per_bin)) {
+            for tri in tris {
+                bin.push(tri)
+            }
+        }
+    }
+
     /// Returs the bounding box enclosing the bin bounding boxes.
     fn enclose_bins(bins: &[Bin]) -> Aabb {
         let aabbs = bins.iter()
                         .filter(|bin| bin.triangles.len() > 0)
-                        .map(|bin| bin.aabb.as_ref().unwrap());
+                        .map(|bin| bin.outer_aabb.as_ref().unwrap());
 
         Aabb::enclose_aabbs(aabbs)
     }
@@ -158,6 +197,28 @@ impl InterimNode {
         1 < bins.iter().filter(|bin| !bin.triangles.is_empty()).count()
     }
 
+    /// Returns the maximum barycenter along the axis, of the triangles in all
+    /// bins before the specified bin index.
+    fn bin_max_coord_before_split(bins: &[Bin], index: usize, axis: Axis) -> f32 {
+        for i in (0..index).rev() {
+            if let &Some(ref aabb) = &bins[i].inner_aabb {
+                return aabb.far.get_coord(axis)
+            }
+        }
+        panic!("split positions that leave one side empty should not be considered");
+    }
+
+    /// Returns the minimum barycenter along the axis, of the triangles in all
+    /// bins after and including the specified bin index.
+    fn bin_min_coord_after_split(bins: &[Bin], index: usize, axis: Axis) -> f32 {
+        for i in index..bins.len() {
+            if let &Some(ref aabb) = &bins[i].inner_aabb {
+                return aabb.origin.get_coord(axis)
+            }
+        }
+        panic!("split positions that leave one side empty should not be considered");
+    }
+
     /// Returns the bin index such that for the cheapest split, all bins with a
     /// lower index should go into one node. Also returns the cost of the split.
     fn find_cheapest_split<H>(&self, heuristic: &H, bins: &[Bin]) -> (usize, f32) where H: Heuristic {
@@ -165,7 +226,7 @@ impl InterimNode {
         let mut best_split_cost = 0.0;
         let mut is_first = true;
 
-        // Consiter every split position after the first non-empty bin, until
+        // Consider every split position after the first non-empty bin, until
         // right before the last non-empty bin.
         let first = bins.iter().position(|bin| !bin.triangles.is_empty()).unwrap() + 1;
         let last = bins.iter().rposition(|bin| !bin.triangles.is_empty()).unwrap();
@@ -189,6 +250,8 @@ impl InterimNode {
                 is_first = false;
             }
         }
+
+        assert!(!is_first);
 
         (best_split_at, best_split_cost)
     }
@@ -214,11 +277,16 @@ impl InterimNode {
 
             if InterimNode::are_bins_valid(&bins) {
                 let (index, cost) = self.find_cheapest_split(heuristic, &bins);
+                assert!(index > 0 && index < bins.len());
 
                 if cost < best_split_cost || is_first {
-                    let (min, size) = self.inner_aabb_origin_and_size(axis);
+                    // Choose the split point in between the extrema of the bins,
+                    // to avoid rounding error problems, and also to support the
+                    // case of non-uniform bins.
+                    let before_split = InterimNode::bin_max_coord_before_split(&bins, index, axis);
+                    let after_split = InterimNode::bin_min_coord_after_split(&bins, index, axis);
                     best_split_axis = axis;
-                    best_split_at = min + size / (bins.len() as f32) * (index as f32);
+                    best_split_at = (before_split + after_split) / 2.0;
                     best_split_cost = cost;
                     is_first = false;
                 }
@@ -271,8 +339,8 @@ impl InterimNode {
             assert_eq!(2, self.children.len());
             let (left, right) = self.children.split_at_mut(1);
 
-            // Recursively split the children. Use Rayon to put the work up for
-            // grabs with work stealing, for parallel BVH construction.
+            // Recursively split the children. Use Rayon to put the work up
+            // for grabs with work stealing, for parallel BVH construction.
             rayon::join(
                 || left[0].split_recursive(heuristic),
                 || right[0].split_recursive(heuristic)
