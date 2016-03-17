@@ -75,7 +75,7 @@ fn main() {
     // patches to be rendered by the worker pool. Increasing the patch size to 64 results in 230
     // patches, but some patches are very heavy to render and some are practically a no-op, so all
     // threads might stall because one thread did not yet finish the frame. A patch width of 32 is
-    // a good balance between troughput and latency.
+    // a good balance between throughput and latency.
     let width = 1280;
     let height = 736;
     let patch_width = 32;
