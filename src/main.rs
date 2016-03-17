@@ -46,8 +46,9 @@ fn build_scene() -> Scene {
 
     // let plane = Mesh::load("models/plane.obj");
     // let suzanne = Mesh::load("models/suzanne.obj");
-    let bunny = Mesh::load("models/stanford_bunny.obj");
-    let meshes = [bunny]; //[plane, suzanne];
+    // let bunny = Mesh::load("models/stanford_bunny.obj");
+    let dragon = Mesh::load("models/stanford_dragon.obj");
+    let meshes = [dragon]; //[plane, suzanne];
     let mut scene = Scene::from_meshes(&meshes);
 
     scene.camera.position = SVector3::new(0.0, 5.0, 25.0);
