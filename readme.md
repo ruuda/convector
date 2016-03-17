@@ -57,5 +57,3 @@ the prefix `S` instead (for “single”).
 
 The most interesting stuff is in `src/triangle.rs`, `src/aabb.rs`, `src/bvh.rs`,
 and `src/renderer.rs`. The scene can be customized in `src/main.rs`.
-
-[rust]: https://rust-lang.org
