@@ -30,7 +30,7 @@ pub struct Bvh {
 }
 
 /// Reference to a triangle used during BVH construction.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct TriangleRef {
     aabb: Aabb,
     barycenter: SVector3,
@@ -51,8 +51,7 @@ struct InterimNode {
 
 struct Bin<'a> {
     triangles: Vec<&'a TriangleRef>,
-    outer_aabb: Option<Aabb>,
-    inner_aabb: Option<Aabb>,
+    aabb: Option<Aabb>,
 }
 
 trait Heuristic: Sync {
@@ -91,27 +90,21 @@ impl<'a> Bin<'a> {
     fn new() -> Bin<'a> {
         Bin {
             triangles: Vec::new(),
-            outer_aabb: None,
-            inner_aabb: None,
+            aabb: None,
         }
     }
 
     pub fn push(&mut self, tri: &'a TriangleRef) {
         self.triangles.push(tri);
-        self.outer_aabb = match self.outer_aabb {
+        self.aabb = match self.aabb {
             Some(ref aabb) => Some(Aabb::enclose_aabbs(&[aabb.clone(), tri.aabb.clone()])),
             None => Some(tri.aabb.clone()),
-        };
-        self.inner_aabb = match self.inner_aabb {
-            Some(ref aabb) => Some(aabb.extend_point(tri.barycenter)),
-            None => Some(Aabb::enclose_points(&[tri.barycenter])),
         };
     }
 
     pub fn clear(&mut self) {
         self.triangles.clear();
-        self.outer_aabb = None;
-        self.inner_aabb = None;
+        self.aabb = None;
     }
 }
 
@@ -135,6 +128,13 @@ impl InterimNode {
 
     /// Puts triangles into bins along the specified axis.
     fn bin_triangles<'a>(&'a self, bins: &mut [Bin<'a>], axis: Axis) {
+        // If there are not so many triangles, consider every split position
+        // instead.
+        // if self.triangles.len() <= bins.len() {
+        //     self.bin_triangles_uniform(bins, axis);
+        //     return
+        // }
+
         // Compute the bounds of the bins.
         let (min, size) = self.inner_aabb_origin_and_size(axis);
 
@@ -187,7 +187,7 @@ impl InterimNode {
     fn enclose_bins(bins: &[Bin]) -> Aabb {
         let aabbs = bins.iter()
                         .filter(|bin| bin.triangles.len() > 0)
-                        .map(|bin| bin.outer_aabb.as_ref().unwrap());
+                        .map(|bin| bin.aabb.as_ref().unwrap());
 
         Aabb::enclose_aabbs(aabbs)
     }
@@ -197,31 +197,10 @@ impl InterimNode {
         1 < bins.iter().filter(|bin| !bin.triangles.is_empty()).count()
     }
 
-    /// Returns the maximum barycenter along the axis, of the triangles in all
-    /// bins before the specified bin index.
-    fn bin_max_coord_before_split(bins: &[Bin], index: usize, axis: Axis) -> f32 {
-        for i in (0..index).rev() {
-            if let &Some(ref aabb) = &bins[i].inner_aabb {
-                return aabb.far.get_coord(axis)
-            }
-        }
-        panic!("split positions that leave one side empty should not be considered");
-    }
-
-    /// Returns the minimum barycenter along the axis, of the triangles in all
-    /// bins after and including the specified bin index.
-    fn bin_min_coord_after_split(bins: &[Bin], index: usize, axis: Axis) -> f32 {
-        for i in index..bins.len() {
-            if let &Some(ref aabb) = &bins[i].inner_aabb {
-                return aabb.origin.get_coord(axis)
-            }
-        }
-        panic!("split positions that leave one side empty should not be considered");
-    }
-
-    /// Returns the bin index such that for the cheapest split, all bins with a
-    /// lower index should go into one node. Also returns the cost of the split.
-    fn find_cheapest_split<H>(&self, heuristic: &H, bins: &[Bin]) -> (usize, f32) where H: Heuristic {
+    /// Returns the cheapest split and its cost.
+    fn find_cheapest_split<'a, H>(&self, heuristic: &H, bins: &[Bin<'a>])
+                              -> (f32, Vec<&'a TriangleRef>, Vec<&'a TriangleRef>)
+                              where H: Heuristic {
         let mut best_split_at = 0;
         let mut best_split_cost = 0.0;
         let mut is_first = true;
@@ -229,7 +208,13 @@ impl InterimNode {
         // Consider every split position after the first non-empty bin, until
         // right before the last non-empty bin.
         let first = bins.iter().position(|bin| !bin.triangles.is_empty()).unwrap() + 1;
+
+        // TODO: By restricting the last index here omitting the + 1, I get a
+        // performance increase, even though more split positions are
+        // considered. Apparently the heuristic is not very good.
         let last = bins.iter().rposition(|bin| !bin.triangles.is_empty()).unwrap();
+
+        assert!(first != last);
 
         for i in first..last {
             let left_bins = &bins[..i];
@@ -253,7 +238,10 @@ impl InterimNode {
 
         assert!(!is_first);
 
-        (best_split_at, best_split_cost)
+        let left = bins[..best_split_at].iter().flat_map(|b| b.triangles.iter().cloned()).collect();
+        let right = bins[best_split_at..].iter().flat_map(|b| b.triangles.iter().cloned()).collect();
+
+        (best_split_cost, left, right)
     }
 
     /// Splits the node if that is would be beneficial according to the
@@ -264,39 +252,40 @@ impl InterimNode {
             return
         }
 
-        let mut best_split_axis = Axis::X;
-        let mut best_split_at = 0.0;
-        let mut best_split_cost = 0.0;
-        let mut is_first = true;
+        let (best_split_cost, left_tris, right_tris) = {
+            let mut best_split = (Vec::new(), Vec::new());
+            let mut best_split_cost = 0.0;
+            let mut is_first = true;
 
-        // Find the cheapest split.
-        for &axis in &[Axis::X, Axis::Y, Axis::Z] {
-            let mut bins: Vec<Bin> = (0..64).map(|_| Bin::new()).collect();
+            // Find the cheapest split.
+            for &axis in &[Axis::X, Axis::Y, Axis::Z] {
+                let mut bins: Vec<Bin> = (0..64).map(|_| Bin::new()).collect();
 
-            self.bin_triangles(&mut bins, axis);
+                self.bin_triangles(&mut bins, axis);
 
-            if InterimNode::are_bins_valid(&bins) {
-                let (index, cost) = self.find_cheapest_split(heuristic, &bins);
-                assert!(index > 0 && index < bins.len());
+                if InterimNode::are_bins_valid(&bins) {
+                    let (cost, left, right) = self.find_cheapest_split(heuristic, &bins);
 
-                if cost < best_split_cost || is_first {
-                    // Choose the split point in between the extrema of the bins,
-                    // to avoid rounding error problems, and also to support the
-                    // case of non-uniform bins.
-                    let before_split = InterimNode::bin_max_coord_before_split(&bins, index, axis);
-                    let after_split = InterimNode::bin_min_coord_after_split(&bins, index, axis);
-                    best_split_axis = axis;
-                    best_split_at = (before_split + after_split) / 2.0;
-                    best_split_cost = cost;
-                    is_first = false;
+                    assert!(!left.is_empty());
+                    assert!(!right.is_empty());
+
+                    if cost < best_split_cost || is_first {
+                        best_split = (left, right);
+                        best_split_cost = cost;
+                        is_first = false;
+                    }
+                } else {
+                    // Consider a different splitting strategy?
                 }
-            } else {
-                // Consider a different splitting strategy?
             }
-        }
 
-        // Something must have set the cost.
-        assert!(!is_first);
+            // Something must have set the cost.
+            assert!(!is_first);
+
+            let left_tris = best_split.0.drain(..).cloned().collect();
+            let right_tris = best_split.1.drain(..).cloned().collect();
+            (best_split_cost, left_tris, right_tris)
+        };
 
         // Do not split if the split node is more expensive than the unsplit
         // one.
@@ -305,29 +294,12 @@ impl InterimNode {
             return
         }
 
-        // Partition the triangles into two child nodes.
-        let pred = |tri: &TriangleRef| tri.barycenter.get_coord(best_split_axis) <= best_split_at;
-        // TODO: remove type annotation.
-        let (left_tris, right_tris): (Vec<_>, Vec<_>) = self.triangles.drain(..).partition(pred);
+        let left_node = InterimNode::from_triangle_refs(left_tris);
+        let right_node = InterimNode::from_triangle_refs(right_tris);
 
-        // It can happen that the best split is not to split at all ... BUT in
-        // that case the no split cost should be lower than the all-in-one-side
-        // cost ... so this should not occur.
-        if left_tris.is_empty() || right_tris.is_empty() {
-            println!("one of the sides was empty!");
-            println!("no split cost: {}", no_split_cost);
-            println!("best split cost: {}", best_split_cost);
-            println!("split at: {} on {:?} axis", best_split_at, best_split_axis);
-            println!("left tris: {:?}", left_tris);
-            println!("right tris: {:?}", right_tris);
-        }
-
-        let left = InterimNode::from_triangle_refs(left_tris);
-        let right = InterimNode::from_triangle_refs(right_tris);
-
-        // TODO: Perhaps make child with biggest surface area go first.
-        self.children.push(left);
-        self.children.push(right);
+        self.triangles.clear();
+        self.children.push(left_node);
+        self.children.push(right_node);
     }
 
     /// Recursively splits the node, constructing the BVH.
