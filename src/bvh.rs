@@ -558,7 +558,7 @@ impl Bvh {
         // If there is an upper bound on the BVH depth, then perhaps manually
         // rolling an on-stack (memory) stack (data structure) could squeeze out
         // a few more fps.
-        let mut stack = Vec::with_capacity(10);
+        let mut stack = Vec::with_capacity(20);
 
         // Counters for debug view. In normal code these are not used, so LLVM
         // will eliminate them I hope.
