@@ -41,10 +41,13 @@ pub fn cache_line_aligned_vec<T>(len: usize) -> Vec<T> {
     // might be lucky and get something that is still aligned to a cache line.
     let vec = Vec::with_capacity(num_elems);
 
-    // Crash the program if the buffer was not aligned to a cache line.
+    // Supposing that we still did not get something with proper alignment, what
+    // do we do? (On Windows, I do get the right alignment in a debug build, but
+    // not in a release build.) Crashing seems wrong because the application
+    // will still run fine if the alignment is wrong, it will just be slower.
     unsafe {
         let ptr: usize = mem::transmute(vec.as_ptr());
-        assert_eq!(0, ptr & (size_of_line - 1));
+        debug_assert_eq!(0, ptr & (size_of_line - 1));
     }
 
     vec
