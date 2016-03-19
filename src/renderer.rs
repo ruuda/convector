@@ -4,7 +4,6 @@ use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
 use std::mem;
 use time::PreciseTime;
-use util;
 use vector3::{MVector3, SVector3};
 
 pub struct Renderer {
@@ -31,7 +30,7 @@ impl RenderBuffer {
         // There are 8 RGBA pixels in one mi32.
         let num_elems = (width as usize) * (height as usize) / 8;
 
-        let mut vec = util::cache_line_aligned_vec(num_elems);
+        let mut vec = Vec::with_capacity(num_elems);
         unsafe { vec.set_len(num_elems); }
 
         RenderBuffer {
@@ -59,18 +58,12 @@ impl RenderBuffer {
     /// Returns an RGBA bitmap suitable for display.
     pub fn into_bitmap(self) -> Vec<u8> {
         // This is actually safe because self is moved into the method.
-        let mut buffer = unsafe { self.buffer.into_inner() };
-        let mi32_ptr = buffer.as_mut_ptr();
-        let num_bytes = buffer.len() * 32; // Mi32 is 8 pixels of 4 bytes.
+        let buffer = unsafe { self.buffer.into_inner() };
 
-        // Prevent the destructor of the buffer from freeing the memory.
-        mem::forget(buffer);
-
-        // Transmute the vector into a vector of bytes.
-        unsafe {
-            let u8_ptr = mem::transmute(mi32_ptr);
-            Vec::from_raw_parts(u8_ptr, num_bytes, num_bytes)
-        }
+        buffer.iter().flat_map(|mi32| {
+            let bytes: &[u8; 32] = unsafe { mem::transmute(mi32) };
+            bytes
+        }).cloned().collect()
     }
 }
 
@@ -295,4 +288,15 @@ impl Renderer {
 
         MVector3::new(Mf32::zero(), g, b)
     }
+}
+
+#[test]
+fn render_buffer_into_bitmap() {
+    let render_buffer = RenderBuffer::new(1280, 736);
+    let bitmap = render_buffer.into_bitmap();
+    drop(bitmap);
+    let render_buffer = RenderBuffer::new(1280, 736);
+    let bitmap = render_buffer.into_bitmap();
+    // The render buffer was transmuted into a vector of pixels, and dropping
+    // the vector at this point should not result in a crash.
 }

@@ -4,7 +4,6 @@ use aabb::Aabb;
 use ray::{MIntersection, MRay};
 use simd::{Mask, Mf32};
 use triangle::Triangle;
-use util;
 use vector3::{Axis, SVector3};
 use wavefront::Mesh;
 
@@ -499,7 +498,7 @@ impl Bvh {
         // exactly in one cache line.
         let num_tris = root.count_triangles();
         let num_nodes = root.count_nodes();
-        let mut nodes = util::cache_line_aligned_vec(num_nodes);
+        let mut nodes = Vec::with_capacity(num_nodes);
         let mut sorted_triangles = Vec::with_capacity(num_tris);
 
         // Write the tree of interim nodes that is all over the heap currently,

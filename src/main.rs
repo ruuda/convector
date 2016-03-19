@@ -24,7 +24,6 @@ mod stats;
 mod trace;
 mod triangle;
 mod ui;
-mod util;
 mod vector3;
 mod wavefront;
 
