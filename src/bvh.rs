@@ -542,9 +542,18 @@ impl Bvh {
     }
 
     pub fn print_stats(&self) {
+        use std::mem;
         println!("bvh statistics:");
         println!("  average triangles per leaf: {:0.2}", self.avg_tris_per_leaf);
         println!("  average child area / parent area: {:0.2}", self.avg_area_ratio);
+
+        let tris_size = self.triangles.len() * mem::size_of::<Triangle>();
+        let nodes_size = self.nodes.len() * mem::size_of::<BvhNode>();
+        let tris_kib = (tris_size as f32) / 1024.0;
+        let nodes_kib = (nodes_size as f32) / 1024.0;
+
+        println!("  triangle data size: {:0.1} KiB", tris_kib);
+        println!("  node data size: {:0.1} KiB", nodes_kib);
     }
 
     /// Returns the nearest intersection closer than the provided intersection.
