@@ -422,7 +422,7 @@ impl Heuristic for SurfaceAreaHeuristic {
 
         // We have to test all of the triangles, but only if the bounding box
         // was intersected, so weigh with the probability.
-        fixed_cost + ac_ap * self.tris_cost(num_tris).log2()
+        fixed_cost + ac_ap * self.tris_cost(num_tris)
     }
 
     fn tris_cost(&self, num_tris: usize) -> f32 {
