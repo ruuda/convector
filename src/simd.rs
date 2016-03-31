@@ -4,7 +4,8 @@
 //! use this to the full extent. (Otherwise it will not use AVX but two SSE
 //! adds, for instance.)
 
-use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
+use std::f32::consts::FRAC_PI_2;
+use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Sub};
 
 #[cfg(test)]
 use {bench, test};
@@ -58,6 +59,24 @@ impl Mf32 {
     #[inline(always)]
     pub fn recip(self) -> Mf32 {
         unsafe { x86_mm256_rcp_ps(self) }
+    }
+
+    /// Flips the sign of self by flipping the sign bit.
+    #[inline(always)]
+    pub fn neg_xor(self) -> Mf32 {
+        let sign_bit = Mi32::broadcast(0x80_00_00_00_u32 as i32);
+        use std::mem::transmute;
+        unsafe {
+            let a: Mi32 = transmute(self);
+            let minus_a = simd_xor(a, sign_bit);
+            transmute(minus_a)
+        }
+    }
+
+    /// Flips the sign of self by subtracting self from zero.
+    #[inline(always)]
+    pub fn neg_sub(self) -> Mf32 {
+        Mf32::zero() - self
     }
 
     /// Computes self / denom with best precision.
@@ -232,6 +251,22 @@ impl Mul<Mf32> for Mf32 {
     }
 }
 
+impl Neg for Mf32 {
+    type Output = Mf32;
+
+    #[inline(always)]
+    fn neg(self) -> Mf32 {
+        // How to negate? Flip the sign bit or subtract from zero? According to
+        // the benchmarks they are equally fast (though the compiler **does**
+        // generate different code). A vxorps and vsubps instruction are both 4
+        // bytes, so code size does not favor one either. According to the Intel
+        // intrinsics guide the xor should have a lower latency, but it does
+        // require loading a constant, and generating a zero can be done by de
+        // decoder in 0 cycles. So either one is probably fine.
+        self.neg_sub()
+    }
+}
+
 extern "platform-intrinsic" {
     // This is `_mm256_add_ps` when compiled for AVX.
     fn simd_add<T>(x: T, y: T) -> T;
@@ -250,6 +285,9 @@ extern "platform-intrinsic" {
 
     // This is `_mm256_or_ps` when compiled for AVX.
     fn simd_or<T>(x: T, y: T) -> T;
+
+    // This is `_mm256_xor_ps` when compiled for AVX.
+    fn simd_xor<T>(x: T, y: T) -> T;
 
     fn x86_mm256_blendv_ps(x: Mf32, y: Mf32, mask: Mask) -> Mf32;
     fn x86_mm256_cmp_ps(x: Mf32, y: Mf32, op: i8) -> Mask;
@@ -351,5 +389,49 @@ fn bench_mm256_rcp_ps_mm256_mul_ps_100(b: &mut test::Bencher) {
             let (&numer, &denom) = frac_it.next().unwrap();
             test::black_box(numer * denom.recip());
         }
+    });
+}
+
+#[bench]
+fn bench_negate_with_xor_1000(b: &mut test::Bencher) {
+    let xs = bench::mf32_biunit(1024);
+    let mut k = 0;
+    b.iter(|| {
+        let x = unsafe { xs.get_unchecked(k) };
+        for _ in 0..100 {
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+            test::black_box(x.neg_xor());
+        }
+        k = (k + 1) % 1024;
+    });
+}
+
+#[bench]
+fn bench_negate_with_sub_1000(b: &mut test::Bencher) {
+    let xs = bench::mf32_biunit(1024);
+    let mut k = 0;
+    b.iter(|| {
+        let x = unsafe { xs.get_unchecked(k) };
+        for _ in 0..100 {
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+            test::black_box(x.neg_sub());
+        }
+        k = (k + 1) % 1024;
     });
 }

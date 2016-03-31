@@ -10,18 +10,30 @@ use std::f32::consts;
 use triangle::Triangle;
 use vector3::{MVector3, SVector3};
 
+/// Generates n random Mf32s in the range [0, 1).
+pub fn mf32_unit(n: usize) -> Vec<Mf32> {
+    let mut mf32s = Vec::with_capacity(n);
+    let mut rng = rand::thread_rng();
+    let range = Range::new(0.0, 1.0);
+    for _ in 0..n {
+        mf32s.push(Mf32::generate(|_| range.ind_sample(&mut rng)));
+    }
+    mf32s
+}
+
 /// Generates n random Mf32s in the range [-1, 1).
 pub fn mf32_biunit(n: usize) -> Vec<Mf32> {
-    let mut vectors = Vec::with_capacity(n);
+    let mut mf32s = Vec::with_capacity(n);
     let mut rng = rand::thread_rng();
     let range = Range::new(-1.0, 1.0);
     for _ in 0..n {
-        vectors.push(Mf32::generate(|_| range.ind_sample(&mut rng)));
+        mf32s.push(Mf32::generate(|_| range.ind_sample(&mut rng)));
     }
-    vectors
+    mf32s
 }
 
 /// Generates n vectors distributed uniformly on the unit sphere.
+// TODO: Rename to unit_svectors.
 pub fn points_on_sphere_s(n: usize) -> Vec<SVector3> {
     let mut rng = rand::thread_rng();
     let phi_range = Range::new(0.0, 2.0 * consts::PI);
