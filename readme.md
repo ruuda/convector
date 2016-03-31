@@ -6,7 +6,8 @@ Interactive ray tracer. Copyright 2016 Ruud van Asseldonk.
 TL;DR
 -----
 
-Download the nightly version of [Rust](https://rust-lang.org), then `make run`.
+Download the nightly version of [Rust](https://rust-lang.org),
+then `cargo run --release`.
 
 Requirements
 ------------
@@ -18,24 +19,16 @@ those are Haswell or later.
 Software: a recent nightly version of the
 [Rust programming language](https://rust-lang.org) is required.
 
-Compiling
----------
+Compiling and Running
+---------------------
 
-Normally Cargo can be used to build Rust projects, but I use AVX and FMA
-instructions and LLVM has to be told to use these. There is no way to configure
-this in `Cargo.toml`, so a more low-level command has to be used to compile. I
-stuffed all of this away in a makefile, so now you can just run:
-
- * `make` to build in release mode.
- * `make run` to build and run the release executable.
- * `make bench` to build and run all benchmarks in release mode.
- * `make test` to build and run all tests in debug mode.
+ * `cargo run --release` to build and run the release executable.
+ * `cargo build --release` to build in release mode without running.
+ * `cargo bench` to build and run all benchmarks in release mode.
+ * `cargo test` to build and run all tests in debug mode.
 
 If you do not want to use the FMA instructions, remove the `+fma` from the
-codegen options in the makefile.
-
-On Windows you might have to execute the commands in the makefile manually, but
-everything should still compile and run.
+codegen options in `.cargo/config`.
 
 Controls
 --------
