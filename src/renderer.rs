@@ -259,7 +259,7 @@ impl Renderer {
         // the light is behind the surface. The sign of the dot product is
         // reversed because direction goes from the light to the surface, not
         // from surface to the light.
-        let cos_alpha = (Mf32::zero() - isect.normal.dot(direction)).max(Mf32::zero());
+        let cos_alpha = (-isect.normal.dot(direction)).max(Mf32::zero());
 
         // Power falls off as one over distance squared.
         let falloff = inv_dist * inv_dist;

@@ -418,16 +418,16 @@ fn bench_negate_with_xor_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
-            test::black_box(x.neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
+            test::black_box(test::black_box(x).neg_xor());
         }
         k = (k + 1) % 1024;
     });
@@ -440,16 +440,16 @@ fn bench_negate_with_sub_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
-            test::black_box(x.neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
+            test::black_box(test::black_box(x).neg_sub());
         }
         k = (k + 1) % 1024;
     });
