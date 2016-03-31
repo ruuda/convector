@@ -367,27 +367,46 @@ fn mf32_any_sign_bit_positive_masked() {
 }
 
 #[bench]
-fn bench_mm256_div_ps_100(b: &mut test::Bencher) {
+fn bench_mm256_div_ps_1000(b: &mut test::Bencher) {
     let numers = bench::mf32_biunit(4096 / 8);
     let denoms = bench::mf32_biunit(4096 / 8);
     let mut frac_it = numers.iter().cycle().zip(denoms.iter().cycle());
     b.iter(|| {
+        let (&numer, &denom) = frac_it.next().unwrap();
         for _ in 0..100 {
-            let (&numer, &denom) = frac_it.next().unwrap();
-            test::black_box(numer.div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
+            test::black_box(test::black_box(numer).div(denom));
         }
     });
 }
 
 #[bench]
-fn bench_mm256_rcp_ps_mm256_mul_ps_100(b: &mut test::Bencher) {
+fn bench_mm256_rcp_ps_mm256_mul_ps_1000(b: &mut test::Bencher) {
     let numers = bench::mf32_biunit(4096 / 8);
     let denoms = bench::mf32_biunit(4096 / 8);
     let mut frac_it = numers.iter().cycle().zip(denoms.iter().cycle());
     b.iter(|| {
+        let (&numer, &denom) = frac_it.next().unwrap();
         for _ in 0..100 {
-            let (&numer, &denom) = frac_it.next().unwrap();
-            test::black_box(numer * denom.recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
+            test::black_box(numer * test::black_box(denom).recip());
         }
     });
 }
