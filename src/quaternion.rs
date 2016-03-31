@@ -88,15 +88,71 @@ pub fn rotate(vector: MVector3, rotation: SQuaternion) -> MVector3 {
     MVector3::new(rb, rc, rd)
 }
 
+#[cfg(test)]
+fn assert_mvectors_equal(expected: MVector3, computed: MVector3) {
+    // Test that the vectors are equal, to within floating point inaccuracy
+    // margins.
+    let error = (computed - expected).norm_squared();
+    let margin = 1e-6;
+    assert!((Mf32::broadcast(margin * margin) - error).all_sign_bits_positive(),
+            "expected: ({}, {}, {}), computed: ({}, {}, {})",
+            expected.x.0, expected.y.0, expected.z.0,
+            computed.x.0, computed.y.0, computed.z.0);
+}
+
 #[test]
 fn rotate_identity() {
     let identity = SQuaternion::new(1.0, 0.0, 0.0, 0.0);
     let vectors = bench::points_on_sphere_m(32);
     for &v in &vectors {
-        // Test that the rotated vector is the same as the original, to within
-        // a small marign due to floating point inaccuracies.
-        let error = (v - rotate(v, identity)).norm_squared();
-        let margin = 1e-7;
-        assert!((Mf32::broadcast(margin * margin) - error).all_sign_bits_positive());
+        assert_mvectors_equal(v, rotate(v, identity));
+    }
+}
+
+#[test]
+fn rotate_x() {
+    let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
+    let rotation = SQuaternion::new(half_sqrt_2, half_sqrt_2, 0.0, 0.0);
+    let vectors = bench::points_on_sphere_m(32);
+    for &v in &vectors {
+        // Rotate the vector by pi/2 radians around the x-axis. This is
+        // equivalent to y <- -z, z <- y, so compute the rotation in two
+        // different ways, and verify that the result is the same to within the
+        // floating point inaccuracy margin.
+        let computed = rotate(v, rotation);
+        let expected = MVector3::new(v.x, Mf32::zero() - v.z, v.y);
+        assert_mvectors_equal(expected, computed);
+    }
+}
+
+#[test]
+fn rotate_y() {
+    let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
+    let rotation = SQuaternion::new(half_sqrt_2, 0.0, half_sqrt_2, 0.0);
+    let vectors = bench::points_on_sphere_m(32);
+    for &v in &vectors {
+        // Rotate the vector by pi/2 radians around the y-axis. This is
+        // equivalent to x <- z, z <- -x, so compute the rotation in two
+        // different ways, and verify that the result is the same to within the
+        // floating point inaccuracy margin.
+        let computed = rotate(v, rotation);
+        let expected = MVector3::new(v.z, v.y, Mf32::zero() - v.x);
+        assert_mvectors_equal(expected, computed);
+    }
+}
+
+#[test]
+fn rotate_z() {
+    let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
+    let rotation = SQuaternion::new(half_sqrt_2, 0.0, 0.0, half_sqrt_2);
+    let vectors = bench::points_on_sphere_m(32);
+    for &v in &vectors {
+        // Rotate the vector by pi/2 radians around the y-axis. This is
+        // equivalent to y <- x, x <- -y, so compute the rotation in two
+        // different ways, and verify that the result is the same to within the
+        // floating point inaccuracy margin.
+        let computed = rotate(v, rotation);
+        let expected = MVector3::new(Mf32::zero() - v.y, v.x, v.z);
+        assert_mvectors_equal(expected, computed);
     }
 }
