@@ -4,7 +4,7 @@
 //! use this to the full extent. (Otherwise it will not use AVX but two SSE
 //! adds, for instance.)
 
-use std::f32::consts::FRAC_PI_2;
+use std::f32::consts::{FRAC_PI_2, PI};
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Sub};
 
 #[cfg(test)]
@@ -40,6 +40,14 @@ impl Mf32 {
         Mf32(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7))
     }
 
+    /// Applies the function componentwise.
+    ///
+    /// This should not be used in hot code, as it executes f serially.
+    pub fn map<F>(self, mut f: F) -> Mf32 where F: FnMut(f32) -> f32 {
+        Mf32(f(self.0), f(self.1), f(self.2), f(self.3),
+             f(self.4), f(self.5), f(self.6), f(self.7))
+    }
+
     #[inline(always)]
     pub fn broadcast(x: f32) -> Mf32 {
         Mf32(x, x, x, x, x, x, x, x)
@@ -53,6 +61,67 @@ impl Mf32 {
     #[inline(always)]
     pub fn mul_sub(self, factor: Mf32, term: Mf32) -> Mf32 {
         unsafe { x86_mm256_fmsub_ps(self, factor, term) }
+    }
+
+    #[inline(always)]
+    pub fn neg_mul_add(self, factor: Mf32, term: Mf32) -> Mf32 {
+        unsafe { x86_mm256_fnmadd_ps(self, factor, term) }
+    }
+
+    /// Computes the sine of self.
+    ///
+    /// Like `sin()`, but with one less term in the Taylor expansion. Trades
+    /// accuracy for performance.
+    ///
+    /// The relative error is about 0.5% at pi/2 and 5% at 2pi/3.
+    #[inline(always)]
+    pub fn sin_fast(self) -> Mf32 {
+        let x = self;
+        let x2 = self * self;
+        let x3 = x * x2;
+        let x5 = x3 * x2;
+
+        let f3 = Mf32::broadcast(1.0 / 6.0);
+        let f5 = Mf32::broadcast(1.0 / 120.0);
+
+        // x - x^3 / 6.0 + x^5 / 120.0
+        // Due to associativity the result can be computed in several ways.
+        // (Floating point numbers are not really associative, but the rounding
+        // error due to that is much smaller than the error in the Taylor
+        // approximation, so that is not a concern.) It is key to place the
+        // parentheses such that the length of the dependency chain is
+        // minimized. This can make a 6% difference in execution time. The
+        // fused multiply-add is not faster than just doing separate
+        // multiplications and adds, but it does save in code size.
+        x5.mul_add(f5, x3.neg_mul_add(f3, x))
+    }
+
+    /// Computes the sine of self.
+    ///
+    /// This is based on the Taylor expansion of the sine and takes into account
+    /// only a few terms, so it is most accurate around 0. For values outside of
+    /// the range (-pi, pi), it is better to add multiples of 2pi until the
+    /// value lies inside this range.
+    ///
+    /// The relative error is about 0.01% at pi/2 and 0.25% at 2pi/3.
+    #[inline(always)]
+    pub fn sin(self) -> Mf32 {
+        let x = self;
+        let x2 = self * self;
+        let x3 = x * x2;
+        let x4 = x2 * x2;
+        let x5 = x3 * x2;
+        let x7 = x3 * x4;
+
+        let f3 = Mf32::broadcast(1.0 / 6.0);
+        let f5 = Mf32::broadcast(1.0 / 120.0);
+        let f7 = Mf32::broadcast(1.0 / 5040.0);
+
+        // x - x^3 / 6.0 + x^5 / 120.0 - x^7 / 5040.0
+        // Like with `sin_fast()`, the dependency chain is the bottleneck here,
+        // and using a fused-multiply-add is not really faster than just doing
+        // the multiplications, but it does save in code size.
+        x7.neg_mul_add(f7, x3.neg_mul_add(f3, x) + (x5 * f5))
     }
 
     /// Approximates 1 / self.
@@ -164,7 +233,7 @@ impl Mi32 {
 
     /// Applies the function componentwise.
     pub fn map<F>(self, mut f: F) -> Mi32 where F: FnMut(i32) -> i32 {
-        Mi32(f(self.0), f(self.1), f(self.2), f(self.2),
+        Mi32(f(self.0), f(self.1), f(self.2), f(self.3),
              f(self.4), f(self.5), f(self.6), f(self.7))
     }
 
@@ -305,6 +374,7 @@ extern "platform-intrinsic" {
 extern "platform-intrinsic" {
     fn x86_mm256_fmadd_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
     fn x86_mm256_fmsub_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
+    fn x86_mm256_fnmadd_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32;
 }
 
 // If the FMA instructions are not enabled, fall back to a separate mul and add
@@ -317,6 +387,11 @@ unsafe fn x86_mm256_fmadd_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32 {
 #[cfg(not(target_feature = "fma"))]
 unsafe fn x86_mm256_fmsub_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32 {
     x * y - z
+}
+
+#[cfg(not(target_feature = "fma"))]
+unsafe fn x86_mm256_fnmadd_ps(x: Mf32, y: Mf32, z: Mf32) -> Mf32 {
+    z - x * y
 }
 
 #[test]
@@ -346,6 +421,15 @@ fn mf32_fmsub_ps() {
 }
 
 #[test]
+fn mf32_fnmadd_ps() {
+    let a = Mf32(0.0, 1.0, 0.0,  2.0, 1.0, 2.0,  3.0,  4.0);
+    let b = Mf32(5.0, 6.0, 7.0,  8.0, 0.0, 1.0,  2.0,  3.0);
+    let c = Mf32(5.0, 6.0, 7.0,  8.0, 1.0, 3.0,  5.0,  7.0);
+    let d = Mf32(5.0, 0.0, 7.0, -8.0, 1.0, 1.0, -1.0, -5.0);
+    assert_eq!(a.neg_mul_add(b, c), d);
+}
+
+#[test]
 fn mf32_broadcast_ps() {
     let a = Mf32::broadcast(7.0);
     let b = Mf32(7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0);
@@ -364,6 +448,50 @@ fn mf32_any_sign_bit_positive_masked() {
     assert!(!a.any_sign_bit_positive_masked(Mf32(f1, f0, f1, f0, f0, f0, f0, f0)));
     assert!(!a.any_sign_bit_positive_masked(Mf32(f1, f1, f0, f0, f0, f0, f0, f0)));
     assert!(a.any_sign_bit_positive_masked(Mf32(f1, f0, f0, f1, f0, f0, f0, f0)));
+}
+
+#[test]
+fn mf32_sin() {
+    let xs = bench::mf32_biunit(4096);
+    for &x in &xs {
+        let y = x * Mf32::broadcast(2.0 * PI / 3.0);
+
+        // Approximate the sine using a Taylor expansion with AVX.
+        let approx = y.sin();
+
+        // Apply the regular sin function to every element, without AVX.
+        let serial = y.map(|yi| yi.sin());
+
+        // Compute the relative error.
+        let error = Mf32::one() - (approx / serial);
+        let abs_error = error.max(-error);
+
+        // The relative error should not be greater than 0.25%.
+        assert!((Mf32::broadcast(0.0025) - abs_error).all_sign_bits_positive(),
+                "Error should be small but it is {:?} for the input {:?}", abs_error, y);
+    }
+}
+
+#[test]
+fn mf32_sin_fast() {
+    let xs = bench::mf32_biunit(4096);
+    for &x in &xs {
+        let y = x * Mf32::broadcast(2.0 * PI / 3.0);
+
+        // Approximate the sine using a Taylor expansion with AVX.
+        let approx = y.sin_fast();
+
+        // Apply the regular sin function to every element, without AVX.
+        let serial = y.map(|yi| yi.sin());
+
+        // Compute the relative error.
+        let error = Mf32::one() - (approx / serial);
+        let abs_error = error.max(-error);
+
+        // The relative error should not be greater than 5%.
+        assert!((Mf32::broadcast(0.05) - abs_error).all_sign_bits_positive(),
+                "Error should be small but it is {:?} for the input {:?}", abs_error, y);
+    }
 }
 
 #[bench]
@@ -450,6 +578,50 @@ fn bench_negate_with_sub_1000(b: &mut test::Bencher) {
             test::black_box(test::black_box(x).neg_sub());
             test::black_box(test::black_box(x).neg_sub());
             test::black_box(test::black_box(x).neg_sub());
+        }
+        k = (k + 1) % 1024;
+    });
+}
+
+#[bench]
+fn bench_sin_fast_1000(b: &mut test::Bencher) {
+    let xs = bench::mf32_biunit(1024);
+    let mut k = 0;
+    b.iter(|| {
+        let x = unsafe { xs.get_unchecked(k) };
+        for _ in 0..100 {
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+            test::black_box(test::black_box(x).sin_fast());
+        }
+        k = (k + 1) % 1024;
+    });
+}
+
+#[bench]
+fn bench_sin_1000(b: &mut test::Bencher) {
+    let xs = bench::mf32_biunit(1024);
+    let mut k = 0;
+    b.iter(|| {
+        let x = unsafe { xs.get_unchecked(k) };
+        for _ in 0..100 {
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
+            test::black_box(test::black_box(x).sin());
         }
         k = (k + 1) % 1024;
     });
