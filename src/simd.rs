@@ -68,6 +68,41 @@ impl Mf32 {
         unsafe { x86_mm256_fnmadd_ps(self, factor, term) }
     }
 
+    /// Computes the inverse cosine of self.
+    ///
+    /// This is based on a polynomial approximation of the inverse cosine.
+    ///
+    /// TODO: Document relative error.
+    #[inline(always)]
+    pub fn acos(self) -> Mf32 {
+        // Sage code to generate the coefficients:
+        //
+        //     var('a, b, c')
+        //
+        //     def f(x):
+        //         return pi/2 + a*x + b*x^3 + c*x^5
+        //
+        //     solve([f(1/3) == acos(1/3), f(2/3) == acos(2/3), f(1) == 0], a, b, c)[0]
+        //
+        // The absolute error in the polynomial is not distributed uniformly, it
+        // is much bigger close to 1.0. Shifting the points to solve for can
+        // reduce the error there at the cost of making it bigger elsewhere.
+
+        let z = Mf32::broadcast(FRAC_PI_2); // pi / 2
+        let a = Mf32::broadcast(-1.0295908346187686517475814855949);
+        let b = Mf32::broadcast(0.16971176236809475557680747312938);
+        let c = Mf32::broadcast(-0.71091725454422272306054767917421);
+
+        let x = self;
+        let x2 = self * self;
+        let x3 = x * x2;
+        let x5 = x3 * x2;
+
+        // TODO: Does this require an extra term?
+
+        x5.mul_add(c, x3.mul_add(b, x.mul_add(a, z)))
+    }
+
     /// Computes the sine of self.
     ///
     /// Like `sin()`, but with one less term in the Taylor expansion. Trades
@@ -622,6 +657,29 @@ fn bench_sin_1000(b: &mut test::Bencher) {
             test::black_box(test::black_box(x).sin());
             test::black_box(test::black_box(x).sin());
             test::black_box(test::black_box(x).sin());
+        }
+        k = (k + 1) % 1024;
+    });
+}
+
+// TODO: DRY up these benchmarks.
+#[bench]
+fn bench_acos_1000(b: &mut test::Bencher) {
+    let xs = bench::mf32_biunit(1024);
+    let mut k = 0;
+    b.iter(|| {
+        let x = unsafe { xs.get_unchecked(k) };
+        for _ in 0..100 {
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
         }
         k = (k + 1) % 1024;
     });
