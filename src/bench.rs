@@ -1,6 +1,7 @@
 //! This module generates test data for the benchmarks.
 
 use aabb::Aabb;
+use quaternion::{MQuaternion, SQuaternion};
 use rand;
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
@@ -63,6 +64,48 @@ pub fn points_on_sphere_m(n: usize) -> Vec<MVector3> {
         vectors.push(MVector3::new(x, y, z));
     }
     vectors
+}
+
+/// Generates n quaternions uniformly distributed over the unit sphere.
+pub fn unit_squaternions(n: usize) -> Vec<SQuaternion> {
+    let mut rng = rand::thread_rng();
+    let range = Range::new(-1.0_f32, 1.0);
+    let mut quaternions = Vec::with_capacity(n);
+
+    let mut i = 0;
+    while i < n {
+        let a = range.ind_sample(&mut rng);
+        let b = range.ind_sample(&mut rng);
+        let c = range.ind_sample(&mut rng);
+        let d = range.ind_sample(&mut rng);
+
+        // Use rejection sampling because I do not know how to sample a 4D unit
+        // sphere uniformly.
+        let norm_squared = a * a + b * b + c * c + d * d;
+        if norm_squared > 1.0 { continue }
+
+        let norm = norm_squared.sqrt();
+        let q = SQuaternion::new(a / norm, b / norm, c / norm, d / norm);
+        quaternions.push(q);
+
+        i += 1;
+    }
+
+    quaternions
+}
+
+/// Generates n times 8 quaternions uniformly distributed over the unit sphere.
+pub fn unit_mquaternions(n: usize) -> Vec<MQuaternion> {
+    let mut quaternions = Vec::with_capacity(n);
+    for _ in 0..n {
+        let q = unit_squaternions(8);
+        let a = Mf32::generate(|i| q[i].a);
+        let b = Mf32::generate(|i| q[i].b);
+        let c = Mf32::generate(|i| q[i].c);
+        let d = Mf32::generate(|i| q[i].d);
+        quaternions.push(MQuaternion::new(a, b, c, d));
+    }
+    quaternions
 }
 
 /// Generates n pairs of nonzero vectors.

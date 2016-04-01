@@ -1,10 +1,10 @@
 //! Implements quaternion utilities to handle rotation.
 
 use simd::Mf32;
-use vector3::MVector3;
+use vector3::{MVector3, SVector3};
 
 #[cfg(test)]
-use bench;
+use {bench, test};
 
 #[derive(Copy, Clone, Debug)]
 pub struct SQuaternion {
@@ -33,12 +33,76 @@ impl SQuaternion {
 }
 
 impl MQuaternion {
+    pub fn new(a: Mf32, b: Mf32, c: Mf32, d: Mf32) -> MQuaternion {
+        MQuaternion {
+            a: a,
+            b: b,
+            c: c,
+            d: d,
+        }
+    }
+
     pub fn broadcast(q: SQuaternion) -> MQuaternion {
         MQuaternion {
             a: Mf32::broadcast(q.a),
             b: Mf32::broadcast(q.b),
             c: Mf32::broadcast(q.c),
             d: Mf32::broadcast(q.d),
+        }
+    }
+
+    /// Computes ||q|| squared, or equivalently, q times its conjugate.
+    pub fn norm_squared(self) -> Mf32 {
+        //(a * a) + (b * b) + (c * c) + (d * d)
+        Mf32::zero()
+    }
+
+
+    /// Interpolates two quaternions and normalizes the result.
+    pub fn interpolate(&self, other: &MQuaternion, t: Mf32) -> MQuaternion {
+        // If both quaternions have norm one, then their dot product is the
+        // angle between them (when the set of quaternions is considered a 4D
+        // real inner product space).
+        let dot = self.a.mul_add(other.a, self.a * other.b) +
+                  self.c.mul_add(other.c, self.d * other.d);
+
+        // The hypersphere of unit quaternions forms a double cover of SO3(R).
+        // Every rotation is represented by two antipodal points on the
+        // hypersphere. If we naively run over the arc subtended by the two
+        // quaternions, then we could make an arc of more than pi/2 radians, but
+        // that means that we could make a shorter arc by taking the antipodal
+        // point of one of the quaternions. The shortest arc corresponds to the
+        // interpolation we want, the longer arc rotates too much.
+
+        let alpha = dot.acos();
+        // TODO: Finish this slerp. Perhaps in the end I will just do linear
+        // interpolation and normalize, as for small angles the difference is
+        // not so big.
+
+        let u = Mf32::one() - t;
+        let a = self.a.mul_add(u, other.a * t);
+        let b = self.b.mul_add(u, other.b * t);
+        let c = self.c.mul_add(u, other.c * t);
+        let d = self.d.mul_add(u, other.d * t);
+
+        let norm_squared = a.mul_add(a, b * b) + c.mul_add(c, d * d);
+
+        // Using a full square root and division here makes this method about
+        // 17% slower in comparison to using an `rsqrt()`. However, this is also
+        // more accurate. The `rsqrt()` approach has a relatively big error, and
+        // as this code is used to generate camera rays, it had better be
+        // accurate. If after a few bounces the ray direction norm is 1.01, then
+        // that will result in wrong intersection tests, but the difference is
+        // probably not noticeable due to randomness anyway. However, the first
+        // intersection should be correct, otherwise the geometry gets
+        // distorted. Therefore the camera rays must be accurate.
+        let rnorm = Mf32::one() / norm_squared.sqrt();
+
+        MQuaternion {
+            a: a * rnorm,
+            b: b * rnorm,
+            c: c * rnorm,
+            d: d * rnorm,
         }
     }
 }
@@ -154,4 +218,57 @@ fn rotate_z() {
         let expected = MVector3::new(-v.y, v.x, v.z);
         assert_mvectors_equal(expected, computed, 1e-6);
     }
+}
+
+#[test]
+fn interpolate() {
+    let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
+    let identity = MQuaternion::broadcast(SQuaternion::new(1.0, 0.0, 0.0, 0.0));
+    let rotate_z = MQuaternion::broadcast(SQuaternion::new(half_sqrt_2, 0.0, 0.0, half_sqrt_2));
+    let rotation = identity.interpolate(&rotate_z, Mf32::broadcast(0.5));
+    let v = MVector3::broadcast(SVector3::new(1.0, 0.0, 0.0));
+    let expected = MVector3::broadcast(SVector3::new(half_sqrt_2, half_sqrt_2, 0.0));
+    let computed = rotate(&v, &rotation);
+    assert_mvectors_equal(expected, computed, 1e-6);
+}
+
+#[bench]
+fn bench_rotate_10(b: &mut test::Bencher) {
+    let vectors = bench::points_on_sphere_m(4096 / 8);
+    let quaternions = bench::unit_mquaternions(4096 / 8);
+    let mut it = vectors.iter().cycle().zip(quaternions.iter().cycle());
+    b.iter(|| {
+        let (v, q) = it.next().unwrap();
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+    });
+}
+
+#[bench]
+fn bench_interpolate_10(b: &mut test::Bencher) {
+    let q0s = bench::unit_mquaternions(4096 / 8);
+    let q1s = bench::unit_mquaternions(4096 / 8);
+    let ts = bench::mf32_unit(4096 / 8);
+    let mut it = q0s.iter().cycle().zip(q1s.iter().cycle()).zip(ts.iter().cycle());
+    b.iter(|| {
+        let ((q0, q1), &t) = it.next().unwrap();
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+    });
 }
