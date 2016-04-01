@@ -105,30 +105,39 @@ impl Mf32 {
 
     /// Computes the sine of self.
     ///
-    /// Like `sin()`, but with one less term in the Taylor expansion. Trades
-    /// accuracy for performance.
+    /// Like `sin()`, but with one less term in the polynomial. Trades accuracy
+    /// for performance.
     ///
-    /// The relative error is about 0.5% at pi/2 and 5% at 2pi/3.
+    /// The absolute error is at most 0.02 on the interval (-pi, pi).
+    /// The relative error is at most 0.8% on the interval (-2pi/3, 2pi/3).
     #[inline(always)]
     pub fn sin_fast(self) -> Mf32 {
+        // Sage code to generate the coefficients:
+        //
+        //     var('a, b, c')
+        //
+        //     def f(x):
+        //         return a*x + b*x^3 + c*x^5
+        //
+        //     solve([f(pi/3) == sin(pi/3), f(2*pi/3) == sin(2*pi/3), f(pi) == 0], a, b, c)[0]
         let x = self;
         let x2 = self * self;
         let x3 = x * x2;
         let x5 = x3 * x2;
 
-        let f3 = Mf32::broadcast(-1.0 / 6.0);
-        let f5 = Mf32::broadcast(1.0 / 120.0);
+        let a = Mf32::broadcast(0.99239201175922568912038769696334);
+        let b = Mf32::broadcast(-0.15710989573225864252780806591220);
+        let c = Mf32::broadcast(0.0057306818151060181989591272596327);
 
-        // x - x^3 / 6.0 + x^5 / 120.0
         // Due to associativity the result can be computed in several ways.
         // (Floating point numbers are not really associative, but the rounding
-        // error due to that is much smaller than the error in the Taylor
+        // error due to that is much smaller than the error in the polynomial
         // approximation, so that is not a concern.) It is key to place the
         // parentheses such that the length of the dependency chain is
         // minimized. This can make a 6% difference in execution time. The
         // fused multiply-add is not faster than just doing separate
         // multiplications and adds, but it does save in code size.
-        x5.mul_add(f5, x3.mul_add(f3, x))
+        x5.mul_add(c, x3.mul_add(b, x * a))
     }
 
     /// Computes the sine of self.
@@ -521,8 +530,8 @@ fn mf32_sin_fast() {
         let error = Mf32::one() - (approx / serial);
         let abs_error = error.max(-error);
 
-        // The relative error should not be greater than 5%.
-        assert!((Mf32::broadcast(0.05) - abs_error).all_sign_bits_positive(),
+        // The relative error should not be greater than 0.8%.
+        assert!((Mf32::broadcast(0.008) - abs_error).all_sign_bits_positive(),
                 "Error should be small but it is {:?} for the input {:?}", abs_error, y);
     }
 }
