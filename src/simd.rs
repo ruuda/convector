@@ -81,7 +81,7 @@ impl Mf32 {
         let x3 = x * x2;
         let x5 = x3 * x2;
 
-        let f3 = Mf32::broadcast(1.0 / 6.0);
+        let f3 = Mf32::broadcast(-1.0 / 6.0);
         let f5 = Mf32::broadcast(1.0 / 120.0);
 
         // x - x^3 / 6.0 + x^5 / 120.0
@@ -93,7 +93,7 @@ impl Mf32 {
         // minimized. This can make a 6% difference in execution time. The
         // fused multiply-add is not faster than just doing separate
         // multiplications and adds, but it does save in code size.
-        x5.mul_add(f5, x3.neg_mul_add(f3, x))
+        x5.mul_add(f5, x3.mul_add(f3, x))
     }
 
     /// Computes the sine of self.
@@ -113,15 +113,15 @@ impl Mf32 {
         let x5 = x3 * x2;
         let x7 = x3 * x4;
 
-        let f3 = Mf32::broadcast(1.0 / 6.0);
+        let f3 = Mf32::broadcast(-1.0 / 6.0);
         let f5 = Mf32::broadcast(1.0 / 120.0);
-        let f7 = Mf32::broadcast(1.0 / 5040.0);
+        let f7 = Mf32::broadcast(-1.0 / 5040.0);
 
         // x - x^3 / 6.0 + x^5 / 120.0 - x^7 / 5040.0
         // Like with `sin_fast()`, the dependency chain is the bottleneck here,
         // and using a fused-multiply-add is not really faster than just doing
         // the multiplications, but it does save in code size.
-        x7.neg_mul_add(f7, x3.neg_mul_add(f3, x) + (x5 * f5))
+        x7.mul_add(f7, x5.mul_add(f5, x3.mul_add(f3, x)))
     }
 
     /// Approximates 1 / self.
