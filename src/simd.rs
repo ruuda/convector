@@ -112,6 +112,11 @@ impl Mf32 {
     /// The relative error is at most 0.8% on the interval (-2pi/3, 2pi/3).
     #[inline(always)]
     pub fn sin_fast(self) -> Mf32 {
+        let x = self;
+        let x2 = self * self;
+        let x3 = x * x2;
+        let x5 = x3 * x2;
+
         // Sage code to generate the coefficients:
         //
         //     var('a, b, c')
@@ -120,10 +125,6 @@ impl Mf32 {
         //         return a*x + b*x^3 + c*x^5
         //
         //     solve([f(pi/3) == sin(pi/3), f(2*pi/3) == sin(2*pi/3), f(pi) == 0], a, b, c)[0]
-        let x = self;
-        let x2 = self * self;
-        let x3 = x * x2;
-        let x5 = x3 * x2;
 
         let a = Mf32::broadcast(0.99239201175922568912038769696334);
         let b = Mf32::broadcast(-0.15710989573225864252780806591220);
@@ -142,14 +143,27 @@ impl Mf32 {
 
     /// Computes the sine of self.
     ///
-    /// This is based on the Taylor expansion of the sine and takes into account
-    /// only a few terms, so it is most accurate around 0. For values outside of
-    /// the range (-pi, pi), it is better to add multiples of 2pi until the
-    /// value lies inside this range.
+    /// This is based on a polynomial approximation of the sine. It has been
+    /// fitted to minimize the error on the domain (-pi, pi). For values outside
+    /// of that range, multiples of 2pi must be added until the value lies
+    /// inside this range.
     ///
-    /// The relative error is about 0.01% at pi/2 and 0.25% at 2pi/3.
+    /// The absolute error is at most 0.0013 on the interval (-pi, pi).
+    /// The relative error is at most 0.03% on the interval (-2pi/3, 2pi/3).
     #[inline(always)]
     pub fn sin(self) -> Mf32 {
+        // This function is a degree 7 polynomial (but with only four terms)
+        // fitted through five points equally spaced on the interval [0, pi].
+        // An alternative approach to fitting a polynomial would be to use the
+        // Taylor expansion of sin(x) around 0. It avoids one multiplication
+        // (the factor for the linear term is 1) but apart from that it is also
+        // computing a polynomial, so the performance is comparable. The Taylor
+        // expansion of sin(x) is very accurate around 0, however the error
+        // blows up quickly when |x| becomes larger. For instance, it will yield
+        // sin(pi) = -0.075 for a degree 7 expansion, and sin(pi) = 0.52 for a
+        // degree 5 expansion. The fitted polynomial has a bigger error than the
+        // Taylor expansion around 0, but it is much more accurate for larger
+        // |x|.
         let x = self;
         let x2 = self * self;
         let x3 = x * x2;
@@ -157,15 +171,27 @@ impl Mf32 {
         let x5 = x3 * x2;
         let x7 = x3 * x4;
 
-        let f3 = Mf32::broadcast(-1.0 / 6.0);
-        let f5 = Mf32::broadcast(1.0 / 120.0);
-        let f7 = Mf32::broadcast(-1.0 / 5040.0);
+        // Sage code to generate the coefficients:
+        //
+        //     var('a, b, c, d')
+        //
+        //     def f(x):
+        //         return a*x + b*x^3 + c*x^5 + d*x^7
+        //
+        //     solve([f(1*pi/4) == sin(1*pi/4),
+        //            f(2*pi/4) == sin(2*pi/4),
+        //            f(3*pi/4) == sin(3*pi/4),
+        //            f(4*pi/4) == sin(4*pi/4)], a, b, c, d)[0]
 
-        // x - x^3 / 6.0 + x^5 / 120.0 - x^7 / 5040.0
+        let a = Mf32::broadcast(0.99980581680736986117495345832401);
+        let b = Mf32::broadcast(-0.16621666083157132685224857251809);
+        let c = Mf32::broadcast(0.0080871619433028029895800039771570);
+        let d = Mf32::broadcast(-0.00015298302129302931025810477070718);
+
         // Like with `sin_fast()`, the dependency chain is the bottleneck here,
         // and using a fused-multiply-add is not really faster than just doing
         // the multiplications, but it does save in code size.
-        x7.mul_add(f7, x5.mul_add(f5, x3.mul_add(f3, x)))
+        x7.mul_add(d, x5.mul_add(c, x3.mul_add(b, x * a)))
     }
 
     /// Approximates 1 / self.
@@ -508,8 +534,8 @@ fn mf32_sin() {
         let error = Mf32::one() - (approx / serial);
         let abs_error = error.max(-error);
 
-        // The relative error should not be greater than 0.25%.
-        assert!((Mf32::broadcast(0.0025) - abs_error).all_sign_bits_positive(),
+        // The relative error should not be greater than 0.03%.
+        assert!((Mf32::broadcast(0.0003) - abs_error).all_sign_bits_positive(),
                 "Error should be small but it is {:?} for the input {:?}", abs_error, y);
     }
 }
