@@ -331,8 +331,6 @@ impl Div<Mf32> for Mf32 {
 
     #[inline(always)]
     fn div(self, denom: Mf32) -> Mf32 {
-        // Benchmarks show that _mm256_div_ps is as fast as a _mm256_rcp_ps
-        // followed by a _mm256_mul_ps, so we might as well use the div.
         unsafe { simd_div(self, denom) }
     }
 }
