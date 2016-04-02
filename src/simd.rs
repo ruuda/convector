@@ -68,39 +68,54 @@ impl Mf32 {
         unsafe { x86_mm256_fnmadd_ps(self, factor, term) }
     }
 
-    /// Computes the inverse cosine of self.
+    /// Approximates the inverse cosine of self.
     ///
-    /// This is based on a polynomial approximation of the inverse cosine.
+    /// This is based on a rational function approximation of the inverse
+    /// cosine.
     ///
-    /// TODO: Document relative error.
+    /// The absolute error is at most 0.075 radians (4.3 degrees) on the entire
+    /// domain. The relative error is at most 3% on the interval (-0.9, 0.9).
     #[inline(always)]
-    pub fn acos(self) -> Mf32 {
+    pub fn acos_fast(self) -> Mf32 {
         // Sage code to generate the coefficients:
         //
         //     var('a, b, c')
         //
         //     def f(x):
-        //         return pi/2 + a*x + b*x^3 + c*x^5
+        //         return pi/2 + (a*x + b*x^3) / (1 + c*x^2)
         //
-        //     solve([f(1/3) == acos(1/3), f(2/3) == acos(2/3), f(1) == 0], a, b, c)[0]
+        //     soln = solve([f(3/7) == acos(3/7),
+        //                   f(6/7) == acos(6/7),
+        //                   f(7/7) == acos(7/7)],
+        //                  a, b, c, solution_dict=True)[0]
         //
-        // The absolute error in the polynomial is not distributed uniformly, it
-        // is much bigger close to 1.0. Shifting the points to solve for can
-        // reduce the error there at the cost of making it bigger elsewhere.
+        //     for (name, val) in soln.iteritems():
+        //         print name, val.n(106)
+        //
+        // The absolute error in this approximation is not distributed
+        // uniformly, it is larger at the steep tail than at the almost straight
+        // part around 0, therefore the points to match have not been chosen
+        // uniformly either. Note that the pi/2 is outside of the fraction to
+        // keep the numerator odd and the denominator even.
 
         let z = Mf32::broadcast(FRAC_PI_2); // pi / 2
-        let a = Mf32::broadcast(-1.0295908346187686517475814855949);
-        let b = Mf32::broadcast(0.16971176236809475557680747312938);
-        let c = Mf32::broadcast(-0.71091725454422272306054767917421);
+        let a = Mf32::broadcast(-1.010967650783108321215466002435);
+        let b = Mf32::broadcast(0.7187490034089083954058416974792);
+        let c = Mf32::broadcast(-0.8139678312270743216751354761334);
 
         let x = self;
         let x2 = self * self;
         let x3 = x * x2;
-        let x5 = x3 * x2;
 
-        // TODO: Does this require an extra term?
+        let numer = x3.mul_add(b, a * x);
+        let denom = x2.mul_add(c, Mf32::one());
 
-        x5.mul_add(c, x3.mul_add(b, x.mul_add(a, z)))
+        numer.mul_add(denom.recip(), z)
+    }
+
+    #[inline(always)]
+    pub fn acos(self) -> Mf32 {
+        self.acos_fast() // TODO
     }
 
     /// Computes the sine of self.
@@ -562,6 +577,26 @@ fn mf32_sin_fast() {
     }
 }
 
+#[test]
+fn mf32_acos_fast() {
+    let xs = bench::mf32_biunit(4096);
+    for &x in &xs {
+        // Approximate the inverse cosine with AVX instructions.
+        let approx = x.acos_fast();
+
+        // Apply the regular acos function to every element, without AVX.
+        let serial = x.map(|xi| xi.acos());
+
+        // Compute the absolute error.
+        let error = approx - serial;
+        let abs_error = error.max(-error);
+
+        // The absolute error should not be greater than 0.075.
+        assert!((Mf32::broadcast(0.075) - abs_error).all_sign_bits_positive(),
+                "Error should be small but it is {:?} for the input {:?}", abs_error, x);
+    }
+}
+
 #[bench]
 fn bench_mm256_div_ps_1000(b: &mut test::Bencher) {
     let numers = bench::mf32_biunit(4096 / 8);
@@ -697,22 +732,22 @@ fn bench_sin_1000(b: &mut test::Bencher) {
 
 // TODO: DRY up these benchmarks.
 #[bench]
-fn bench_acos_1000(b: &mut test::Bencher) {
+fn bench_acos_fast_1000(b: &mut test::Bencher) {
     let xs = bench::mf32_biunit(1024);
     let mut k = 0;
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
+            test::black_box(test::black_box(x).acos_fast());
         }
         k = (k + 1) % 1024;
     });
