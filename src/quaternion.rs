@@ -57,28 +57,28 @@ impl MQuaternion {
         Mf32::zero()
     }
 
-
     /// Interpolates two quaternions and normalizes the result.
     pub fn interpolate(&self, other: &MQuaternion, t: Mf32) -> MQuaternion {
-        // If both quaternions have norm one, then their dot product is the
-        // angle between them (when the set of quaternions is considered a 4D
-        // real inner product space).
-        let dot = self.a.mul_add(other.a, self.a * other.b) +
-                  self.c.mul_add(other.c, self.d * other.d);
-
         // The hypersphere of unit quaternions forms a double cover of SO3(R).
         // Every rotation is represented by two antipodal points on the
         // hypersphere. If we naively run over the arc subtended by the two
         // quaternions, then we could make an arc of more than pi/2 radians, but
         // that means that we could make a shorter arc by taking the antipodal
         // point of one of the quaternions. The shortest arc corresponds to the
-        // interpolation we want, the longer arc rotates too much.
+        // interpolation we want, the longer arc rotates too much. So for
+        // correct interpolation, compute the dot product of the two
+        // quaternions, and if it is negative, negate one of the two.
+        // Fortunately, in my demo I get to pick the quaternions, so I can
+        // choose them so they get interpolated correctly, and there is no need
+        // to negate anything.
 
-        let alpha = dot.acos();
-        // TODO: Finish this slerp. Perhaps in the end I will just do linear
-        // interpolation and normalize, as for small angles the difference is
-        // not so big.
-
+        // Interpolate linearly between the two quaternions, and then project
+        // the result onto the unit hypersphere. This is not entirely correct
+        // because the rotation will not have a constant angular velocity. For a
+        // proper interpolation with constant velocity, a spherical linear
+        // interpolation is required, but that is expensive to compute. (It
+        // involves an inverse cosine, two sines and two divisions.) For small
+        // angles the error is very small, so do the fast thing here.
         let u = Mf32::one() - t;
         let a = self.a.mul_add(u, other.a * t);
         let b = self.b.mul_add(u, other.b * t);
