@@ -70,7 +70,8 @@ impl Mf32 {
     /// Approximates the inverse cosine of self.
     ///
     /// This is based on a rational function approximation of the inverse
-    /// cosine.
+    /// cosine. The polynomials are of lower degree than the polynomials used in
+    /// `acos()`, trading accuracy for performance.
     ///
     /// The absolute error is at most 0.075 radians (4.3 degrees) on the entire
     /// domain. The relative error is at most 3% on the interval (-0.9, 0.9).
@@ -112,9 +113,42 @@ impl Mf32 {
         numer.mul_add(denom.recip(), z)
     }
 
+    /// Approximates the inverse cosine of self.
+    ///
+    /// This is based on a rational function approximation of the inverse
+    /// cosine.
+    ///
+    /// The absolute error is at most 0.017 radians (0.96 degrees) on the entire
+    /// domain. The relative error is at most 2.2% on the interval (-0.9, 0.9).
     #[inline(always)]
     pub fn acos(self) -> Mf32 {
-        self.acos_fast() // TODO
+        // Evaluate a function of the form
+        //
+        //     pi        ax + bx^3
+        //     --  +  ---------------
+        //      2     1 + cx^2 + dx^4
+        //
+        //  A rational function is much better at approximating the inverse
+        //  cosine than a polynomial, because a polynomial has a hard time
+        //  approximating the part where the derivative goes to infinity. The
+        //  script to find the coefficients that minimize the worst error is
+        //  in src/approx.py.
+
+        let z = Mf32::broadcast(FRAC_PI_2); // pi / 2
+        let a = Mf32::broadcast(-0.939115566365855);
+        let b = Mf32::broadcast(0.9217841528914573);
+        let c = Mf32::broadcast(-1.2845906244690837);
+        let d = Mf32::broadcast(0.295624144969963174);
+
+        let x = self;
+        let x2 = self * self;
+        let x3 = x * x2;
+        let x4 = x2 * x2;
+
+        let numer = x3.mul_add(b, a * x);
+        let denom = x4.mul_add(d, x2.mul_add(c, Mf32::one()));
+
+        numer.mul_add(denom.recip(), z)
     }
 
     /// Computes the sine of self.
@@ -533,28 +567,6 @@ fn mf32_any_sign_bit_positive_masked() {
 }
 
 #[test]
-fn mf32_sin() {
-    let xs = bench::mf32_biunit(4096);
-    for &x in &xs {
-        let y = x * Mf32::broadcast(2.0 * PI / 3.0);
-
-        // Approximate the sine using a Taylor expansion with AVX.
-        let approx = y.sin();
-
-        // Apply the regular sin function to every element, without AVX.
-        let serial = y.map(|yi| yi.sin());
-
-        // Compute the relative error.
-        let error = Mf32::one() - (approx / serial);
-        let abs_error = error.max(-error);
-
-        // The relative error should not be greater than 0.03%.
-        assert!((Mf32::broadcast(0.0003) - abs_error).all_sign_bits_positive(),
-                "Error should be small but it is {:?} for the input {:?}", abs_error, y);
-    }
-}
-
-#[test]
 fn mf32_sin_fast() {
     let xs = bench::mf32_biunit(4096);
     for &x in &xs {
@@ -577,6 +589,28 @@ fn mf32_sin_fast() {
 }
 
 #[test]
+fn mf32_sin() {
+    let xs = bench::mf32_biunit(4096);
+    for &x in &xs {
+        let y = x * Mf32::broadcast(2.0 * PI / 3.0);
+
+        // Approximate the sine using a Taylor expansion with AVX.
+        let approx = y.sin();
+
+        // Apply the regular sin function to every element, without AVX.
+        let serial = y.map(|yi| yi.sin());
+
+        // Compute the relative error.
+        let error = Mf32::one() - (approx / serial);
+        let abs_error = error.max(-error);
+
+        // The relative error should not be greater than 0.03%.
+        assert!((Mf32::broadcast(0.0003) - abs_error).all_sign_bits_positive(),
+                "Error should be small but it is {:?} for the input {:?}", abs_error, y);
+    }
+}
+
+#[test]
 fn mf32_acos_fast() {
     let xs = bench::mf32_biunit(4096);
     for &x in &xs {
@@ -592,6 +626,27 @@ fn mf32_acos_fast() {
 
         // The absolute error should not be greater than 0.075.
         assert!((Mf32::broadcast(0.075) - abs_error).all_sign_bits_positive(),
+                "Error should be small but it is {:?} for the input {:?}", abs_error, x);
+    }
+}
+
+#[test]
+fn mf32_acos() {
+    let xs = bench::mf32_biunit(4096);
+    for &x in &xs {
+        // Approximate the inverse cosine with AVX instructions.
+        let y = x * Mf32::broadcast(0.98);
+        let approx = y.acos();
+
+        // Apply the regular acos function to every element, without AVX.
+        let serial = y.map(|yi| yi.acos());
+
+        // Compute the absolute error.
+        let error = approx - serial;
+        let abs_error = error.max(-error);
+
+        // The absolute error should not be greater than 0.017.
+        assert!((Mf32::broadcast(0.017) - abs_error).all_sign_bits_positive(),
                 "Error should be small but it is {:?} for the input {:?}", abs_error, x);
     }
 }
@@ -747,6 +802,28 @@ fn bench_acos_fast_1000(b: &mut test::Bencher) {
             test::black_box(test::black_box(x).acos_fast());
             test::black_box(test::black_box(x).acos_fast());
             test::black_box(test::black_box(x).acos_fast());
+        }
+        k = (k + 1) % 1024;
+    });
+}
+
+#[bench]
+fn bench_acos_1000(b: &mut test::Bencher) {
+    let xs = bench::mf32_biunit(1024);
+    let mut k = 0;
+    b.iter(|| {
+        let x = unsafe { xs.get_unchecked(k) };
+        for _ in 0..100 {
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
+            test::black_box(test::black_box(x).acos());
         }
         k = (k + 1) % 1024;
     });

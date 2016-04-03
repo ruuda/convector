@@ -5,7 +5,7 @@
 # in the worst case. Furthermore, I impose the following restrictions:
 #
 #  * f(0) = pi/2. This implies that the constant term is pi/2.
-#  * f(1) = 0 and f(-1) = pi. This implies that (a + b + c) / (1 + d) = -pi/2.
+#  * f(1) = 0 and f(-1) = pi. This implies that (a + b) / (1 + c + d) = -pi/2.
 
 from mpmath import mp, fabs, acos, isinf
 from scipy.optimize import minimize
@@ -13,10 +13,10 @@ from scipy.optimize import minimize
 mp.prec = 64
 
 def d(a, b, c):
-    return -1 - 2 * (a + b + c) / mp.pi
+    return -1 - 2 * (a + b) / mp.pi - c
 
 def f(x, a, b, c):
-    return mp.pi/2 + (a * x + b * x**3 + c * x**5) / (1 + d(a, b, c) * x**2)
+    return mp.pi/2 + (a * x + b * x**3) / (1 + c * x**2 + d(a, b, c) * x**4)
 
 def error(coefs, progress=True):
     (a, b, c) = coefs
@@ -28,7 +28,7 @@ def error(coefs, progress=True):
         print()
     return float(err)
 
-initial_guess = (-0.96967, 0.65129, 0.26605)
+initial_guess = (-0.9823, 0.9421, -1.1851)
 coefs = minimize(error, initial_guess).x
 print('a:', coefs[0])
 print('b:', coefs[1])
@@ -38,8 +38,8 @@ print('max error:', error(coefs, progress=False))
 
 # Output:
 #
-#     a: -0.94525109533
-#     b: 0.585786288561
-#     c: 0.315822007008
-#     d: -0.97221613075101857
-#     max error: 0.02240680886961469
+#     a: -0.939115566365855,
+#     b: 0.9217841528914573,
+#     c: -1.2845906244690837,
+#     d: 0.295624144969963174
+#     max error:  0.0167244179117447796
