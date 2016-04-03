@@ -1,8 +1,7 @@
 //! This module makes AVX slightly less painful to work with.
 //!
-//! Note: compile with `cargo rustc -- -C target-feature=sse,sse2,avx,avx2` to
-//! use this to the full extent. (Otherwise it will not use AVX but two SSE
-//! adds, for instance.)
+//! Note: compile with AVX and FMA target features to use this to the full
+//! extent.
 
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Sub};
