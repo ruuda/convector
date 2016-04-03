@@ -51,12 +51,6 @@ impl MQuaternion {
         }
     }
 
-    /// Computes ||q|| squared, or equivalently, q times its conjugate.
-    pub fn norm_squared(self) -> Mf32 {
-        //(a * a) + (b * b) + (c * c) + (d * d)
-        Mf32::zero()
-    }
-
     /// Interpolates two quaternions and normalizes the result.
     pub fn interpolate(&self, other: &MQuaternion, t: Mf32) -> MQuaternion {
         // The hypersphere of unit quaternions forms a double cover of SO3(R).
