@@ -1,4 +1,5 @@
 use bvh::Bvh;
+use quaternion::{MQuaternion, SQuaternion, rotate};
 use ray::{MIntersection, MRay};
 use simd::{Mask, Mf32};
 use std::f32::consts::PI;
@@ -12,9 +13,7 @@ pub struct Camera {
     /// of the desired field of view with `(-1, 0, screen_distance)`.
     screen_distance: f32,
 
-    // TODO: Do this properly, add an orientation quaternion.
-    rotation_x: f32,
-    rotation_y: f32,
+    orientation: SQuaternion,
 }
 
 impl Camera {
@@ -23,8 +22,7 @@ impl Camera {
         Camera {
             position: SVector3::zero(),
             screen_distance: 1.0 / (PI / 6.0).sin(),
-            rotation_x: 1.0,
-            rotation_y: 0.0,
+            orientation: SQuaternion::new(1.0, 0.0, 0.0, 0.0),
         }
     }
 
@@ -35,8 +33,9 @@ impl Camera {
 
     /// Sets the rotation of the camera in the xz-plane.
     pub fn set_rotation(&mut self, radians: f32) {
-        self.rotation_x = radians.cos();
-        self.rotation_y = radians.sin();
+        let x = (radians * 0.5).cos();
+        let y = (radians * 0.5).sin();
+        self.orientation = SQuaternion::new(x, 0.0, -y, 0.0);
     }
 
     /// Returns a camera ray for the given screen coordinates.
@@ -47,17 +46,8 @@ impl Camera {
         let dist = Mf32::broadcast(-self.screen_distance);
         let origin = MVector3::broadcast(self.position);
         let dir_src = MVector3::new(x, y, dist).normalized();
+        let dir = rotate(&dir_src, &MQuaternion::broadcast(self.orientation));
 
-        // A dirty hack to make the scene more interesting, I should really use
-        // a quaternion instead.
-        let mx = Mf32::broadcast(self.rotation_x);
-        let my = Mf32::broadcast(self.rotation_y);
-
-        let dir = MVector3 {
-            x: dir_src.x.mul_sub(mx, dir_src.z * my),
-            y: dir_src.y,
-            z: dir_src.x.mul_add(my, dir_src.z * mx),
-        };
         MRay {
             origin: origin,
             direction: dir,
