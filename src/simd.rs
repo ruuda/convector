@@ -3,7 +3,7 @@
 //! Note: compile with AVX and FMA target features to use this to the full
 //! extent.
 
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::f32::consts;
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Sub};
 
 #[cfg(test)]
@@ -98,7 +98,7 @@ impl Mf32 {
         // uniformly either. Note that the pi/2 is outside of the fraction to
         // keep the numerator odd and the denominator even.
 
-        let z = Mf32::broadcast(FRAC_PI_2); // pi / 2
+        let z = Mf32::broadcast(consts::FRAC_PI_2); // pi / 2
         let a = Mf32::broadcast(-1.010967650783108321215466002435);
         let b = Mf32::broadcast(0.7187490034089083954058416974792);
         let c = Mf32::broadcast(-0.8139678312270743216751354761334);
@@ -134,7 +134,7 @@ impl Mf32 {
         //  script to find the coefficients that minimize the worst error is
         //  in src/approx.py.
 
-        let z = Mf32::broadcast(FRAC_PI_2); // pi / 2
+        let z = Mf32::broadcast(consts::FRAC_PI_2); // pi / 2
         let a = Mf32::broadcast(-0.939115566365855);
         let b = Mf32::broadcast(0.9217841528914573);
         let c = Mf32::broadcast(-1.2845906244690837);
@@ -570,7 +570,7 @@ fn mf32_any_sign_bit_positive_masked() {
 fn mf32_sin_fast() {
     let xs = bench::mf32_biunit(4096);
     for &x in &xs {
-        let y = x * Mf32::broadcast(2.0 * PI / 3.0);
+        let y = x * Mf32::broadcast(2.0 * consts::PI / 3.0);
 
         // Approximate the sine using a Taylor expansion with AVX.
         let approx = y.sin_fast();
@@ -592,7 +592,7 @@ fn mf32_sin_fast() {
 fn mf32_sin() {
     let xs = bench::mf32_biunit(4096);
     for &x in &xs {
-        let y = x * Mf32::broadcast(2.0 * PI / 3.0);
+        let y = x * Mf32::broadcast(2.0 * consts::PI / 3.0);
 
         // Approximate the sine using a Taylor expansion with AVX.
         let approx = y.sin();

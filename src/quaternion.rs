@@ -1,7 +1,7 @@
 //! Implements quaternion utilities to handle rotation.
 
 use simd::Mf32;
-use vector3::{MVector3, SVector3};
+use vector3::MVector3;
 
 #[cfg(test)]
 use {bench, test};
@@ -222,6 +222,7 @@ fn rotate_z() {
 
 #[test]
 fn interpolate() {
+    use vector3::SVector3;
     let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
     let identity = MQuaternion::broadcast(SQuaternion::new(1.0, 0.0, 0.0, 0.0));
     let rotate_z = MQuaternion::broadcast(SQuaternion::new(half_sqrt_2, 0.0, 0.0, half_sqrt_2));
