@@ -651,6 +651,13 @@ fn mf32_acos() {
     }
 }
 
+macro_rules! unroll_10 {
+    { $x: block } => {
+        $x $x $x $x $x $x $x $x $x $x
+    }
+}
+
+
 #[bench]
 fn bench_mm256_div_ps_1000(b: &mut test::Bencher) {
     let numers = bench::mf32_biunit(4096 / 8);
@@ -659,16 +666,9 @@ fn bench_mm256_div_ps_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let (&numer, &denom) = frac_it.next().unwrap();
         for _ in 0..100 {
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
-            test::black_box(test::black_box(numer).div(denom));
+            unroll_10! {{
+                test::black_box(test::black_box(numer).div(denom));
+            }};
         }
     });
 }
@@ -681,17 +681,9 @@ fn bench_mm256_rcp_ps_mm256_mul_ps_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let (&numer, &denom) = frac_it.next().unwrap();
         for _ in 0..100 {
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
-            test::black_box(numer * test::black_box(denom).recip());
+            unroll_10! {{
+                test::black_box(numer * test::black_box(denom).recip());
+            }};
         }
     });
 }
@@ -703,16 +695,9 @@ fn bench_negate_with_xor_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
-            test::black_box(test::black_box(x).neg_xor());
+            unroll_10! {{
+                test::black_box(test::black_box(x).neg_xor());
+            }};
         }
         k = (k + 1) % 1024;
     });
@@ -725,16 +710,9 @@ fn bench_negate_with_sub_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
-            test::black_box(test::black_box(x).neg_sub());
+            unroll_10! {{
+                test::black_box(test::black_box(x).neg_sub());
+            }};
         }
         k = (k + 1) % 1024;
     });
@@ -747,16 +725,9 @@ fn bench_sin_fast_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
-            test::black_box(test::black_box(x).sin_fast());
+            unroll_10! {{
+                test::black_box(test::black_box(x).sin_fast());
+            }};
         }
         k = (k + 1) % 1024;
     });
@@ -769,22 +740,14 @@ fn bench_sin_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
-            test::black_box(test::black_box(x).sin());
+            unroll_10! {{
+                test::black_box(test::black_box(x).sin());
+            }};
         }
         k = (k + 1) % 1024;
     });
 }
 
-// TODO: DRY up these benchmarks.
 #[bench]
 fn bench_acos_fast_1000(b: &mut test::Bencher) {
     let xs = bench::mf32_biunit(1024);
@@ -792,16 +755,9 @@ fn bench_acos_fast_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
-            test::black_box(test::black_box(x).acos_fast());
+            unroll_10! {{
+                test::black_box(test::black_box(x).acos_fast());
+            }};
         }
         k = (k + 1) % 1024;
     });
@@ -814,16 +770,9 @@ fn bench_acos_1000(b: &mut test::Bencher) {
     b.iter(|| {
         let x = unsafe { xs.get_unchecked(k) };
         for _ in 0..100 {
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
-            test::black_box(test::black_box(x).acos());
+            unroll_10! {{
+                test::black_box(test::black_box(x).acos());
+            }};
         }
         k = (k + 1) % 1024;
     });

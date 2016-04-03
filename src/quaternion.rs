@@ -227,6 +227,12 @@ fn interpolate() {
     assert_mvectors_equal(expected, computed, 1e-6);
 }
 
+macro_rules! unroll_10 {
+    { $x: block } => {
+        $x $x $x $x $x $x $x $x $x $x
+    }
+}
+
 #[bench]
 fn bench_rotate_10(b: &mut test::Bencher) {
     let vectors = bench::points_on_sphere_m(4096 / 8);
@@ -234,16 +240,9 @@ fn bench_rotate_10(b: &mut test::Bencher) {
     let mut it = vectors.iter().cycle().zip(quaternions.iter().cycle());
     b.iter(|| {
         let (v, q) = it.next().unwrap();
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        unroll_10! {{
+            test::black_box(rotate(test::black_box(v), test::black_box(q)));
+        }};
     });
 }
 
@@ -255,15 +254,8 @@ fn bench_interpolate_10(b: &mut test::Bencher) {
     let mut it = q0s.iter().cycle().zip(q1s.iter().cycle()).zip(ts.iter().cycle());
     b.iter(|| {
         let ((q0, q1), &t) = it.next().unwrap();
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        unroll_10! {{
+            test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+        }};
     });
 }
