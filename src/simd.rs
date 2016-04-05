@@ -314,7 +314,7 @@ impl Mf32 {
         unsafe { x86_mm256_cmp_ps(self, other, 21) }
     }
 
-    /// Returns whether all sign bits are positive.
+    /// Returns whether all sign bits are positive (all sign bits are 0).
     #[inline(always)]
     pub fn all_sign_bits_positive(self) -> bool {
         // The mask contains the sign bits packed into an i32. If the mask is
@@ -372,6 +372,14 @@ impl Mi32 {
     #[inline(always)]
     pub fn broadcast(x: i32) -> Mi32 {
         Mi32(x, x, x, x, x, x, x, x)
+    }
+}
+
+impl Mask {
+    pub fn ones() -> Mask {
+        use std::mem::transmute;
+        let ones: f32 = unsafe { transmute(0xffffffff_u32) };
+        Mf32::broadcast(ones)
     }
 }
 

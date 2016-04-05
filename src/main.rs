@@ -17,6 +17,7 @@ extern crate time;
 
 mod aabb;
 mod bvh;
+mod material;
 mod quaternion;
 mod ray;
 mod renderer;
