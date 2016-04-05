@@ -110,7 +110,7 @@ impl Mf32 {
         let numer = x3.mul_add(b, a * x);
         let denom = x2.mul_add(c, Mf32::one());
 
-        numer.mul_add(denom.recip(), z)
+        numer.mul_add(denom.recip_fast(), z)
     }
 
     /// Approximates the inverse cosine of self.
@@ -148,7 +148,7 @@ impl Mf32 {
         let numer = x3.mul_add(b, a * x);
         let denom = x4.mul_add(d, x2.mul_add(c, Mf32::one()));
 
-        numer.mul_add(denom.recip(), z)
+        numer.mul_add(denom.recip_fast(), z)
     }
 
     /// Computes the sine of self.
@@ -242,11 +242,25 @@ impl Mf32 {
         x7.mul_add(d, x5.mul_add(c, x3.mul_add(b, x * a)))
     }
 
-    /// Approximates 1 / self.
+    /// Approximates 1 / self. Precision is poor but it is fast.
     #[inline(always)]
-    pub fn recip(self) -> Mf32 {
+    pub fn recip_fast(self) -> Mf32 {
         unsafe { x86_mm256_rcp_ps(self) }
     }
+
+    /// Approximates 1 / self. Precision is acceptable. It is reasonably fast.
+    ///
+    /// This is based on the hardware fast reciprocal approximation plus one
+    /// Newton iteration. It is slower than `recip_fast()`, but it is also a lot
+    /// more precise. A multiplication with `recip_precise()` is still faster
+    /// than doing a true division. The error with respect to doing a true
+    /// division is less than 0.0001%.
+    #[inline(always)]
+    pub fn recip_precise(self) -> Mf32 {
+        let x0 = self.recip_fast();
+        self.neg_mul_add(x0 * x0, x0 + x0)
+    }
+
 
     /// Flips the sign of self by flipping the sign bit.
     #[inline(always)]
@@ -567,6 +581,25 @@ fn mf32_any_sign_bit_positive_masked() {
 }
 
 #[test]
+fn mf32_recip_precise() {
+    let xs = bench::mf32_biunit(4096);
+    for &x in &xs {
+        // Use a true division, which is slow but also precise.
+        let expected = Mf32::one() / x;
+
+        let approx = x.recip_precise();
+
+        // Compute the relative error.
+        let error = Mf32::one() - (approx / expected);
+        let abs_error = error.max(-error);
+
+        // The relative error should not be greater than 0.0001%.
+        assert!((Mf32::broadcast(1e-6) - abs_error).all_sign_bits_positive(),
+                "Error should be small but it is {:?} for the input {:?}", abs_error, x);
+    }
+}
+
+#[test]
 fn mf32_sin_fast() {
     let xs = bench::mf32_biunit(4096);
     for &x in &xs {
@@ -659,7 +692,7 @@ macro_rules! unroll_10 {
 
 
 #[bench]
-fn bench_mm256_div_ps_1000(b: &mut test::Bencher) {
+fn bench_div_precise_1000(b: &mut test::Bencher) {
     let numers = bench::mf32_biunit(4096 / 8);
     let denoms = bench::mf32_biunit(4096 / 8);
     let mut frac_it = numers.iter().cycle().zip(denoms.iter().cycle());
@@ -674,7 +707,7 @@ fn bench_mm256_div_ps_1000(b: &mut test::Bencher) {
 }
 
 #[bench]
-fn bench_mm256_rcp_ps_mm256_mul_ps_1000(b: &mut test::Bencher) {
+fn bench_div_recip_fast_1000(b: &mut test::Bencher) {
     let numers = bench::mf32_biunit(4096 / 8);
     let denoms = bench::mf32_biunit(4096 / 8);
     let mut frac_it = numers.iter().cycle().zip(denoms.iter().cycle());
@@ -682,7 +715,22 @@ fn bench_mm256_rcp_ps_mm256_mul_ps_1000(b: &mut test::Bencher) {
         let (&numer, &denom) = frac_it.next().unwrap();
         for _ in 0..100 {
             unroll_10! {{
-                test::black_box(numer * test::black_box(denom).recip());
+                test::black_box(test::black_box(numer) * test::black_box(denom).recip_fast());
+            }};
+        }
+    });
+}
+
+#[bench]
+fn bench_div_recip_precise_1000(b: &mut test::Bencher) {
+    let numers = bench::mf32_biunit(4096 / 8);
+    let denoms = bench::mf32_biunit(4096 / 8);
+    let mut frac_it = numers.iter().cycle().zip(denoms.iter().cycle());
+    b.iter(|| {
+        let (&numer, &denom) = frac_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(numer) * test::black_box(denom).recip_precise());
             }};
         }
     });

@@ -60,7 +60,9 @@ impl Triangle {
         // (_mm256_rcp_ps) because the approximation is too inaccurate and
         // causes visual artifacts. The alternative is to use the approximation
         // with one Newton iteration, but that is slightly slower than just
-        // doing the division.
+        // doing the division. (Even though the microbenchmarks show that
+        // `recip_precise` is faster than the division, when used in this
+        // method, the division is faster.)
         let denom = Mf32::one() / ray.direction.dot(normal_denorm);
         let t = from_ray.dot(normal_denorm) * denom;
 

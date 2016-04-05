@@ -111,9 +111,9 @@ impl Aabb {
         // Note: the compiler is smart enough to inline this method and compute
         // these reciprocals only once per ray, so there is no need to clutter
         // the code by passing around precomputed values.
-        let xinv = ray.direction.x.recip();
-        let yinv = ray.direction.y.recip();
-        let zinv = ray.direction.z.recip();
+        let xinv = ray.direction.x.recip_fast();
+        let yinv = ray.direction.y.recip_fast();
+        let zinv = ray.direction.z.recip_fast();
 
         let d1 = MVector3::broadcast(self.origin) - ray.origin;
         let d2 = MVector3::broadcast(self.far) - ray.origin;
