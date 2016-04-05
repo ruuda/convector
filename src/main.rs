@@ -19,6 +19,7 @@ mod aabb;
 mod bvh;
 mod material;
 mod quaternion;
+mod random;
 mod ray;
 mod renderer;
 mod scene;

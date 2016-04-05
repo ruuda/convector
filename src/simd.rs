@@ -18,6 +18,10 @@ pub struct Mf32(pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, p
 #[derive(Copy, Clone)]
 pub struct Mi32(pub i32, pub i32, pub i32, pub i32, pub i32, pub i32, pub i32, pub i32);
 
+#[repr(simd)]
+#[derive(Copy, Clone)]
+pub struct Mu64(pub u64, pub u64, pub u64, pub u64);
+
 pub type Mask = Mf32;
 
 impl Mf32 {
@@ -454,6 +458,15 @@ impl Mul<Mf32> for Mf32 {
 
     #[inline(always)]
     fn mul(self, other: Mf32) -> Mf32 {
+        unsafe { simd_mul(self, other) }
+    }
+}
+
+impl Mul<Mu64> for Mu64 {
+    type Output = Mu64;
+
+    #[inline(always)]
+    fn mul(self, other: Mu64) -> Mu64 {
         unsafe { simd_mul(self, other) }
     }
 }
