@@ -160,7 +160,7 @@ fn assert_mvectors_equal(expected: MVector3, computed: MVector3, margin: f32) {
 #[test]
 fn rotate_identity() {
     let identity = SQuaternion::new(1.0, 0.0, 0.0, 0.0);
-    let vectors = bench::points_on_sphere_m(32);
+    let vectors = bench::mvectors_on_unit_sphere(32);
     for v in &vectors {
         assert_mvectors_equal(*v, rotate(v, &MQuaternion::broadcast(identity)), 1e-7);
     }
@@ -170,7 +170,7 @@ fn rotate_identity() {
 fn rotate_x() {
     let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
     let rotation = SQuaternion::new(half_sqrt_2, half_sqrt_2, 0.0, 0.0);
-    let vectors = bench::points_on_sphere_m(32);
+    let vectors = bench::mvectors_on_unit_sphere(32);
     for v in &vectors {
         // Rotate the vector by pi/2 radians around the x-axis. This is
         // equivalent to y <- -z, z <- y, so compute the rotation in two
@@ -186,7 +186,7 @@ fn rotate_x() {
 fn rotate_y() {
     let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
     let rotation = SQuaternion::new(half_sqrt_2, 0.0, half_sqrt_2, 0.0);
-    let vectors = bench::points_on_sphere_m(32);
+    let vectors = bench::mvectors_on_unit_sphere(32);
     for v in &vectors {
         // Rotate the vector by pi/2 radians around the y-axis. This is
         // equivalent to x <- z, z <- -x, so compute the rotation in two
@@ -202,7 +202,7 @@ fn rotate_y() {
 fn rotate_z() {
     let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
     let rotation = SQuaternion::new(half_sqrt_2, 0.0, 0.0, half_sqrt_2);
-    let vectors = bench::points_on_sphere_m(32);
+    let vectors = bench::mvectors_on_unit_sphere(32);
     for v in &vectors {
         // Rotate the vector by pi/2 radians around the y-axis. This is
         // equivalent to y <- x, x <- -y, so compute the rotation in two
@@ -235,7 +235,7 @@ macro_rules! unroll_10 {
 
 #[bench]
 fn bench_rotate_10(b: &mut test::Bencher) {
-    let vectors = bench::points_on_sphere_m(4096 / 8);
+    let vectors = bench::mvectors_on_unit_sphere(4096 / 8);
     let quaternions = bench::unit_mquaternions(4096 / 8);
     let mut it = vectors.iter().cycle().zip(quaternions.iter().cycle());
     b.iter(|| {

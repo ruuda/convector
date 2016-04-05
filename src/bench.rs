@@ -34,8 +34,7 @@ pub fn mf32_biunit(n: usize) -> Vec<Mf32> {
 }
 
 /// Generates n vectors distributed uniformly on the unit sphere.
-// TODO: Rename to unit_svectors.
-pub fn points_on_sphere_s(n: usize) -> Vec<SVector3> {
+pub fn svectors_on_unit_sphere(n: usize) -> Vec<SVector3> {
     let mut rng = rand::thread_rng();
     let phi_range = Range::new(0.0, 2.0 * consts::PI);
     let cos_theta_range = Range::new(-1.0_f32, 1.0);
@@ -54,10 +53,10 @@ pub fn points_on_sphere_s(n: usize) -> Vec<SVector3> {
 }
 
 /// Generates n times 8 vectors distributed uniformly on the unit sphere.
-pub fn points_on_sphere_m(n: usize) -> Vec<MVector3> {
+pub fn mvectors_on_unit_sphere(n: usize) -> Vec<MVector3> {
     let mut vectors = Vec::with_capacity(n);
     for _ in 0..n {
-        let p = points_on_sphere_s(8);
+        let p = svectors_on_unit_sphere(8);
         let x = Mf32::generate(|i| p[i].x);
         let y = Mf32::generate(|i| p[i].y);
         let z = Mf32::generate(|i| p[i].z);
@@ -110,23 +109,23 @@ pub fn unit_mquaternions(n: usize) -> Vec<MQuaternion> {
 
 /// Generates n pairs of nonzero vectors.
 pub fn svector3_pairs(n: usize) -> Vec<(SVector3, SVector3)> {
-    let mut a = points_on_sphere_s(n);
-    let mut b = points_on_sphere_s(n);
+    let mut a = svectors_on_unit_sphere(n);
+    let mut b = svectors_on_unit_sphere(n);
     let pairs = a.drain(..).zip(b.drain(..)).collect();
     pairs
 }
 
 /// Generates n times 8 pairs of nonzero vectors.
 pub fn mvector3_pairs(n: usize) -> Vec<(MVector3, MVector3)> {
-    let mut a = points_on_sphere_m(n);
-    let mut b = points_on_sphere_m(n);
+    let mut a = mvectors_on_unit_sphere(n);
+    let mut b = mvectors_on_unit_sphere(n);
     let pairs = a.drain(..).zip(b.drain(..)).collect();
     pairs
 }
 
 /// Generates rays with origin on a sphere, pointing to the origin.
 pub fn srays_inward(radius: f32, n: usize) -> Vec<SRay> {
-    points_on_sphere_s(n).iter().map(|&x| SRay::new(x * radius, -x)).collect()
+    svectors_on_unit_sphere(n).iter().map(|&x| SRay::new(x * radius, -x)).collect()
 }
 
 /// Generates a random AABB and n rays of which m intersect the box.
@@ -164,9 +163,9 @@ pub fn aabb_with_mrays(n: usize, m: usize) -> (Aabb, Vec<MRay>) {
 
 /// Generates n triangles with vertices on the unit sphere.
 pub fn triangles(n: usize) -> Vec<Triangle> {
-    let v0s = points_on_sphere_s(n);
-    let v1s = points_on_sphere_s(n);
-    let v2s = points_on_sphere_s(n);
+    let v0s = svectors_on_unit_sphere(n);
+    let v1s = svectors_on_unit_sphere(n);
+    let v2s = svectors_on_unit_sphere(n);
     v0s.iter()
        .zip(v1s.iter().zip(v2s.iter()))
        .map(|(&v0, (&v1, &v2))| Triangle::new(v0, v1, v2))
@@ -175,8 +174,8 @@ pub fn triangles(n: usize) -> Vec<Triangle> {
 
 /// Generates n bounding boxes with two vertices on the unit sphere.
 pub fn aabbs(n: usize) -> Vec<Aabb> {
-    let v0s = points_on_sphere_s(n);
-    let v1s = points_on_sphere_s(n);
+    let v0s = svectors_on_unit_sphere(n);
+    let v1s = svectors_on_unit_sphere(n);
     v0s.iter()
        .zip(v1s.iter())
        .map(|(&v0, &v1)| Aabb::new(SVector3::min(v0, v1), SVector3::max(v0, v1)))
@@ -185,8 +184,8 @@ pub fn aabbs(n: usize) -> Vec<Aabb> {
 
 /// Generates n mrays originating from a sphere of radius 10, pointing inward.
 pub fn mrays_inward(n: usize) -> Vec<MRay> {
-    let origins = points_on_sphere_m(n);
-    let dests = points_on_sphere_m(n);
+    let origins = mvectors_on_unit_sphere(n);
+    let dests = mvectors_on_unit_sphere(n);
     origins.iter()
            .zip(dests.iter())
            .map(|(&from, &to)| {
@@ -200,8 +199,8 @@ pub fn mrays_inward(n: usize) -> Vec<MRay> {
 /// Generates n mrays originating from a sphere of radius 10, pointing inward.
 /// The rays share the origin and point roughly in the same direction.
 pub fn mrays_inward_coherent(n: usize) -> Vec<MRay> {
-    let origins = points_on_sphere_s(n);
-    let dests = points_on_sphere_m(n);
+    let origins = svectors_on_unit_sphere(n);
+    let dests = mvectors_on_unit_sphere(n);
     origins.iter()
            .zip(dests.iter())
            .map(|(&from, &to)| {
