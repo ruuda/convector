@@ -314,7 +314,7 @@ impl Mf32 {
         unsafe { x86_mm256_cmp_ps(self, other, 21) }
     }
 
-    /// Returns whether any of the values is negative.
+    /// Returns whether all sign bits are positive.
     #[inline(always)]
     pub fn all_sign_bits_positive(self) -> bool {
         // The mask contains the sign bits packed into an i32. If the mask is
