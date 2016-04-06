@@ -637,6 +637,7 @@ impl Bvh {
         (numi_aabb, numi_tri)
     }
 
+    // TODO: Get rid of this method, a path tracer does not need this.
     pub fn intersect_any(&self, ray: &MRay, max_dist: Mf32) -> Mask {
         // This is actually just doing a full BVH intersection. I tried to do an
         // early out here; stop when all rays intersect at least something,
@@ -648,6 +649,8 @@ impl Bvh {
             position: ray.direction.mul_add(max_dist, ray.origin),
             normal: ray.direction,
             distance: max_dist,
+            material: Mf32::zero(),
+            tex_coords: (Mf32::zero(), Mf32::zero()),
         };
         let isect = self.intersect_nearest(ray, isect);
         isect.distance.geq(max_dist - Mf32::epsilon())

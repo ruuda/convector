@@ -46,7 +46,9 @@ use ray::{MIntersection, MRay};
 use simd::{Mask, Mf32};
 use vector3::MVector3;
 
-struct MaterialBank;
+pub type MMaterial = Mf32;
+
+pub struct MaterialBank;
 
 impl MaterialBank {
 
@@ -71,7 +73,7 @@ impl MaterialBank {
     /// set to ones for paths that need to continue, and zeroes where the
     /// material is emissive. A factor to multiply the final color by is
     /// returned as well.
-    pub fn continue_path(material: Mf32,
+    pub fn continue_path(material: MMaterial,
                          isect: &MIntersection,
                          ray_direction: MVector3)
                          -> (MVector3, Mask, MRay) {

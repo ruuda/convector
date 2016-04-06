@@ -109,7 +109,9 @@ impl Triangle {
         let new_isect = MIntersection {
             position: ray.direction.mul_add(t, ray.origin),
             normal: normal_denorm.normalized(),
-            distance: t
+            distance: t,
+            material: Mf32::zero(), // TODO: Get material from triangle.
+            tex_coords: (Mf32::zero(), Mf32::zero()), // TODO: Compute tex coords.
         };
 
         // Per ray, pick the new intersection if it is closer and if it was
@@ -142,9 +144,8 @@ fn intersect_triangle() {
     let ray = MRay::generate(|i| if i % 2 == 0 { r1.clone() } else { r2.clone() });
 
     let far = MIntersection {
-        position: MVector3::zero(),
-        normal: MVector3::zero(),
         distance: Mf32::broadcast(1e5),
+        .. MIntersection::new()
     };
 
     let isect = triangle.intersect(&ray, far);
@@ -171,9 +172,8 @@ fn bench_intersect_8_mrays_per_tri(b: &mut test::Bencher) {
         for _ in 0..8 {
             let ray = rays_it.next().unwrap();
             let isect = MIntersection {
-                position: MVector3::zero(),
-                normal: MVector3::zero(),
                 distance: Mf32::broadcast(1e5),
+                .. MIntersection::new()
             };
             test::black_box(triangle.intersect(&ray, isect));
         }
@@ -189,9 +189,8 @@ fn bench_intersect_8_tris_per_mray(b: &mut test::Bencher) {
     b.iter(|| {
         let ray = rays_it.next().unwrap();
         let mut isect = MIntersection {
-            position: MVector3::zero(),
-            normal: MVector3::zero(),
             distance: Mf32::broadcast(1e5),
+            .. MIntersection::new()
         };
         for _ in 0..8 {
             let triangle = tris_it.next().unwrap();

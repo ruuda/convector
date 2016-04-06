@@ -86,7 +86,8 @@ impl Scene {
             position: ray.direction.mul_add(huge_distance, ray.origin),
             normal: ray.direction,
             distance: huge_distance,
-            // TODO: Set sky/far away material.
+            material: Mf32::zero(), // TODO: Set sky material.
+            tex_coords: (Mf32::zero(), Mf32::zero()),
         };
         self.bvh.intersect_nearest(ray, far_away)
     }
@@ -99,6 +100,8 @@ impl Scene {
             position: ray.direction.mul_add(huge_distance, ray.origin),
             normal: ray.direction,
             distance: huge_distance,
+            material: Mf32::zero(),
+            tex_coords: (Mf32::zero(), Mf32::zero()),
         };
         self.bvh.intersect_debug(ray, far_away)
     }

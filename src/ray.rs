@@ -1,5 +1,6 @@
 //! This module implements the ray and related structures.
 
+use material::MMaterial;
 use simd::{Mask, Mf32};
 use std::ops::Neg;
 use vector3::{MVector3, SVector3};
@@ -25,6 +26,12 @@ pub struct MIntersection {
 
     /// This distance between the ray origin and the position.
     pub distance: Mf32,
+
+    /// The material at the intersection surface.
+    pub material: MMaterial,
+
+    /// Texture coordinates at the intersection point.
+    pub tex_coords: (Mf32, Mf32),
 }
 
 impl SRay {
@@ -63,11 +70,26 @@ impl MRay {
 }
 
 impl MIntersection {
+    /// Constructs an empty intersection initialized to zero.
+    pub fn new() -> MIntersection {
+        MIntersection {
+            position: MVector3::zero(),
+            normal: MVector3::zero(),
+            distance: Mf32::zero(),
+            material: Mf32::zero(),
+            tex_coords: (Mf32::zero(), Mf32::zero()),
+        }
+    }
+
     pub fn pick(&self, other: &MIntersection, mask: Mask) -> MIntersection {
+        let u = self.tex_coords.0.pick(other.tex_coords.0, mask);
+        let v = self.tex_coords.1.pick(other.tex_coords.1, mask);
         MIntersection {
             position: self.position.pick(other.position, mask),
             normal: self.normal.pick(other.normal, mask),
             distance: self.distance.pick(other.distance, mask),
+            material: self.material.pick(other.material, mask),
+            tex_coords: (u, v),
         }
     }
 }

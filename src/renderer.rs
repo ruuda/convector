@@ -1,3 +1,4 @@
+use material::MaterialBank;
 use ray::{MIntersection, MRay};
 use scene::{Light, Scene};
 use simd::{Mf32, Mi32};
@@ -9,6 +10,7 @@ use vector3::{MVector3, SVector3};
 
 pub struct Renderer {
     scene: Scene,
+    material_bank: MaterialBank,
     width: u32,
     height: u32,
     epoch: PreciseTime,
@@ -86,6 +88,7 @@ impl Renderer {
     pub fn new(scene: Scene, width: u32, height: u32) -> Renderer {
         Renderer {
             scene: scene,
+            material_bank: MaterialBank,
             width: width,
             height: height,
             epoch: PreciseTime::now(),
@@ -275,7 +278,7 @@ impl Renderer {
         let ray = self.scene.camera.get_ray(x, y);
         let isect = self.scene.intersect_nearest(&ray);
 
-        let mut color = MVector3::zero();
+        let mut color = MVector3::zero(); // MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
 
         for ref light in &self.scene.lights {
             let power = MVector3::broadcast(light.power);
