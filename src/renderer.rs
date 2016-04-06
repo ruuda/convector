@@ -242,10 +242,8 @@ impl Renderer {
 
             // Do not allow NaNs to creep in.
             debug_assert!(ray.direction.all_finite(), "infinite ray direction at iteration {}", i);
-
-            // TODO: Hunt down infinities here too.
-            // debug_assert!(isect.position.all_finite(), "infinite intersection at iteration {}", i);
-            // debug_assert!(isect.distance.all_finite(), "infinite distance at iteration {}", i);
+            debug_assert!(isect.position.all_finite(), "infinite intersection at iteration {}", i);
+            debug_assert!(isect.distance.all_finite(), "infinite distance at iteration {}", i);
 
             // Stop when every ray hit a light source.
             if isect.material.all_sign_bits_negative() {
