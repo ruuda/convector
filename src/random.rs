@@ -8,6 +8,9 @@
 use simd::{Mf32, Mi32, Mu64};
 use std::i32;
 
+#[cfg(test)]
+use test;
+
 // A theorem that is used intensively in this file: if n and m are coprime, then
 // the map x -> n * x is a bijection of Z/mZ. In practice m is a power of two
 // (2^64 in this case), so anything not divisible by two will do for n, but we
@@ -108,4 +111,22 @@ fn sample_biunit_is_in_interval() {
         assert!((Mf32::one() + x).all_sign_bits_positive(), "{:?} should be >= -1");
         assert!((Mf32::one() - x).all_sign_bits_positive(), "{:?} should be <= 1");
     }
+}
+
+macro_rules! unroll_10 {
+    { $x: block } => {
+        $x $x $x $x $x $x $x $x $x $x
+    }
+}
+
+#[bench]
+fn bench_sample_unit_1000(b: &mut test::Bencher) {
+    let mut rng = Rng::with_seed(2, 5, 7);
+    b.iter(|| {
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(rng.sample_unit());
+            }};
+        }
+    });
 }

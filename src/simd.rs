@@ -752,7 +752,6 @@ macro_rules! unroll_10 {
     }
 }
 
-
 #[bench]
 fn bench_div_precise_1000(b: &mut test::Bencher) {
     let numers = bench::mf32_biunit(4096 / 8);
