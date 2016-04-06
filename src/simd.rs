@@ -4,7 +4,7 @@
 //! extent.
 
 use std::f32::consts;
-use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Sub};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Sub};
 
 #[cfg(test)]
 use {bench, test};
@@ -395,6 +395,12 @@ impl Mi32 {
     pub fn broadcast(x: i32) -> Mi32 {
         Mi32(x, x, x, x, x, x, x, x)
     }
+
+    /// Converts signed integers into floating-point numbers.
+    #[inline(always)]
+    pub fn into_mf32(self) -> Mf32 {
+        unsafe { x86_mm256_cvtepi32_ps(self) }
+    }
 }
 
 impl Mask {
@@ -402,6 +408,13 @@ impl Mask {
         use std::mem::transmute;
         let ones: f32 = unsafe { transmute(0xffffffff_u32) };
         Mf32::broadcast(ones)
+    }
+}
+
+impl Mu64 {
+    /// Applies the function componentwise.
+    pub fn map<F>(self, mut f: F) -> Mu64 where F: FnMut(u64) -> u64 {
+        Mu64(f(self.0), f(self.1), f(self.2), f(self.3))
     }
 }
 
@@ -450,6 +463,15 @@ impl BitOr<Mask> for Mask {
             let a_or_b = simd_or(a, b);
             transmute(a_or_b)
         }
+    }
+}
+
+impl BitXor<Mu64> for Mu64 {
+    type Output = Mu64;
+
+    #[inline(always)]
+    fn bitxor(self, other: Mu64) -> Mu64 {
+        unsafe { simd_xor(self, other) }
     }
 }
 
@@ -529,6 +551,7 @@ extern "platform-intrinsic" {
 
     fn x86_mm256_blendv_ps(x: Mf32, y: Mf32, mask: Mask) -> Mf32;
     fn x86_mm256_cmp_ps(x: Mf32, y: Mf32, op: i8) -> Mask;
+    fn x86_mm256_cvtepi32_ps(x: Mi32) -> Mf32;
     fn x86_mm256_cvtps_epi32(x: Mf32) -> Mi32;
     fn x86_mm256_max_ps(x: Mf32, y: Mf32) -> Mf32;
     fn x86_mm256_min_ps(x: Mf32, y: Mf32) -> Mf32;

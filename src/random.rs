@@ -5,7 +5,18 @@
 //! grade random numbers. So it is possible to do a lot better than conventional
 //! RNGs.
 
-use simd::{Mf32, Mu64};
+use simd::{Mf32, Mi32, Mu64};
+use std::i32;
+
+// A theorem that is used intensively in this file: if n and m are coprime, then
+// the map x -> n * x is a bijection of Z/mZ. In practice m is a power of two
+// (2^64 in this case), so anything not divisible by two will do for n, but we
+// might as well take a prime.
+//
+// With that you can build a simple and fast hash function for integers:
+// multiply with a number coprime to 2. On a computer you get the "modulo a
+// power of two" for free. For more details on why this works pretty well,
+// Knuth has an entire section devoted to it in Volume 3 of TAOCP.
 
 pub struct Rng {
     state: Mu64,
@@ -15,99 +26,71 @@ impl Rng {
 
     /// Creates a new random number generator.
     ///
-    /// The initial state is taken from the thread-local random number generator
-    /// (from the rand crate).
-    pub fn seeded_from_tls() -> Rng {
-        // TODO: seed. But should **not** seed randomly, must take an element of
-        // maximal order.
+    /// The generator is seeded from three 32-bit integers, suggestively called
+    /// x, y, and i (for frame number). These three values are hashed together,
+    /// and that is used as the seed.
+    pub fn with_seed(x: u32, y: u32, i: u32) -> Rng {
+        // The constants here are all primes near 2^32. It is important that the
+        // four values in the final multiplication are distinct, otherwise the
+        // sequences will produce the same values. The values `x`, `y`, and `i`
+        // are hashed with different functions to ensure that a permutation of
+        // (x, y, i) results in a different seed, otherwise patterns would
+        // appear because the range of x and y is similar.
+        let a = x as u64 * 4294705031;
+        let b = y as u64 * 4294836181;
+        let c = i as u64 * 4294442983;
+        let seed = a + b + c;
+        let primes = Mu64(4295032801, 4295098309, 4295229439, 4295491573);
+
         Rng {
-            state: Mu64(8388581, 8388587, 8388593, 8388617)
+            state: Mu64(seed, seed, seed, seed) * primes,
         }
     }
 
     /// Updates the state and returns the old state.
     fn next(&mut self) -> Mu64 {
-        // The function x -> n * x is a bijection of Z/mZ if n and m are
-        // coprime, hence the sequence (a, na, 2na, ...) mod m repeats after
-        // phi(m) values. If we take m = 2^64 and n any number not divisible by
-        // 2, then this is we get a periodic sequence. The period depends on a
-        // and it is at most (2^64 - 1)/3, the largest divisor of the order of
-        // (Z/mZ)*.
-        // Empirical observation: the sequence (a, na, 2na, ...) mod m appears
-        // random if a is not too small (if there is no wraparound we just get
-        // the multiples of a) or too large (if a is close to m, then it is
-        // minus a small value mod m).
         let old_state = self.state;
 
-        // Take a prime near sqrt(2^64) as factor.
-        let prime = 4_294_967_387;
+        // Again, this is really nothing more than iteratively hashing the
+        // state. It is faster than e.g. xorshift, and the quality of the
+        // random numbers is still good enough. To demonstrate that it is
+        // sufficient that the factor is coprime to 2 I picked a composite
+        // number here. Try multiplying it by two and observe how the state
+        // reaches 0 after a few iterations.
 
-        // Multiply with the constant. Wraparound is intended.
-        self.state = self.state * Mu64(prime, prime, prime, prime);
+        let factor = 3 * 5 * 7 * 4294967387;
+        self.state = self.state * Mu64(factor, factor, factor, factor);
 
         old_state
     }
 
-    /// Returns 8 random numbers distributed uniformly over the closed interval
-    /// [0, 1].
+    /// Returns 8 random numbers distributed uniformly over the half-open
+    /// interval [0, 1).
     pub fn sample_unit(&mut self) -> Mf32 {
         use std::mem::transmute;
 
-        // This method employs a bit of bit trickery to construct floating point
-        // numbers. If the exponent part is fixed, then the mantissa part works
-        // just like an integer, but implicitly a base value is added (there is
-        // an implicit leading 1). So we can generate random integers in that
-        // range just fine. Then do regular floating-point math to put those
-        // numbers in the interval [0, 1].
+        let mi32: Mi32 = unsafe { transmute(self.next()) };
+        let range = Mf32::broadcast(0.5 / i32::MIN as f32);
+        let half = Mf32::broadcast(0.5);
 
-        // A mask for the 23-bit mantissa part of a 32-bit float.
-        let mask: u32 = 0x7f_ff_ff;
-
-        // The exponent that indicates 0.
-        let exponent: u32 = 127 << 23;
-
-        // The minimum and maximum value that we will generate.
-        let min_val: f32 = unsafe { transmute(exponent) };
-        let max_val: f32 = unsafe { transmute(exponent | mask) };
-        let rlen = 1.0 / (max_val - min_val);
-
-        let mask_mf32 = Mf32::broadcast(unsafe { transmute(mask) });
-        let exponent_mf32 = Mf32::broadcast(unsafe { transmute(exponent) });
-
-        // Generate a random float distributed uniformly between min_val and
-        // max_val.
-        let bits: Mf32 = unsafe { transmute(self.next()) };
-        let x = (bits & mask_mf32) | exponent_mf32;
-
-        // Scale to the range [0.0, 1.0].
-        (x - Mf32::broadcast(min_val)) * Mf32::broadcast(rlen)
+        mi32.into_mf32().mul_add(range, half)
     }
 
-    /// Returns 8 random numbers distributed uniformly over the closed interval
-    /// [-1, 1].
+    /// Returns 8 random numbers distributed uniformly over the half-open
+    /// interval [-1, 1).
     pub fn sample_biunit(&mut self) -> Mf32 {
         use std::mem::transmute;
 
-        // See `sample_unit()` for how this works.
-        let mask: u32 = 0x7f_ff_ff;
-        let exponent: u32 = 127 << 23;
-        let min_val: f32 = unsafe { transmute(exponent) };
-        let max_val: f32 = unsafe { transmute(exponent | mask) };
-        let half_val = 0.5 * (min_val + max_val);
-        let mask_mf32 = Mf32::broadcast(unsafe { transmute(mask) });
-        let exponent_mf32 = Mf32::broadcast(unsafe { transmute(exponent) });
-        let rlen = 0.5 / (max_val - min_val);
-        let bits: Mf32 = unsafe { transmute(self.next()) };
-        let x = (bits & mask_mf32) | exponent_mf32;
+        let mi32: Mi32 = unsafe { transmute(self.next()) };
+        let range = Mf32::broadcast(1.0 / i32::MIN as f32);
 
-        (x - Mf32::broadcast(half_val)) * Mf32::broadcast(rlen)
-
+        mi32.into_mf32() * range
     }
 }
 
 #[test]
 fn sample_unit_is_in_interval() {
-    let mut rng = Rng::seeded_from_tls();
+    let mut rng = Rng::with_seed(2, 5, 7);
 
     for _ in 0..4096 {
         let x = rng.sample_unit();
@@ -118,7 +101,7 @@ fn sample_unit_is_in_interval() {
 
 #[test]
 fn sample_biunit_is_in_interval() {
-    let mut rng = Rng::seeded_from_tls();
+    let mut rng = Rng::with_seed(2, 5, 7);
 
     for _ in 0..4096 {
         let x = rng.sample_biunit();
