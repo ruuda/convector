@@ -6,7 +6,7 @@
 //! intersection code to be inlined.
 
 use ray::{MIntersection, MRay};
-use simd::{Mask, Mf32};
+use simd::Mf32;
 use vector3::{MVector3, SVector3};
 
 #[cfg(test)]
@@ -110,14 +110,14 @@ impl Triangle {
             position: ray.direction.mul_add(t, ray.origin),
             normal: normal_denorm.normalized(),
             distance: t,
-            material: Mask::ones(), // TODO: Get material from triangle.
+            material: Mf32::zero(), // TODO: Get material from triangle.
             tex_coords: (Mf32::zero(), Mf32::zero()), // TODO: Compute tex coords.
         };
 
         // Per ray, pick the new intersection if it is closer and if it was
         // indeed an intersection of the triangle, or pick the previous
         // intersection otherwise.
-        new_isect.pick(&isect, mask_positive | mask_uv | mask_closer)
+        new_isect.pick(&isect, (ray.active | mask_positive) | (mask_uv | mask_closer))
     }
 }
 

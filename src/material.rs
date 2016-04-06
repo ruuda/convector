@@ -43,12 +43,22 @@
 //!    can only do one per pixel.
 
 use ray::{MIntersection, MRay};
-use simd::{Mask, Mf32};
+use simd::Mf32;
 use vector3::MVector3;
 
 pub type MMaterial = Mf32;
 
 pub struct MaterialBank;
+
+impl MMaterial {
+    pub fn sky() -> MMaterial {
+        use std::mem::transmute;
+
+        // Set the sign bit to indicate emissive.
+        let sky = 0x80_00_00_00_u32;
+        Mf32::broadcast(unsafe { transmute(sky) })
+    }
+}
 
 impl MaterialBank {
 
@@ -68,30 +78,31 @@ impl MaterialBank {
     ///
     /// If a surface intersected a material with the specified material index,
     /// at the given position with the given ray direction, then this will
-    /// compute the ray that continues the light path. If the material is
-    /// emissive the path does not continue, so a mask is also returned that is
-    /// set to ones for paths that need to continue, and zeroes where the
-    /// material is emissive. A factor to multiply the final color by is
-    /// returned as well.
-    pub fn continue_path(&self, isect: &MIntersection, ray_direction: MVector3)
-                         -> (MVector3, Mask, MRay) {
-        // The most significant bit of `material` determines whether the
-        // material is emissive. If it is, then the light path ends here.
-        let mask = Mask::ones().pick(isect.material, Mf32::zero());
-
+    /// compute the ray that continues the light path. A factor to multiply the
+    /// final color by is returned as well.
+    pub fn continue_path(&self, ray: &MRay, isect: &MIntersection) -> (MVector3, MRay) {
         // TODO: Do a diffuse bounce and use a proper material.
         // For now, do a specular reflection.
 
-        let dot = isect.normal.dot(ray_direction);
-        let direction = isect.normal.neg_mul_add(dot + dot, ray_direction);
+        let dot = isect.normal.dot(ray.direction);
+        let direction = isect.normal.neg_mul_add(dot + dot, ray.direction);
+
+        // Emissive materials have the sign bit set to 1, and a sign bit of 1
+        // means that the ray is inactive. So hitting an emissive material
+        // deactivates the ray: there is no need for an additional bounce.
+        let active = ray.active | isect.material;
 
         // Build a new ray, offset by an epsilon from the intersection so we
         // don't intersect the same surface again.
         let origin = direction.mul_add(Mf32::epsilon(), isect.position);
-        let new_ray = MRay::new(origin, direction);
+        let new_ray = MRay {
+            origin: origin.pick(ray.origin, active),
+            direction: direction.pick(ray.direction, active),
+            active: active,
+        };
 
         let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
 
-        (white, mask, new_ray)
+        (white, new_ray)
     }
 }

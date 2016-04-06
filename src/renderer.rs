@@ -248,16 +248,15 @@ impl Renderer {
             // debug_assert!(isect.distance.all_finite(), "infinite distance at iteration {}", i);
 
             // Stop when every ray hit a light source.
-            if isect.material.all_sign_bits_positive() {
+            if isect.material.all_sign_bits_negative() {
                 let emission = self.material_bank.sky_intensity(ray.direction);
                 color = color.mul_coords(emission);
                 break
             }
 
-            let (factor, mask, new_ray) = self.material_bank.continue_path(&isect, ray.direction);
+            let (factor, new_ray) = self.material_bank.continue_path(&ray, &isect);
             ray = new_ray;
             color = color.mul_coords(factor);
-            // TODO: Handle mask.
         }
 
         // TODO: Now a ray that found nothing returns white.

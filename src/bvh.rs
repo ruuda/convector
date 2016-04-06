@@ -1,6 +1,7 @@
 //! Implements a bounding volume hierarchy.
 
 use aabb::Aabb;
+use material::MMaterial;
 use ray::{MIntersection, MRay};
 use simd::{Mask, Mf32};
 use triangle::Triangle;
@@ -649,7 +650,7 @@ impl Bvh {
             position: ray.direction.mul_add(max_dist, ray.origin),
             normal: ray.direction,
             distance: max_dist,
-            material: Mf32::zero(),
+            material: MMaterial::sky(),
             tex_coords: (Mf32::zero(), Mf32::zero()),
         };
         let isect = self.intersect_nearest(ray, isect);

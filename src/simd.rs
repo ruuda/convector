@@ -326,6 +326,14 @@ impl Mf32 {
         unsafe { x86_mm256_movemask_ps(self) == 0 }
     }
 
+    /// Returns whether all sign bits are negative (all sign bits are 1).
+    #[inline(always)]
+    pub fn all_sign_bits_negative(self) -> bool {
+        // The mask contains the sign bits packed into an i32. If the mask is
+        // all ones, then all sign bits were 1, so all numbers were negative.
+        unsafe { x86_mm256_movemask_ps(self) == 0xff }
+    }
+
     /// Returns whether all of the values not masked out are negative.
     ///
     /// Note that a value is negative if its sign bit is set.

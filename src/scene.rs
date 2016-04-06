@@ -1,7 +1,8 @@
 use bvh::Bvh;
+use material::MMaterial;
 use quaternion::{MQuaternion, SQuaternion, rotate};
 use ray::{MIntersection, MRay};
-use simd::{Mask, Mf32};
+use simd::Mf32;
 use std::f32::consts::PI;
 use vector3::{MVector3, SVector3};
 use wavefront::Mesh;
@@ -51,7 +52,7 @@ impl Camera {
         MRay {
             origin: origin,
             direction: dir,
-            active: Mask::ones(),
+            active: Mf32::zero(),
         }
     }
 }
@@ -87,7 +88,7 @@ impl Scene {
             position: ray.direction.mul_add(huge_distance, ray.origin),
             normal: ray.direction,
             distance: huge_distance,
-            material: Mf32::zero(), // TODO: Set sky material.
+            material: MMaterial::sky(),
             tex_coords: (Mf32::zero(), Mf32::zero()),
         };
         self.bvh.intersect_nearest(ray, far_away)
@@ -101,7 +102,7 @@ impl Scene {
             position: ray.direction.mul_add(huge_distance, ray.origin),
             normal: ray.direction,
             distance: huge_distance,
-            material: Mf32::zero(),
+            material: MMaterial::sky(),
             tex_coords: (Mf32::zero(), Mf32::zero()),
         };
         self.bvh.intersect_debug(ray, far_away)

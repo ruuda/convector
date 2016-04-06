@@ -15,6 +15,13 @@ pub struct SRay {
 pub struct MRay {
     pub origin: MVector3,
     pub direction: MVector3,
+
+    /// A mask that determines which rays are active. If the sign bit is
+    /// positive (bit is 0) then the ray is active. If the sign bit is negative
+    /// (bit is 1) then the ray is inactive.
+    ///
+    /// This convention might seem backwards, but it makes triangle intersection
+    /// more efficient because a negation can be avoided.
     pub active: Mask,
 }
 
@@ -49,7 +56,7 @@ impl MRay {
         MRay {
             origin: origin,
             direction: direction,
-            active: Mask::ones(),
+            active: Mf32::zero(),
         }
     }
 
@@ -57,7 +64,7 @@ impl MRay {
         MRay {
             origin: MVector3::broadcast(ray.origin),
             direction: MVector3::broadcast(ray.direction),
-            active: Mask::ones(),
+            active: Mf32::zero(),
         }
     }
 
@@ -68,20 +75,20 @@ impl MRay {
         MRay {
             origin: MVector3::generate(|i| f(i).origin),
             direction: MVector3::generate(|i| f(i).direction),
-            active: Mask::ones(),
+            active: Mf32::zero(),
         }
     }
 }
 
 impl MIntersection {
     /// Constructs an empyt intersection with the specified distance and zeroes
-    /// in all other fields.
+    /// in all other fields. The material is set to the sky material.
     pub fn with_max_distance(max_dist: f32) -> MIntersection {
         MIntersection {
             position: MVector3::zero(),
             normal: MVector3::zero(),
             distance: Mf32::broadcast(max_dist),
-            material: Mf32::zero(),
+            material: MMaterial::sky(),
             tex_coords: (Mf32::zero(), Mf32::zero()),
         }
     }
