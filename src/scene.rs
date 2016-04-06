@@ -51,6 +51,7 @@ impl Camera {
         MRay {
             origin: origin,
             direction: dir,
+            active: Mask::ones(),
         }
     }
 }

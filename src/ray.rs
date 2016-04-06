@@ -15,6 +15,7 @@ pub struct SRay {
 pub struct MRay {
     pub origin: MVector3,
     pub direction: MVector3,
+    pub active: Mask,
 }
 
 pub struct MIntersection {
@@ -48,6 +49,7 @@ impl MRay {
         MRay {
             origin: origin,
             direction: direction,
+            active: Mask::ones(),
         }
     }
 
@@ -55,6 +57,7 @@ impl MRay {
         MRay {
             origin: MVector3::broadcast(ray.origin),
             direction: MVector3::broadcast(ray.direction),
+            active: Mask::ones(),
         }
     }
 
@@ -103,6 +106,7 @@ impl Neg for MRay {
         MRay {
             origin: self.origin,
             direction: MVector3::zero() - self.direction,
+            active: self.active,
         }
     }
 }
