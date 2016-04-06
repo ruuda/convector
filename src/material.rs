@@ -53,14 +53,14 @@ pub struct MaterialBank;
 impl MaterialBank {
 
     /// Returns the sky color for a ray in the given direction.
-    pub fn sky_intensity(ray_direction: MVector3) -> MVector3 {
+    pub fn sky_intensity(&self, ray_direction: MVector3) -> MVector3 {
         // TODO: Better sky model.
-        let up = MVector3::new(Mf32::zero(), Mf32::one(), Mf32::one());
+        let up = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
         let half = Mf32::broadcast(0.5);
         let d = ray_direction.dot(up).mul_add(half, half);
-        let r = Mf32::broadcast(1.0) * d;
-        let g = Mf32::broadcast(1.0) * (d * d);
-        let b = Mf32::broadcast(1.0) * d * (d * d);
+        let r = d;
+        let g = d * d;
+        let b = d * (d * d);
         MVector3::new(r, g, b)
     }
 
@@ -73,19 +73,17 @@ impl MaterialBank {
     /// set to ones for paths that need to continue, and zeroes where the
     /// material is emissive. A factor to multiply the final color by is
     /// returned as well.
-    pub fn continue_path(material: MMaterial,
-                         isect: &MIntersection,
-                         ray_direction: MVector3)
+    pub fn continue_path(&self, isect: &MIntersection, ray_direction: MVector3)
                          -> (MVector3, Mask, MRay) {
         // The most significant bit of `material` determines whether the
         // material is emissive. If it is, then the light path ends here.
-        let mask = Mask::ones().pick(material, Mf32::zero());
+        let mask = Mask::ones().pick(isect.material, Mf32::zero());
 
         // TODO: Do a diffuse bounce and use a proper material.
         // For now, do a specular reflection.
 
         let dot = isect.normal.dot(ray_direction);
-        let direction = isect.normal.mul_add(dot + dot, ray_direction);
+        let direction = isect.normal.mul_sub(dot + dot, ray_direction);
 
         // Build a new ray, offset by an epsilon from the intersection so we
         // don't intersect the same surface again.

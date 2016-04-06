@@ -6,7 +6,7 @@
 //! intersection code to be inlined.
 
 use ray::{MIntersection, MRay};
-use simd::Mf32;
+use simd::{Mask, Mf32};
 use vector3::{MVector3, SVector3};
 
 #[cfg(test)]
@@ -110,7 +110,7 @@ impl Triangle {
             position: ray.direction.mul_add(t, ray.origin),
             normal: normal_denorm.normalized(),
             distance: t,
-            material: Mf32::zero(), // TODO: Get material from triangle.
+            material: Mask::ones(), // TODO: Get material from triangle.
             tex_coords: (Mf32::zero(), Mf32::zero()), // TODO: Compute tex coords.
         };
 

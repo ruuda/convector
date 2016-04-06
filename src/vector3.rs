@@ -215,6 +215,24 @@ impl MVector3 {
         }
     }
 
+    /// Scalar multiplication and vector subtract using fused multiply-subtract.
+    pub fn mul_sub(self, factor: Mf32, other: MVector3) -> MVector3 {
+        MVector3 {
+            x: self.x.mul_sub(factor, other.x),
+            y: self.y.mul_sub(factor, other.y),
+            z: self.z.mul_sub(factor, other.z),
+        }
+    }
+
+    /// Multiplies two vectors coordinatewise.
+    pub fn mul_coords(self, factors: MVector3) -> MVector3 {
+        MVector3 {
+            x: self.x * factors.x,
+            y: self.y * factors.y,
+            z: self.z * factors.z,
+        }
+    }
+
     /// Returns ||self|| * ||self||.
     pub fn norm_squared(self) -> Mf32 {
         self.dot(self)
@@ -250,6 +268,13 @@ impl MVector3 {
             y: self.y.pick(other.y, mask),
             z: self.z.pick(other.z, mask),
         }
+    }
+
+    /// Returns whether all components are finite.
+    ///
+    /// This is slow, use only for diagnostic purposes.
+    pub fn all_finite(self) -> bool {
+        self.x.all_finite() && self.y.all_finite() && self.z.all_finite()
     }
 }
 

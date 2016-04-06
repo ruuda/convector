@@ -360,6 +360,16 @@ impl Mf32 {
     pub fn into_mi32(self) -> Mi32 {
         unsafe { x86_mm256_cvtps_epi32(self) }
     }
+
+    /// Returns whether all components are finite.
+    ///
+    /// This is slow, use only for diagnostic purposes.
+    pub fn all_finite(self) -> bool {
+        self.0.is_finite() && self.1.is_finite() &&
+        self.2.is_finite() && self.3.is_finite() &&
+        self.4.is_finite() && self.5.is_finite() &&
+        self.6.is_finite() && self.7.is_finite()
+    }
 }
 
 impl Mi32 {

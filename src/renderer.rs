@@ -275,16 +275,34 @@ impl Renderer {
     }
 
     fn render_pixels(&self, x: Mf32, y: Mf32) -> MVector3 {
-        let ray = self.scene.camera.get_ray(x, y);
-        let isect = self.scene.intersect_nearest(&ray);
+        let mut ray = self.scene.camera.get_ray(x, y);
+        let mut color = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
 
-        let mut color = MVector3::zero(); // MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
+        for i in 0..10 {
+            let isect = self.scene.intersect_nearest(&ray);
 
-        for ref light in &self.scene.lights {
-            let power = MVector3::broadcast(light.power);
-            let irradiance = self.get_irradiance(&isect, light);
-            color = power.mul_add(irradiance, color);
+            // Do not allow NaNs to creep in.
+            debug_assert!(ray.direction.all_finite(), "infinite ray direction at iteration {}", i);
+
+            // TODO: Hunt down infinities here too.
+            // debug_assert!(isect.position.all_finite(), "infinite intersection at iteration {}", i);
+            // debug_assert!(isect.distance.all_finite(), "infinite distance at iteration {}", i);
+
+            // Stop when every ray hit a light source.
+            if isect.material.all_sign_bits_positive() {
+                let emission = self.material_bank.sky_intensity(ray.direction);
+                color = color.mul_coords(emission);
+                break
+            }
+
+            let (factor, mask, new_ray) = self.material_bank.continue_path(&isect, ray.direction);
+            ray = new_ray;
+            color = color.mul_coords(factor);
+            // TODO: Handle mask.
         }
+
+        // TODO: Now a ray that found nothing returns white.
+        // That is wrong.
 
         color
     }
