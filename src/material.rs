@@ -83,7 +83,7 @@ impl MaterialBank {
         // For now, do a specular reflection.
 
         let dot = isect.normal.dot(ray_direction);
-        let direction = isect.normal.mul_sub(dot + dot, ray_direction);
+        let direction = isect.normal.neg_mul_add(dot + dot, ray_direction);
 
         // Build a new ray, offset by an epsilon from the intersection so we
         // don't intersect the same surface again.

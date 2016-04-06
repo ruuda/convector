@@ -215,6 +215,15 @@ impl MVector3 {
         }
     }
 
+    /// Scalar multiplication with -factor and vector add using fused multiply-add.
+    pub fn neg_mul_add(self, factor: Mf32, other: MVector3) -> MVector3 {
+        MVector3 {
+            x: self.x.neg_mul_add(factor, other.x),
+            y: self.y.neg_mul_add(factor, other.y),
+            z: self.z.neg_mul_add(factor, other.z),
+        }
+    }
+
     /// Scalar multiplication and vector subtract using fused multiply-subtract.
     pub fn mul_sub(self, factor: Mf32, other: MVector3) -> MVector3 {
         MVector3 {
