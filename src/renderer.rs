@@ -236,9 +236,12 @@ impl Renderer {
     fn render_pixels(&self, x: Mf32, y: Mf32) -> MVector3 {
         let mut ray = self.scene.camera.get_ray(x, y);
         let mut color = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
+        let mut hit_emissive = Mf32::zero();
 
-        for i in 0..10 {
+        let max_bounces = 4;
+        for i in 0..max_bounces {
             let isect = self.scene.intersect_nearest(&ray);
+            hit_emissive = isect.material;
 
             // Do not allow NaNs to creep in.
             debug_assert!(ray.direction.all_finite(), "infinite ray direction at iteration {}", i);
@@ -246,21 +249,22 @@ impl Renderer {
             debug_assert!(isect.distance.all_finite(), "infinite distance at iteration {}", i);
 
             // Stop when every ray hit a light source.
-            if isect.material.all_sign_bits_negative() {
-                let emission = self.material_bank.sky_intensity(ray.direction);
-                color = color.mul_coords(emission);
-                break
-            }
+            if isect.material.all_sign_bits_negative() { break }
 
             let (factor, new_ray) = self.material_bank.continue_path(&ray, &isect);
             ray = new_ray;
             color = color.mul_coords(factor);
         }
 
-        // TODO: Now a ray that found nothing returns white.
-        // That is wrong.
+        // Compute light contribution.
+        let emission = self.material_bank.sky_intensity(ray.direction);
+        color = color.mul_coords(emission);
 
-        color
+        // If the last thing that a ray hit was an emissive material, it has
+        // found a light source and the computed color is correct. If the ray
+        // did not find a light source but the loop was terminated, the computed
+        // color is invalid; it should be black.
+        MVector3::zero().pick(color, hit_emissive)
     }
 
     fn render_pixels_debug(&self, x: Mf32, y: Mf32) -> MVector3 {
