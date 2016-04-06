@@ -105,12 +105,4 @@ impl Scene {
         };
         self.bvh.intersect_debug(ray, far_away)
     }
-
-    /// Returns whether there is any geometry along the ray.
-    ///
-    /// This is intended for occlusion testing. The exact location of the
-    /// intersection is not computed.
-    pub fn intersect_any(&self, ray: &MRay, max_dist: Mf32) -> Mask {
-        self.bvh.intersect_any(ray, max_dist)
-    }
 }

@@ -143,12 +143,8 @@ fn intersect_triangle() {
 
     let ray = MRay::generate(|i| if i % 2 == 0 { r1.clone() } else { r2.clone() });
 
-    let far = MIntersection {
-        distance: Mf32::broadcast(1e5),
-        .. MIntersection::new()
-    };
-
-    let isect = triangle.intersect(&ray, far);
+    let isect_far = MIntersection::with_max_distance(1e5);
+    let isect = triangle.intersect(&ray, isect_far);
 
     println!("distance is {}", isect.distance.0);
     assert!(isect.distance.0 < 1.01);
@@ -171,10 +167,7 @@ fn bench_intersect_8_mrays_per_tri(b: &mut test::Bencher) {
         let triangle = tris_it.next().unwrap();
         for _ in 0..8 {
             let ray = rays_it.next().unwrap();
-            let isect = MIntersection {
-                distance: Mf32::broadcast(1e5),
-                .. MIntersection::new()
-            };
+            let isect = MIntersection::with_max_distance(1e5);
             test::black_box(triangle.intersect(&ray, isect));
         }
     });
@@ -188,10 +181,7 @@ fn bench_intersect_8_tris_per_mray(b: &mut test::Bencher) {
     let mut tris_it = tris.iter().cycle();
     b.iter(|| {
         let ray = rays_it.next().unwrap();
-        let mut isect = MIntersection {
-            distance: Mf32::broadcast(1e5),
-            .. MIntersection::new()
-        };
+        let mut isect = MIntersection::with_max_distance(1e5);
         for _ in 0..8 {
             let triangle = tris_it.next().unwrap();
             isect = triangle.intersect(&ray, isect);

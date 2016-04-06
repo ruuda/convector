@@ -65,17 +65,19 @@ impl MRay {
         MRay {
             origin: MVector3::generate(|i| f(i).origin),
             direction: MVector3::generate(|i| f(i).direction),
+            active: Mask::ones(),
         }
     }
 }
 
 impl MIntersection {
-    /// Constructs an empty intersection initialized to zero.
-    pub fn new() -> MIntersection {
+    /// Constructs an empyt intersection with the specified distance and zeroes
+    /// in all other fields.
+    pub fn with_max_distance(max_dist: f32) -> MIntersection {
         MIntersection {
             position: MVector3::zero(),
             normal: MVector3::zero(),
-            distance: Mf32::zero(),
+            distance: Mf32::broadcast(max_dist),
             material: Mf32::zero(),
             tex_coords: (Mf32::zero(), Mf32::zero()),
         }

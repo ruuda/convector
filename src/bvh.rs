@@ -666,8 +666,8 @@ fn bench_intersect_decoherent_mray_suzanne(b: &mut test::Bencher) {
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
         let ray = rays_it.next().unwrap();
-        let far = Mf32::broadcast(1e5);
-        let isect = bvh.intersect_any(ray, far);
+        let isect_far = MIntersection::with_max_distance(1e5);
+        let isect = bvh.intersect_nearest(ray, isect_far);
         test::black_box(isect);
     });
 }
@@ -681,8 +681,8 @@ fn bench_intersect_coherent_mray_suzanne(b: &mut test::Bencher) {
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
         let ray = rays_it.next().unwrap();
-        let far = Mf32::broadcast(1e5);
-        let isect = bvh.intersect_any(ray, far);
+        let isect_far = MIntersection::with_max_distance(1e5);
+        let isect = bvh.intersect_nearest(ray, isect_far);
         test::black_box(isect);
     });
 }
@@ -696,8 +696,8 @@ fn bench_intersect_decoherent_mray_bunny(b: &mut test::Bencher) {
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
         let ray = rays_it.next().unwrap();
-        let far = Mf32::broadcast(1e5);
-        let isect = bvh.intersect_any(ray, far);
+        let isect_far = MIntersection::with_max_distance(1e5);
+        let isect = bvh.intersect_nearest(ray, isect_far);
         test::black_box(isect);
     });
 }
@@ -711,8 +711,8 @@ fn bench_intersect_coherent_mray_bunny(b: &mut test::Bencher) {
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
         let ray = rays_it.next().unwrap();
-        let far = Mf32::broadcast(1e5);
-        let isect = bvh.intersect_any(ray, far);
+        let isect_far = MIntersection::with_max_distance(1e5);
+        let isect = bvh.intersect_nearest(ray, isect_far);
         test::black_box(isect);
     });
 }
