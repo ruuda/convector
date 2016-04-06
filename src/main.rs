@@ -46,11 +46,11 @@ fn build_scene() -> Scene {
     use vector3::SVector3;
 
     println!("loading geometry");
-    // let plane = Mesh::load("models/plane.obj");
+    let plane = Mesh::load("models/plane.obj");
     // let suzanne = Mesh::load("models/suzanne.obj");
     // let bunny = Mesh::load("models/stanford_bunny.obj");
     let dragon = Mesh::load("models/stanford_dragon.obj");
-    let meshes = [dragon]; //[plane, suzanne];
+    let meshes = [dragon, plane];
 
     println!("building bvh");
     let mut scene = Scene::from_meshes(&meshes);
