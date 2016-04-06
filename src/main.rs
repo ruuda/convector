@@ -43,7 +43,6 @@ use ui::{Action, Window};
 use wavefront::Mesh;
 
 fn build_scene() -> Scene {
-    use scene::Light;
     use vector3::SVector3;
 
     println!("loading geometry");
@@ -60,15 +59,6 @@ fn build_scene() -> Scene {
 
     scene.camera.position = SVector3::new(0.0, 5.0, 25.0);
     scene.camera.set_fov(0.9);
-
-    scene.lights.push(Light {
-        position: SVector3::new(5.0, 0.0, 6.0),
-        power: SVector3::new(4.8, 4.4, 4.0),
-    });
-    scene.lights.push(Light {
-        position: SVector3::new(0.0, 15.0, 0.0),
-        power: SVector3::new(13.0, 0.0, 5.0),
-    });
 
     scene
 }

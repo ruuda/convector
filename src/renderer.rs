@@ -1,5 +1,5 @@
 use material::MaterialBank;
-use scene::{Light, Scene};
+use scene::Scene;
 use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
 use std::mem;
@@ -99,14 +99,6 @@ impl Renderer {
     /// TODO: This method does not really belong here.
     pub fn update_scene(&mut self) {
         let t = self.epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
-
-        // Make the light circle around.
-        let r = 7.0 + (t * 0.4).sin();
-        self.scene.lights[0].position = SVector3 {
-            x: t.cos() * r,
-            y: (t * 0.3).cos() * 2.0 + 5.0,
-            z: t.sin() * r,
-        };
 
         let alpha = t * 0.25;
         self.scene.camera.set_rotation(alpha);

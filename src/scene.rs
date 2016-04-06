@@ -57,16 +57,8 @@ impl Camera {
     }
 }
 
-pub struct Light {
-    pub position: SVector3,
-
-    /// Power for the red, green, and blue components.
-    pub power: SVector3,
-}
-
 pub struct Scene {
     pub bvh: Bvh,
-    pub lights: Vec<Light>,
     pub camera: Camera,
 }
 
@@ -74,7 +66,6 @@ impl Scene {
     pub fn from_meshes(meshes: &[Mesh]) -> Scene {
         Scene {
             bvh: Bvh::from_meshes(meshes),
-            lights: Vec::new(),
             camera: Camera::new(),
         }
     }

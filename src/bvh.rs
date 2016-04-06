@@ -1,9 +1,7 @@
 //! Implements a bounding volume hierarchy.
 
 use aabb::Aabb;
-use material::MMaterial;
 use ray::{MIntersection, MRay};
-use simd::{Mask, Mf32};
 use triangle::Triangle;
 use util;
 use vector3::{Axis, SVector3};
@@ -636,25 +634,6 @@ impl Bvh {
     pub fn intersect_debug(&self, ray: &MRay, isect: MIntersection) -> (u32, u32) {
         let (_, numi_aabb, numi_tri) = self.intersect_nearest_impl(ray, isect);
         (numi_aabb, numi_tri)
-    }
-
-    // TODO: Get rid of this method, a path tracer does not need this.
-    pub fn intersect_any(&self, ray: &MRay, max_dist: Mf32) -> Mask {
-        // This is actually just doing a full BVH intersection. I tried to do an
-        // early out here; stop when all rays intersect at least something,
-        // instead of finding the nearest intersection, but I could not measure
-        // a performance improvement. `intersect_nearest` does try very hard not
-        // to intersect more than necessary, and apparently that is good enough
-        // already.
-        let isect = MIntersection {
-            position: ray.direction.mul_add(max_dist, ray.origin),
-            normal: ray.direction,
-            distance: max_dist,
-            material: MMaterial::sky(),
-            tex_coords: (Mf32::zero(), Mf32::zero()),
-        };
-        let isect = self.intersect_nearest(ray, isect);
-        isect.distance.geq(max_dist - Mf32::epsilon())
     }
 }
 
