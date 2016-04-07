@@ -190,6 +190,24 @@ impl Mf32 {
         x5.mul_add(c, x3.mul_add(b, x * a))
     }
 
+    // TODO: Document / what to do about this? Do I keep it, or do I use the
+    // more accurate version (that is still quite fast). When I also need the
+    // cosine, the cost of computing powers of x is amortized over the two, so I
+    // might get away with the polynomials.
+    #[inline(always)]
+    pub fn sin_alt(self) -> Mf32 {
+        use std::mem::transmute;
+        let a = Mf32::broadcast(4.0 / consts::PI);
+        let b = Mf32::broadcast(-4.0 / (consts::PI * consts::PI));
+
+        // To compute the absolute value of a floating point number, simply set
+        // the sign bit to 0.
+        let abs_mask: f32 = unsafe { transmute(0x7f_ff_ff_ff_u32) };
+        let abs = self & Mf32::broadcast(abs_mask);
+
+        (b * self).mul_add(abs, a * self)
+    }
+
     /// Approximates 1 / self. Precision is poor but it is fast.
     #[inline(always)]
     pub fn recip_fast(self) -> Mf32 {
@@ -758,6 +776,21 @@ fn bench_sin_1000(b: &mut test::Bencher) {
         for _ in 0..100 {
             unroll_10! {{
                 test::black_box(test::black_box(x).sin());
+            }};
+        }
+        k = (k + 1) % 1024;
+    });
+}
+
+#[bench]
+fn bench_sin_alt_1000(b: &mut test::Bencher) {
+    let xs = bench::mf32_biunit(1024);
+    let mut k = 0;
+    b.iter(|| {
+        let x = unsafe { xs.get_unchecked(k) };
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(x).sin_alt());
             }};
         }
         k = (k + 1) % 1024;
