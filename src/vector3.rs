@@ -206,6 +206,28 @@ impl MVector3 {
         self.dot_naive(other)
     }
 
+    /// Given a vector in the hemisphere with pole at the positive z-axis,
+    /// rotates the vector into the hemisphere with pole given by the normal n.
+    pub fn rotate_hemisphere(self, n: MVector3) -> MVector3 {
+        // TODO: Handle the case where the normal points down along the z-axis.
+
+        // One option here would be to take the cross product of the normal and
+        // an up vector, and the cross product of the normal with that vector,
+        // to get a new orthonormal basis. Then use the old coordinates in this
+        // new basis. The method below -- however not as simple -- requires less
+        // arithmetic operations.
+        // Based on https://math.stackexchange.com/a/61550/6873.
+        let v = self;
+        let rz = (Mf32::one() + n.z).recip_fast();
+
+        let c = n.x * n.y * rz;
+        let x = v.x.mul_sub(n.y.mul_add(n.y, n.z), v.y.mul_add(c, v.z * n.x));
+        let y = v.x.neg_mul_add(c, v.y.mul_add(n.x.mul_add(n.x, n.z), v.z * n.y));
+        let z = v.x.neg_mul_add(n.x, v.y.neg_mul_add(n.y, v.z * n.z));
+
+        MVector3::new(x, y, z)
+    }
+
     /// Scalar multiplication and vector add using fused multiply-add.
     pub fn mul_add(self, factor: Mf32, other: MVector3) -> MVector3 {
         MVector3 {
@@ -347,6 +369,18 @@ impl Neg for SVector3 {
     }
 }
 
+impl Neg for MVector3 {
+    type Output = MVector3;
+
+    fn neg(self) -> MVector3 {
+        MVector3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
+}
+
 impl Mul<f32> for SVector3 {
     type Output = SVector3;
 
@@ -369,6 +403,30 @@ impl Mul<Mf32> for MVector3 {
             z: self.z * a,
         }
     }
+}
+
+#[test]
+fn verify_rotate_hemisphere() {
+    let x = MVector3::new(Mf32::one(), Mf32::zero(), Mf32::zero());
+    let y = MVector3::new(Mf32::zero(), Mf32::one(), Mf32::zero());
+    let z = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
+
+    // If we rotate z -> y, then a vector along x does not change.
+    assert_eq!(x.rotate_hemisphere(y), x);
+
+    // Same for z -> x, then y does not change.
+    assert_eq!(y.rotate_hemisphere(x), y);
+
+    // If we rotate z -> y about the x-axis, then y rotates to -z.
+    assert_eq!(y.rotate_hemisphere(y), -z);
+
+    // If we rotate z -> x about the y-axis, then x rotates to -z.
+    assert_eq!(x.rotate_hemisphere(x), -z);
+
+    // A starting normal of positive z is assumed, so picking that should not
+    // change anything.
+    assert_eq!(x.rotate_hemisphere(z), x);
+    assert_eq!(y.rotate_hemisphere(z), y);
 }
 
 // These benchmarks all measure ten operations per iteration, because the
@@ -488,6 +546,20 @@ fn bench_mdot_fma_1000(bencher: &mut test::Bencher) {
         for _ in 0..100 {
             unroll_10! {{
                 test::black_box(test::black_box(a).dot_fma(test::black_box(b)));
+            }};
+        }
+    });
+}
+
+#[bench]
+fn bench_rotate_hemisphere_1000(bencher: &mut test::Bencher) {
+    let vectors = bench::mvector3_pairs(4096 / 8);
+    let mut vectors_it = vectors.iter().cycle();
+    bencher.iter(|| {
+        let &(v, n) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(v).rotate_hemisphere(test::black_box(n)));
             }};
         }
     });
