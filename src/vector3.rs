@@ -375,98 +375,120 @@ impl Mul<Mf32> for MVector3 {
 // benchmark framework reports times in nanoseconds, which is too coarse for
 // these operations.
 
+macro_rules! unroll_10 {
+    { $x: block } => {
+        $x $x $x $x $x $x $x $x $x $x
+    }
+}
+
 #[bench]
-fn bench_scross_naive_10(bencher: &mut test::Bencher) {
+fn bench_scross_naive_1000(bencher: &mut test::Bencher) {
     let vectors = bench::svector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        for _ in 0..10 {
-            let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(a.cross_naive(b));
+        let &(a, b) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(a).cross_naive(test::black_box(b)));
+            }};
         }
     });
 }
 
 #[bench]
-fn bench_scross_fma_10(bencher: &mut test::Bencher) {
+fn bench_scross_fma_1000(bencher: &mut test::Bencher) {
     let vectors = bench::svector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        for _ in 0..10 {
-            let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(a.cross_fma(b));
+        let &(a, b) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(a).cross_fma(test::black_box(b)));
+            }};
         }
     });
 }
 
 #[bench]
-fn bench_mcross_naive_10(bencher: &mut test::Bencher) {
+fn bench_mcross_naive_1000(bencher: &mut test::Bencher) {
     let vectors = bench::mvector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        for _ in 0..10 {
-            let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(a.cross_naive(b));
+        let &(a, b) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(a).cross_naive(test::black_box(b)));
+            }};
         }
     });
 }
 
 #[bench]
-fn bench_mcross_fma_10(bencher: &mut test::Bencher) {
+fn bench_mcross_fma_1000(bencher: &mut test::Bencher) {
     let vectors = bench::mvector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        for _ in 0..10 {
-            let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(a.cross_fma(b));
+        let &(a, b) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(a).cross_fma(test::black_box(b)));
+            }};
         }
     });
 }
 
 #[bench]
-fn bench_sdot_naive_10(bencher: &mut test::Bencher) {
+fn bench_sdot_naive_1000(bencher: &mut test::Bencher) {
     let vectors = bench::svector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        for _ in 0..10 {
-            let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(a.dot_naive(b));
+        let &(a, b) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(a).dot_naive(test::black_box(b)));
+            }};
         }
     });
 }
 
 #[bench]
-fn bench_sdot_fma_10(bencher: &mut test::Bencher) {
+fn bench_sdot_fma_1000(bencher: &mut test::Bencher) {
     let vectors = bench::svector3_pairs(4096);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        for _ in 0..10 {
-            let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(a.dot_fma(b));
+        let &(a, b) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(a).dot_fma(test::black_box(b)));
+            }};
         }
     });
 }
 
 #[bench]
-fn bench_mdot_naive_10(bencher: &mut test::Bencher) {
+fn bench_mdot_naive_1000(bencher: &mut test::Bencher) {
     let vectors = bench::mvector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        for _ in 0..10 {
-            let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(a.dot_naive(b));
+        let &(a, b) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(a).dot_naive(test::black_box(b)));
+            }};
         }
     });
 }
 
 #[bench]
-fn bench_mdot_fma_10(bencher: &mut test::Bencher) {
+fn bench_mdot_fma_1000(bencher: &mut test::Bencher) {
     let vectors = bench::mvector3_pairs(4096 / 8);
     let mut vectors_it = vectors.iter().cycle();
     bencher.iter(|| {
-        for _ in 0..10 {
-            let &(a, b) = vectors_it.next().unwrap();
-            test::black_box(a.dot_fma(b));
+        let &(a, b) = vectors_it.next().unwrap();
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(a).dot_fma(test::black_box(b)));
+            }};
         }
     });
 }
