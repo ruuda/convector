@@ -155,6 +155,32 @@ impl Mf32 {
         numer.mul_add(denom.recip_fast(), z)
     }
 
+    /// Approximates the cosine of self.
+    ///
+    /// This is based on a polynomial approximation of the cosine. It has been
+    /// fitted to minimize the error on the domain (-pi, pi). For values outside
+    /// of that range, multiples of 2pi must be added until the value lies
+    /// inside this range.
+    ///
+    /// The absolute error is at most 0.0021 on the interval (-pi, pi).
+    /// The relative error is at most 0.5% on the interval (-pi/3, pi/3).
+    #[inline(always)]
+    pub fn cos(self) -> Mf32 {
+        // Evaluate a polynomial of degree 6 with only even terms. The script to
+        // find the coefficients that minimize the worst error is in
+        // tools/approx_cos.py.
+
+        let a = Mf32::broadcast(-0.496000299455);
+        let b = Mf32::broadcast(0.0392596924214);
+        let c = Mf32::broadcast(-0.000966231179636657107);
+
+        let x2 = self * self;
+        let x4 = x2 * x2;
+        let x6 = x2 * x4;
+
+        x6.mul_add(c, x4.mul_add(b, x2.mul_add(a, Mf32::one())))
+    }
+
     /// Approximates the sine of self.
     ///
     /// This is based on a polynomial approximation of the sine. It has been
@@ -624,6 +650,28 @@ fn mf32_recip_precise() {
 }
 
 #[test]
+fn mf32_cos() {
+    let xs = bench::mf32_biunit(4096);
+    for &x in &xs {
+        let y = x * Mf32::broadcast(consts::PI);
+
+        // Approximate the sine using a polynomial with AVX.
+        let approx = y.cos();
+
+        // Apply the regular sin function to every element, without AVX.
+        let serial = y.map(|yi| yi.cos());
+
+        // Compute the absolute error.
+        let error = approx - serial;
+        let abs_error = error.max(-error);
+
+        // The absolute error should not be greater than 0.0082.
+        assert!((Mf32::broadcast(0.0021) - abs_error).all_sign_bits_positive(),
+                "Error should be small but it is {:?} for the input {:?}", abs_error, y);
+    }
+}
+
+#[test]
 fn mf32_sin() {
     let xs = bench::mf32_biunit(4096);
     for &x in &xs {
@@ -761,6 +809,21 @@ fn bench_negate_with_sub_1000(b: &mut test::Bencher) {
         for _ in 0..100 {
             unroll_10! {{
                 test::black_box(test::black_box(x).neg_sub());
+            }};
+        }
+        k = (k + 1) % 1024;
+    });
+}
+
+#[bench]
+fn bench_cos_1000(b: &mut test::Bencher) {
+    let xs = bench::mf32_biunit(1024);
+    let mut k = 0;
+    b.iter(|| {
+        let x = unsafe { xs.get_unchecked(k) };
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(x).cos());
             }};
         }
         k = (k + 1) % 1024;
