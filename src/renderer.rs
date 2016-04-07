@@ -1,4 +1,5 @@
 use material::MaterialBank;
+use random::Rng;
 use scene::Scene;
 use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
@@ -164,13 +165,13 @@ impl Renderer {
     /// Renders a block of 16x4 pixels, where (x, y) is the coordinate of the
     /// bottom-left pixel. Bitmap must be an array of 8 pixels at once, and it
     /// must be aligned to 64 bytes (a cache line).
-    fn render_block_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32) {
+    fn render_block_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32, rng: &mut Rng) {
         // Render pixels, get f32 colors.
         let (xs, ys) = self.get_pixel_coords_16x4(x, y);
         let rgbs = if self.enable_debug_view {
             generate_slice8(|i| self.render_pixels_debug(xs[i], ys[i]))
         } else {
-            generate_slice8(|i| self.render_pixels(xs[i], ys[i]))
+            generate_slice8(|i| self.render_pixels(xs[i], ys[i], rng))
         };
 
         // Convert f32 colors to i32 colors in the range 0-255.
@@ -217,15 +218,16 @@ impl Renderer {
         assert_eq!(patch_width & 15, 0); // Patch width must be a multiple of 16.
         let h = patch_width / 4;
         let w = patch_width / 16;
+        let mut rng = Rng::with_seed(x, y, 1 /* TODO: frame number */);
 
         for i in 0..w {
             for j in 0..h {
-                self.render_block_16x4(bitmap, x + i * 16, y + j * 4);
+                self.render_block_16x4(bitmap, x + i * 16, y + j * 4, &mut rng);
             }
         }
     }
 
-    fn render_pixels(&self, x: Mf32, y: Mf32) -> MVector3 {
+    fn render_pixels(&self, x: Mf32, y: Mf32, rng: &mut Rng) -> MVector3 {
         let mut ray = self.scene.camera.get_ray(x, y);
         let mut color = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
         let mut hit_emissive = Mf32::zero();
@@ -243,7 +245,7 @@ impl Renderer {
             // Stop when every ray hit a light source.
             if isect.material.all_sign_bits_negative() { break }
 
-            let (factor, new_ray) = self.material_bank.continue_path(&ray, &isect);
+            let (factor, new_ray) = self.material_bank.continue_path(&ray, &isect, rng);
             ray = new_ray;
             color = color.mul_coords(factor);
         }

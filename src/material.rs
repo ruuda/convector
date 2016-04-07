@@ -42,6 +42,7 @@
 //!    next bounce. It does not matter for which bounce we do the lookup, but we
 //!    can only do one per pixel.
 
+use random::Rng;
 use ray::{MIntersection, MRay};
 use simd::Mf32;
 use vector3::MVector3;
@@ -80,7 +81,7 @@ impl MaterialBank {
     /// at the given position with the given ray direction, then this will
     /// compute the ray that continues the light path. A factor to multiply the
     /// final color by is returned as well.
-    pub fn continue_path(&self, ray: &MRay, isect: &MIntersection) -> (MVector3, MRay) {
+    pub fn continue_path(&self, ray: &MRay, isect: &MIntersection, rng: &mut Rng) -> (MVector3, MRay) {
         // TODO: Do a diffuse bounce and use a proper material.
         // For now, do a specular reflection.
 
