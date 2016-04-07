@@ -629,7 +629,7 @@ fn mf32_sin() {
     for &x in &xs {
         let y = x * Mf32::broadcast(consts::PI);
 
-        // Approximate the sine using a Taylor expansion with AVX.
+        // Approximate the sine using a polynomial with AVX.
         let approx = y.sin();
 
         // Apply the regular sin function to every element, without AVX.
