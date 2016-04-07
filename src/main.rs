@@ -86,7 +86,7 @@ fn main() {
     println!("scene and renderer initialized, entering render loop");
 
     while should_continue {
-        trace_log.inc_frame_number();
+        let frame_number = trace_log.inc_frame_number();
         let stw_frame = trace_log.scoped("render_frame", 0);
 
         renderer.update_scene();
@@ -120,7 +120,7 @@ fn main() {
                         // could cause races, but all of the patches are
                         // disjoint, hence this is safe.
                         let bitmap = unsafe { backbuffer_ref.get_mut_slice() };
-                        renderer_ref.render_patch(bitmap, patch_width, x, y);
+                        renderer_ref.render_patch(bitmap, patch_width, x, y, frame_number);
                     });
                 }
             }

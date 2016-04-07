@@ -214,11 +214,11 @@ impl Renderer {
     ///
     /// The (x, y) coordinate is the coordinate of the bottom-left pixel of the
     /// patch. The patch width must be a multiple of 16.
-    pub fn render_patch(&self, bitmap: &mut [Mi32], patch_width: u32, x: u32, y: u32) {
+    pub fn render_patch(&self, bitmap: &mut [Mi32], patch_width: u32, x: u32, y: u32, frame_number: u32) {
         assert_eq!(patch_width & 15, 0); // Patch width must be a multiple of 16.
         let h = patch_width / 4;
         let w = patch_width / 16;
-        let mut rng = Rng::with_seed(x, y, 1 /* TODO: frame number */);
+        let mut rng = Rng::with_seed(x, y, frame_number);
 
         for i in 0..w {
             for j in 0..h {

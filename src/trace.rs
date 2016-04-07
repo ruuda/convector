@@ -91,9 +91,10 @@ impl TraceLog {
         }
     }
 
-    /// Increments the frame number.
-    pub fn inc_frame_number(&mut self) {
+    /// Increments the frame number and returns the current frame number.
+    pub fn inc_frame_number(&mut self) -> u32 {
         self.frame_number += 1;
+        self.frame_number
     }
 
     /// Starts a new trace event. When the returned value goes out of scope, it
