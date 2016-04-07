@@ -7,7 +7,7 @@
 #  * f(0) = pi/2. This implies that the constant term is pi/2.
 #  * f(1) = 0 and f(-1) = pi. This implies that (a + b) / (1 + c + d) = -pi/2.
 
-from mpmath import mp, fabs, acos, isinf
+from mpmath import mp, fabs, acos
 from scipy.optimize import minimize
 
 mp.prec = 64
