@@ -120,6 +120,9 @@ impl Rng {
         let x = phi.sin() * r;
         let y = phi.cos() * r; // TODO: cos is a bottleneck, do I need the precision?
         let z = (Mf32::one() - r_sqr).sqrt();
+
+        // TODO: Perhaps it would be faster to use a less precise sin and cos,
+        // but normalize the vector in the end?
         MVector3::new(x, y, z)
     }
 
