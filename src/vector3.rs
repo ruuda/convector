@@ -429,10 +429,6 @@ fn verify_rotate_hemisphere() {
     assert_eq!(y.rotate_hemisphere(z), y);
 }
 
-// These benchmarks all measure ten operations per iteration, because the
-// benchmark framework reports times in nanoseconds, which is too coarse for
-// these operations.
-
 macro_rules! unroll_10 {
     { $x: block } => {
         $x $x $x $x $x $x $x $x $x $x
