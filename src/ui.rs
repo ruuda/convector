@@ -1,6 +1,7 @@
 //! This module handles user input and getting pixels onto the screen. It uses
 //! the Glium library, a safe wrapper around OpenGL.
 
+use filebuffer::FileBuffer;
 use glium::{DisplayBuild, Program, Surface, VertexBuffer};
 use glium::backend::Facade;
 use glium::backend::glutin_backend::GlutinFacade;
@@ -8,6 +9,7 @@ use glium::glutin::{Event, WindowBuilder};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::{MipmapsOption, RawImage2d, Texture2d};
 use stats::GlobalStats;
+use std::str;
 use time::PreciseTime;
 use trace::TraceLog;
 
@@ -19,44 +21,6 @@ struct Vertex {
 }
 
 implement_vertex!(Vertex, position, tex_coords);
-
-/// Vertex shader for the full-screen quad.
-static VERTEX_SHADER: &'static str = r#"
-    #version 140
-    in vec2 position;
-    in vec2 tex_coords;
-    out vec2 v_tex_coords;
-    void main() {
-        gl_Position = vec4(position, 0.0, 1.0);
-        v_tex_coords = tex_coords;
-    }
-"#;
-
-/// Fragment shader for the full-screen quad.
-static FRAGMENT_SHADER: &'static str = r#"
-    #version 140
-    in vec2 v_tex_coords;
-    out vec4 color;
-    uniform sampler2D frame0;
-    uniform sampler2D frame1;
-    uniform sampler2D frame2;
-    uniform sampler2D frame3;
-    uniform sampler2D frame4;
-    uniform sampler2D frame5;
-    uniform sampler2D frame6;
-    uniform sampler2D frame7;
-    void main() {
-        vec4 c0 = texture(frame0, v_tex_coords);
-        vec4 c1 = texture(frame1, v_tex_coords);
-        vec4 c2 = texture(frame2, v_tex_coords);
-        vec4 c3 = texture(frame3, v_tex_coords);
-        vec4 c4 = texture(frame4, v_tex_coords);
-        vec4 c5 = texture(frame5, v_tex_coords);
-        vec4 c6 = texture(frame6, v_tex_coords);
-        vec4 c7 = texture(frame7, v_tex_coords);
-        color = (c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7) * 0.125f;
-    }
-"#;
 
 /// A full-screen quad that can be rendered by OpenGL.
 struct FullScreenQuad {
@@ -75,9 +39,16 @@ impl FullScreenQuad {
         let quad = vec![vertex1, vertex2, vertex3, vertex4];
         let vertex_buffer = VertexBuffer::new(facade, &quad).unwrap();
         let indices = NoIndices(PrimitiveType::TriangleStrip);
+
+        let vertex_shader = FileBuffer::open("src/vertex.glsl")
+            .expect("failed to load vertex shader source");
+        let fragment_shader = FileBuffer::open("src/fragment.glsl")
+            .expect("failed to load fragment shader source");
+
+        // TODO: Add `as_str()` method to Filebuffer for convenience.
         let program = Program::from_source(facade,
-                                           VERTEX_SHADER,
-                                           FRAGMENT_SHADER,
+                                           str::from_utf8(&vertex_shader[..]).unwrap(),
+                                           str::from_utf8(&fragment_shader[..]).unwrap(),
                                            None).unwrap();
         FullScreenQuad {
             vertex_buffer: vertex_buffer,
