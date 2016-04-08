@@ -37,9 +37,24 @@ static FRAGMENT_SHADER: &'static str = r#"
     #version 140
     in vec2 v_tex_coords;
     out vec4 color;
-    uniform sampler2D tex;
+    uniform sampler2D frame0;
+    uniform sampler2D frame1;
+    uniform sampler2D frame2;
+    uniform sampler2D frame3;
+    uniform sampler2D frame4;
+    uniform sampler2D frame5;
+    uniform sampler2D frame6;
+    uniform sampler2D frame7;
     void main() {
-        color = texture(tex, v_tex_coords);
+        vec4 c0 = texture(frame0, v_tex_coords);
+        vec4 c1 = texture(frame1, v_tex_coords);
+        vec4 c2 = texture(frame2, v_tex_coords);
+        vec4 c3 = texture(frame3, v_tex_coords);
+        vec4 c4 = texture(frame4, v_tex_coords);
+        vec4 c5 = texture(frame5, v_tex_coords);
+        vec4 c6 = texture(frame6, v_tex_coords);
+        vec4 c7 = texture(frame7, v_tex_coords);
+        color = (c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7) * 0.125f;
     }
 "#;
 
@@ -74,8 +89,17 @@ impl FullScreenQuad {
     /// Renders the texture to the target surface.
     pub fn draw_to_surface<S: Surface>(&self,
                                        target: &mut S,
-                                       texture: &Texture2d) {
-        let uniforms = uniform! { tex: texture };
+                                       frames: &[Texture2d]) {
+        let uniforms = uniform! {
+            frame0: &frames[0],
+            frame1: &frames[1],
+            frame2: &frames[2],
+            frame3: &frames[3],
+            frame4: &frames[4],
+            frame5: &frames[5],
+            frame6: &frames[6],
+            frame7: &frames[7],
+        };
         target.draw(&self.vertex_buffer,
                     &self.indices,
                     &self.program,
@@ -171,7 +195,7 @@ impl Window {
         // Draw a full-screen quad with the texture. Finishing drawing will swap
         // the buffers and wait for a vsync.
         let mut target = self.display.draw();
-        self.quad.draw_to_surface(&mut target, &self.frames[0]);
+        self.quad.draw_to_surface(&mut target, &self.frames[..]);
         target.finish().expect("failed to swap buffers");
 
         let end_draw = PreciseTime::now();
