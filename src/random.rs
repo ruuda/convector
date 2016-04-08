@@ -35,17 +35,19 @@ impl Rng {
     /// x, y, and i (for frame number). These three values are hashed together,
     /// and that is used as the seed.
     pub fn with_seed(x: u32, y: u32, i: u32) -> Rng {
-        // The constants here are all primes near 2^32. It is important that the
-        // four values in the final multiplication are distinct, otherwise the
-        // sequences will produce the same values. The values `x`, `y`, and `i`
-        // are hashed with different functions to ensure that a permutation of
-        // (x, y, i) results in a different seed, otherwise patterns would
-        // appear because the range of x and y is similar.
-        let a = x as u64 * 4294705031;
-        let b = y as u64 * 4294836181;
-        let c = i as u64 * 4294442983;
+        // The constants here are all primes. It is important that the four
+        // values in the final multiplication are distinct, otherwise the
+        // sequences will produce the same values. Also, the primes should not
+        // be close together, otherwise correlations will be apparent. The
+        // values `x`, `y`, and `i` are hashed with different functions to
+        // ensure that a permutation of (x, y, i) results in a different seed,
+        // otherwise patterns would appear because the range of x and y is
+        // similar.
+        let a = x as u64 * 12276630456901467871;
+        let b = y as u64 * 7661526868048087387;
+        let c = i as u64 * 2268244495640532043;
         let seed = a + b + c;
-        let primes = Mu64(4295032801, 4295098309, 4295229439, 4295491573);
+        let primes = Mu64(14491630826648199307, 13149596372461506791, 6119410235796055883, 14990141545859273659);
 
         Rng {
             state: Mu64(seed, seed, seed, seed) * primes,
