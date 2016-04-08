@@ -6,7 +6,6 @@
 
 extern crate alloc;
 extern crate filebuffer;
-extern crate glium;
 extern crate num_cpus;
 extern crate rand;
 extern crate rayon;
@@ -14,6 +13,9 @@ extern crate scoped_threadpool;
 extern crate test;
 extern crate thread_id;
 extern crate time;
+
+#[macro_use]
+extern crate glium;
 
 mod aabb;
 mod bvh;
