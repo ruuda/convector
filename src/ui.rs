@@ -87,6 +87,8 @@ impl FullScreenQuad {
 pub struct Window {
     display: GlutinFacade,
     quad: FullScreenQuad,
+    frames: [Texture2d; 8],
+    frame_index: u32,
     width: u32,
     height: u32,
 }
@@ -97,9 +99,20 @@ pub enum Action {
     ToggleDebugView,
 }
 
+fn black_bitmap(width: u32, height: u32) -> Vec<u8> {
+    let size = width * height * 4;
+    let mut bitmap = Vec::with_capacity(size as usize);
+    for _ in 0..size {
+        bitmap.push(0);
+    }
+    bitmap
+}
+
 impl Window {
     /// Opens a new window using Glutin.
     pub fn new(width: u32, height: u32, title: &str) -> Window {
+        use std::mem;
+
         // TODO: Proper HiDPI support.
         let display = WindowBuilder::new()
             .with_dimensions(width, height)
@@ -111,12 +124,38 @@ impl Window {
 
         let quad = FullScreenQuad::new(&display);
 
-        Window {
+        let mut window = Window {
             display: display,
             quad: quad,
+            frames: unsafe { mem::uninitialized() },
+            frame_index: 0,
             width: width,
             height: height,
-        }
+        };
+
+        window.frames = {
+            let f0 = window.upload_texture(black_bitmap(width, height));
+            let f1 = window.upload_texture(black_bitmap(width, height));
+            let f2 = window.upload_texture(black_bitmap(width, height));
+            let f3 = window.upload_texture(black_bitmap(width, height));
+            let f4 = window.upload_texture(black_bitmap(width, height));
+            let f5 = window.upload_texture(black_bitmap(width, height));
+            let f6 = window.upload_texture(black_bitmap(width, height));
+            let f7 = window.upload_texture(black_bitmap(width, height));
+            [f0, f1, f2, f3, f4, f5, f6, f7]
+        };
+
+        window
+    }
+
+    fn upload_texture(&mut self, bitmap: Vec<u8>) -> Texture2d {
+        let dimensions = (self.width, self.height);
+        let texture_data = RawImage2d::from_raw_rgba(bitmap, dimensions);
+        let texture = Texture2d::with_mipmaps(&self.display,
+                                              texture_data,
+                                              MipmapsOption::NoMipmap)
+            .expect("failed to create texture");
+        texture
     }
 
     pub fn display_buffer(&mut self, rgba_buffer: Vec<u8>, stats: &mut GlobalStats) {
@@ -124,20 +163,15 @@ impl Window {
 
         let begin_texture = PreciseTime::now();
 
-        // Create a texture from the rgb data and upload it to the GPU.
-        let dimensions = (self.width, self.height);
-        let texture_data = RawImage2d::from_raw_rgba(rgba_buffer, dimensions);
-        let texture = Texture2d::with_mipmaps(&self.display,
-                                              texture_data,
-                                              MipmapsOption::NoMipmap)
-            .expect("failed to create texture");
+        self.frames[self.frame_index as usize] = self.upload_texture(rgba_buffer);
+        self.frame_index = (self.frame_index + 1) % 8;
 
         let begin_draw = PreciseTime::now();
 
         // Draw a full-screen quad with the texture. Finishing drawing will swap
         // the buffers and wait for a vsync.
         let mut target = self.display.draw();
-        self.quad.draw_to_surface(&mut target, &texture);
+        self.quad.draw_to_surface(&mut target, &self.frames[0]);
         target.finish().expect("failed to swap buffers");
 
         let end_draw = PreciseTime::now();
