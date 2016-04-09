@@ -637,6 +637,15 @@ impl Bvh {
     }
 }
 
+impl Drop for Bvh {
+    fn drop(&mut self) {
+        use std::mem;
+        // Deallocate the node buffer with proper alignment.
+        let nodes = mem::replace(&mut self.nodes, Vec::new());
+        util::drop_cache_line_aligned_vec(nodes);
+    }
+}
+
 #[bench]
 fn bench_intersect_decoherent_mray_suzanne(b: &mut test::Bencher) {
     use wavefront::Mesh;
