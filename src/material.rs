@@ -45,6 +45,7 @@
 use random::Rng;
 use ray::{MIntersection, MRay};
 use simd::Mf32;
+use std::f32::consts;
 use vector3::MVector3;
 
 pub type MMaterial = Mf32;
@@ -85,6 +86,9 @@ impl MaterialBank {
         // TODO: Do a diffuse bounce and use a proper material.
         // For now, do a specular reflection.
 
+        let dot = isect.normal.dot(ray.direction);
+        let normal = isect.normal; //(-isect.normal).pick(isect.normal, dot);
+
         // Specular reflection.
         // let dot = isect.normal.dot(ray.direction);
         // let direction = isect.normal.neg_mul_add(dot + dot, ray.direction);
@@ -92,7 +96,7 @@ impl MaterialBank {
         // Bounce in a random direction in the hemisphere around the surface
         // normal, with a cosine-weighted distribution, for a diffuse bounce.
         let dir_z = rng.sample_hemisphere_vector();
-        let direction = dir_z.rotate_hemisphere(isect.normal);
+        let direction = dir_z.rotate_hemisphere(normal);
 
         // Emissive materials have the sign bit set to 1, and a sign bit of 1
         // means that the ray is inactive. So hitting an emissive material
@@ -108,8 +112,10 @@ impl MaterialBank {
             active: active,
         };
 
+        let norm_factor = Mf32::broadcast(1.0 / consts::PI);
         let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
+        let color = MVector3::new(norm_factor, norm_factor, norm_factor);
 
-        (white, new_ray)
+        (color.pick(white, active), new_ray)
     }
 }

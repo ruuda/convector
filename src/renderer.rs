@@ -263,7 +263,7 @@ impl Renderer {
         let mut color = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
         let mut hit_emissive = Mf32::zero();
 
-        let max_bounces = 4;
+        let max_bounces = 8;
         for i in 0..max_bounces {
             let isect = self.scene.intersect_nearest(&ray);
             hit_emissive = isect.material;
