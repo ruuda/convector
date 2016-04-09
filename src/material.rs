@@ -72,7 +72,7 @@ impl MaterialBank {
         let r = d;
         let g = d * d;
         let b = d * (d * d);
-        MVector3::new(r, g, b)
+        MVector3::new(r, g, b).mul_add(half, MVector3::new(half, half, half))
     }
 
     /// Continues the path of a photon.

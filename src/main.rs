@@ -47,11 +47,12 @@ use wavefront::Mesh;
 
 fn build_scene() -> Scene {
     println!("loading geometry");
-    let plane = Mesh::load("models/plane.obj");
+    // let plane = Mesh::load("models/plane.obj");
     // let suzanne = Mesh::load("models/suzanne.obj");
     // let bunny = Mesh::load("models/stanford_bunny.obj");
-    let dragon = Mesh::load("models/stanford_dragon.obj");
-    let meshes = [dragon, plane];
+    // let dragon = Mesh::load("models/stanford_dragon.obj");
+    let suzannes = Mesh::load("models/suzannes_in_box.obj");
+    let meshes = [suzannes];
 
     println!("building bvh");
     let mut scene = Scene::from_meshes(&meshes);
