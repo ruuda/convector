@@ -52,7 +52,7 @@ impl MQuaternion {
     }
 
     /// Interpolates two quaternions and normalizes the result.
-    pub fn interpolate(&self, other: &MQuaternion, t: Mf32) -> MQuaternion {
+    pub fn interpolate(&self, delta: &MQuaternion, t: Mf32) -> MQuaternion {
         // The hypersphere of unit quaternions forms a double cover of SO3(R).
         // Every rotation is represented by two antipodal points on the
         // hypersphere. If we naively run over the arc subtended by the two
@@ -73,11 +73,10 @@ impl MQuaternion {
         // interpolation is required, but that is expensive to compute. (It
         // involves an inverse cosine, two sines and two divisions.) For small
         // angles the error is very small, so do the fast thing here.
-        let u = Mf32::one() - t;
-        let a = self.a.mul_add(u, other.a * t);
-        let b = self.b.mul_add(u, other.b * t);
-        let c = self.c.mul_add(u, other.c * t);
-        let d = self.d.mul_add(u, other.d * t);
+        let a = delta.a.mul_add(t, self.a);
+        let b = delta.b.mul_add(t, self.b);
+        let c = delta.c.mul_add(t, self.c);
+        let d = delta.d.mul_add(t, self.d);
 
         let norm_squared = a.mul_add(a, b * b) + c.mul_add(c, d * d);
 
@@ -219,8 +218,8 @@ fn interpolate() {
     use vector3::SVector3;
     let half_sqrt_2 = 0.5 * 2.0_f32.sqrt();
     let identity = MQuaternion::broadcast(SQuaternion::new(1.0, 0.0, 0.0, 0.0));
-    let rotate_z = MQuaternion::broadcast(SQuaternion::new(half_sqrt_2, 0.0, 0.0, half_sqrt_2));
-    let rotation = identity.interpolate(&rotate_z, Mf32::broadcast(0.5));
+    let rotate_z_delta = MQuaternion::broadcast(SQuaternion::new(half_sqrt_2 - 1.0, 0.0, 0.0, half_sqrt_2));
+    let rotation = identity.interpolate(&rotate_z_delta, Mf32::broadcast(0.5));
     let v = MVector3::broadcast(SVector3::new(1.0, 0.0, 0.0));
     let expected = MVector3::broadcast(SVector3::new(half_sqrt_2, half_sqrt_2, 0.0));
     let computed = rotate(&v, &rotation);
