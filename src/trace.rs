@@ -58,7 +58,7 @@ impl ScopedTraceEvent {
             description: self.description,
             frame: self.frame,
             id: self.id,
-            tid: thread_id::get(),
+            tid: thread_id::get() as u64,
         };
         let mut trace_log_impl = self.log.lock().unwrap();
         if trace_log_impl.events.len() == trace_log_impl.limit {
