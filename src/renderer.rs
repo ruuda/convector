@@ -155,7 +155,7 @@ impl Renderer {
     ///
     /// Where inside every mf32 the pixels are ordered from left to right,
     /// bottom to top.
-    fn get_pixel_coords_16x4(&self, x: u32, y: u32) -> ([Mf32; 8], [Mf32; 8]) {
+    fn get_pixel_coords_16x4(&self, x: u32, y: u32, rng: &mut Rng) -> ([Mf32; 8], [Mf32; 8]) {
         let scale = Mf32::broadcast(2.0 / self.width as f32);
         let scale_mul = Mf32(2.0, 4.0, 8.0, 12.0, 0.0, 0.0, 0.0, 0.0) * scale;
 
@@ -183,7 +183,13 @@ impl Renderer {
             base_y, base_y + Mf32::broadcast(scale_mul.0)  // 2.0 * scale
         ];
 
-        (xs, ys)
+        // Add a random offset of at most one pixel, to sample with anti-alias.
+        // TODO: If I ever do multiple samples per pixel in one frame, I could
+        // do stratified sampling here.
+        let xs_aa = generate_slice8(|i| rng.sample_unit().mul_add(scale, xs[i]));
+        let ys_aa = generate_slice8(|i| rng.sample_unit().mul_add(scale, ys[i]));
+
+        (xs_aa, ys_aa)
     }
 
     /// Renders a block of 16x4 pixels, where (x, y) is the coordinate of the
@@ -191,7 +197,7 @@ impl Renderer {
     /// must be aligned to 64 bytes (a cache line).
     fn render_block_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32, rng: &mut Rng) {
         // Render pixels, get f32 colors.
-        let (xs, ys) = self.get_pixel_coords_16x4(x, y);
+        let (xs, ys) = self.get_pixel_coords_16x4(x, y, rng);
         let rgbs = if self.enable_debug_view {
             generate_slice8(|i| self.render_pixels_debug(xs[i], ys[i]))
         } else {
