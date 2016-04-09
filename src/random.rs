@@ -43,10 +43,10 @@ impl Rng {
         // ensure that a permutation of (x, y, i) results in a different seed,
         // otherwise patterns would appear because the range of x and y is
         // similar.
-        let a = x as u64 * 12276630456901467871;
-        let b = y as u64 * 7661526868048087387;
-        let c = i as u64 * 2268244495640532043;
-        let seed = a + b + c;
+        let a = (x as u64).wrapping_mul(12276630456901467871);
+        let b = (y as u64).wrapping_mul(7661526868048087387);
+        let c = (i as u64).wrapping_mul(2268244495640532043);
+        let seed = a.wrapping_add(b).wrapping_add(c);
         let primes = Mu64(14491630826648199307, 13149596372461506791, 6119410235796055883, 14990141545859273659);
 
         Rng {
