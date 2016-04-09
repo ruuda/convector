@@ -23,35 +23,30 @@ void sort(inout vec4 a0, inout vec4 a1,
           inout vec4 a2, inout vec4 a3,
           inout vec4 a4, inout vec4 a5,
           inout vec4 a6, inout vec4 a7) {
-    sort2(a0, a1);
-    sort2(a2, a3);
-    sort2(a4, a5);
-    sort2(a6, a7);
+    sort2(a0, a7);
+    sort2(a1, a6);
+    sort2(a2, a5);
+    sort2(a3, a4);
 
-    sort2(a0, a2);
-    sort2(a1, a3);
-    sort2(a4, a6);
-    sort2(a5, a7);
-
-    sort2(a0, a1);
-    sort2(a2, a3);
-    sort2(a4, a5);
-    sort2(a6, a7);
-
-    sort2(a0, a4);
-    sort2(a1, a5);
-    sort2(a2, a6);
-    sort2(a3, a7);
-
-    sort2(a0, a2);
-    sort2(a1, a3);
-    sort2(a4, a6);
-    sort2(a5, a7);
+    sort2(a0, a3);
+    sort2(a4, a7);
+    sort2(a1, a2);
+    sort2(a5, a6);
 
     sort2(a0, a1);
     sort2(a2, a3);
     sort2(a4, a5);
     sort2(a6, a7);
+
+    sort2(a2, a4);
+    sort2(a3, a5);
+
+    sort2(a1, a2);
+    sort2(a3, a4);
+    sort2(a5, a6);
+
+    sort2(a2, a3);
+    sort2(a3, a5);
 }
 
 void main() {
