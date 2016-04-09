@@ -128,17 +128,18 @@ impl Window {
             height: height,
         };
 
-        window.frames = {
-            let f0 = window.upload_texture(black_bitmap(width, height));
-            let f1 = window.upload_texture(black_bitmap(width, height));
-            let f2 = window.upload_texture(black_bitmap(width, height));
-            let f3 = window.upload_texture(black_bitmap(width, height));
-            let f4 = window.upload_texture(black_bitmap(width, height));
-            let f5 = window.upload_texture(black_bitmap(width, height));
-            let f6 = window.upload_texture(black_bitmap(width, height));
-            let f7 = window.upload_texture(black_bitmap(width, height));
-            [f0, f1, f2, f3, f4, f5, f6, f7]
-        };
+        let f0 = window.upload_texture(black_bitmap(width, height));
+        let f1 = window.upload_texture(black_bitmap(width, height));
+        let f2 = window.upload_texture(black_bitmap(width, height));
+        let f3 = window.upload_texture(black_bitmap(width, height));
+        let f4 = window.upload_texture(black_bitmap(width, height));
+        let f5 = window.upload_texture(black_bitmap(width, height));
+        let f6 = window.upload_texture(black_bitmap(width, height));
+        let f7 = window.upload_texture(black_bitmap(width, height));
+        let frames = [f0, f1, f2, f3, f4, f5, f6, f7];
+
+        // Put the frames in place and avoid deallocating uninitialized memory.
+        mem::forget(mem::replace(&mut window.frames, frames));
 
         window
     }
