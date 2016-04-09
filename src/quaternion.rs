@@ -233,28 +233,32 @@ macro_rules! unroll_10 {
 }
 
 #[bench]
-fn bench_rotate_10(b: &mut test::Bencher) {
+fn bench_rotate_1000(b: &mut test::Bencher) {
     let vectors = bench::mvectors_on_unit_sphere(4096 / 8);
     let quaternions = bench::unit_mquaternions(4096 / 8);
     let mut it = vectors.iter().cycle().zip(quaternions.iter().cycle());
     b.iter(|| {
         let (v, q) = it.next().unwrap();
-        unroll_10! {{
-            test::black_box(rotate(test::black_box(v), test::black_box(q)));
-        }};
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(rotate(test::black_box(v), test::black_box(q)));
+            }};
+        }
     });
 }
 
 #[bench]
-fn bench_interpolate_10(b: &mut test::Bencher) {
+fn bench_interpolate_1000(b: &mut test::Bencher) {
     let q0s = bench::unit_mquaternions(4096 / 8);
     let q1s = bench::unit_mquaternions(4096 / 8);
     let ts = bench::mf32_unit(4096 / 8);
     let mut it = q0s.iter().cycle().zip(q1s.iter().cycle()).zip(ts.iter().cycle());
     b.iter(|| {
         let ((q0, q1), &t) = it.next().unwrap();
-        unroll_10! {{
-            test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
-        }};
+        for _ in 0..100 {
+            unroll_10! {{
+                test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+            }};
+        }
     });
 }

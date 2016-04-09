@@ -3,7 +3,6 @@ use random::Rng;
 use scene::Scene;
 use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
-use time::PreciseTime;
 use util;
 use vector3::{MVector3, SVector3};
 
@@ -12,8 +11,13 @@ pub struct Renderer {
     material_bank: MaterialBank,
     width: u32,
     height: u32,
-    epoch: PreciseTime,
     enable_debug_view: bool,
+
+    /// A value that increases at a rate of 1 per second.
+    time: f32,
+
+    /// The amount that time increases per frame.
+    time_delta: f32,
 }
 
 /// The buffer that an image is rendered into.
@@ -106,23 +110,28 @@ impl Renderer {
             material_bank: MaterialBank,
             width: width,
             height: height,
-            epoch: PreciseTime::now(),
             enable_debug_view: false,
+            time: 0.0,
+            time_delta: 0.0,
         }
+    }
+
+    /// Sets the current time and the amount that the time is expected to change
+    /// per frame.
+    pub fn set_time(&mut self, time: f32, delta: f32) {
+        self.time = time;
+        self.time_delta = delta;
     }
 
     /// For an interactive scene, updates the scene for the new frame.
     /// TODO: This method does not really belong here.
     pub fn update_scene(&mut self) {
-        let t = self.epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
-
-        let alpha = t * 0.25;
-        self.scene.camera.set_rotation(alpha);
-        self.scene.camera.position = SVector3 {
-            x: -25.0 * alpha.sin(),
-            y: 5.0,
-            z: 25.0 * alpha.cos(),
-        };
+        let alpha = self.time * 0.25;
+        let alpha_delta = self.time_delta * 0.25;
+        let cam_position = SVector3::new(-25.0 * alpha.sin(), 5.0, 25.0 * alpha.cos());
+        let cam_pos_delta = SVector3::new(-6.25 * alpha.cos(), 0.0, -6.25 * alpha.sin()) * alpha_delta;
+        self.scene.camera.set_position(cam_position, cam_pos_delta);
+        self.scene.camera.set_rotation(alpha, alpha_delta);
     }
 
     pub fn toggle_debug_view(&mut self) {
@@ -243,7 +252,8 @@ impl Renderer {
     }
 
     fn render_pixels(&self, x: Mf32, y: Mf32, rng: &mut Rng) -> MVector3 {
-        let mut ray = self.scene.camera.get_ray(x, y);
+        let t = rng.sample_unit();
+        let mut ray = self.scene.camera.get_ray(x, y, t);
         let mut color = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
         let mut hit_emissive = Mf32::zero();
 
@@ -277,7 +287,8 @@ impl Renderer {
     }
 
     fn render_pixels_debug(&self, x: Mf32, y: Mf32) -> MVector3 {
-        let ray = self.scene.camera.get_ray(x, y);
+        let t = Mf32::zero();
+        let ray = self.scene.camera.get_ray(x, y, t);
         let (numi_aabb, numi_tri) = self.scene.intersect_debug(&ray);
 
         let g = Mf32::broadcast((numi_aabb as f32).log2() * 0.1);

@@ -41,12 +41,11 @@ use renderer::{RenderBuffer, Renderer};
 use scene::Scene;
 use stats::GlobalStats;
 use std::mem;
+use time::PreciseTime;
 use ui::{Action, Window};
 use wavefront::Mesh;
 
 fn build_scene() -> Scene {
-    use vector3::SVector3;
-
     println!("loading geometry");
     let plane = Mesh::load("models/plane.obj");
     // let suzanne = Mesh::load("models/suzanne.obj");
@@ -59,7 +58,6 @@ fn build_scene() -> Scene {
 
     scene.bvh.print_stats();
 
-    scene.camera.position = SVector3::new(0.0, 5.0, 25.0);
     scene.camera.set_fov(0.9);
 
     scene
@@ -84,6 +82,10 @@ fn main() {
     let mut should_continue = true;
 
     backbuffer.fill_black();
+    let epoch = PreciseTime::now();
+
+    // Insert one fake value so we have an initial guess for the time delta.
+    stats.frame_us.insert(16_667);
 
     println!("scene and renderer initialized, entering render loop");
 
@@ -91,6 +93,9 @@ fn main() {
         let frame_number = trace_log.inc_frame_number();
         let stw_frame = trace_log.scoped("render_frame", 0);
 
+        let time = epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
+        let time_delta = (stats.frame_us.median() as f32) * 1e-6;
+        renderer.set_time(time, time_delta);
         renderer.update_scene();
 
         match window.handle_events(&mut stats, &trace_log) {
