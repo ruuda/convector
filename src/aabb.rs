@@ -160,6 +160,11 @@ impl MAabbIntersection {
         // AABB is not further away. Hence all sign bits must be negative.
         self.tmin.geq(distance).all_sign_bits_negative_masked(self.mask)
     }
+
+    /// Returns whether this AABB should be visited before the other one.
+    pub fn should_try_before(&self, other: &MAabbIntersection) -> bool {
+        (self.tmin - other.tmin).all_sign_bits_positive()
+    }
 }
 
 #[test]
