@@ -59,20 +59,34 @@ impl RenderBuffer {
     }
 
     /// Returns an RGBA bitmap suitable for display.
+    #[cfg(not(windows))]
     pub fn into_bitmap(self) -> Vec<u8> {
         // This is actually safe because self is moved into the method.
-        let mut buffer = unsafe { self.buffer.into_inner() };
-        let mi32_ptr = buffer.as_mut_ptr();
-        let num_bytes = buffer.len() * 32; // Mi32 is 8 pixels of 4 bytes.
+        let buffer = unsafe { self.buffer.into_inner() };
+        unsafe { util::transmute_vec(buffer) }
+    }
 
-        // Prevent the destructor of the buffer from freeing the memory.
-        mem::forget(buffer);
+    /// Returns an RGBA bitmap suitable for display.
+    #[cfg(windows)]
+    pub fn into_bitmap(self) -> Vec<u8> {
+        // This is actually safe because self is moved into the method.
+        let buffer = unsafe { self.buffer.into_inner() };
 
-        // Transmute the vector into a vector of bytes.
-        unsafe {
-            let u8_ptr = mem::transmute(mi32_ptr);
-            Vec::from_raw_parts(u8_ptr, num_bytes, num_bytes)
-        }
+        // On Windows we must make an extra copy; we cannot just transmute the
+        // buffer into a buffer of bytes, because the allocator then uses the
+        // alignment of a byte to free the buffer, but it asserts that the
+        // alignment for deallocation matches the alignment that the buffer was
+        // allocated with. I raised this point in the allocator RFC discussion:
+        // https://github.com/rust-lang/rfcs/pull/1398#issuecomment-198584430.
+        // The extra copy is unfortunate, but the allocator API needs to change
+        // before it can be avoided.
+        let byte_buffer = buffer.iter().flat_map(|mi32| {
+            let bytes: &[u8; 32] = unsafe { mem::transmute(mi32) };
+            bytes
+        }).cloned().collect();
+
+        util::drop_cache_line_aligned_vec(buffer);
+        byte_buffer
     }
 }
 
@@ -270,4 +284,15 @@ impl Renderer {
 
         MVector3::new(Mf32::zero(), g, b)
     }
+}
+
+#[test]
+fn render_buffer_into_bitmap() {
+    let render_buffer = RenderBuffer::new(1280, 736);
+    let bitmap = render_buffer.into_bitmap();
+    drop(bitmap);
+    let render_buffer = RenderBuffer::new(1280, 736);
+    let _bitmap = render_buffer.into_bitmap();
+    // The render buffer was transmuted or copied into a vector of pixels, and
+    // dropping the vector at this point should not result in a crash.
 }
