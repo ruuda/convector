@@ -3,7 +3,6 @@ use random::Rng;
 use scene::Scene;
 use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
-use std::mem;
 use time::PreciseTime;
 use util;
 use vector3::{MVector3, SVector3};
@@ -69,6 +68,8 @@ impl RenderBuffer {
     /// Returns an RGBA bitmap suitable for display.
     #[cfg(windows)]
     pub fn into_bitmap(self) -> Vec<u8> {
+        use std::mem;
+
         // This is actually safe because self is moved into the method.
         let buffer = unsafe { self.buffer.into_inner() };
 
