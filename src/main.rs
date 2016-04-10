@@ -51,8 +51,10 @@ fn build_scene() -> Scene {
     // let suzanne = Mesh::load("models/suzanne.obj");
     // let bunny = Mesh::load("models/stanford_bunny.obj");
     // let dragon = Mesh::load("models/stanford_dragon.obj");
-    let suzannes = Mesh::load("models/suzannes_in_box.obj");
-    let meshes = [suzannes];
+    // let suzannes = Mesh::load("models/suzannes_in_box.obj");
+    let box_walls = Mesh::load("models/box_walls.obj");
+    // let box_windows = Mesh::load("models/box_windows.obj");
+    let meshes = [box_walls];
 
     println!("building bvh");
     let mut scene = Scene::from_meshes(&meshes);
