@@ -34,7 +34,7 @@ impl Mesh {
                     // Indices stored are 1-based, convert to 0-based.
                     let mut indices = pieces.map(|i| u32::from_str(i).unwrap() - 1);
                     let i1 = indices.next().expect("missing triangle index");
-                    let mut i2 = indices.next().expect("missing triangle index");
+                    let i2 = indices.next().expect("missing triangle index");
                     let mut i3 = indices.next().expect("missing triangle index");
                     triangles.push((i1, i2, i3));
 

@@ -83,12 +83,6 @@ impl MaterialBank {
     /// compute the ray that continues the light path. A factor to multiply the
     /// final color by is returned as well.
     pub fn continue_path(&self, ray: &MRay, isect: &MIntersection, rng: &mut Rng) -> (MVector3, MRay) {
-        // TODO: Do a diffuse bounce and use a proper material.
-        // For now, do a specular reflection.
-
-        let dot = isect.normal.dot(ray.direction);
-        let normal = isect.normal; //(-isect.normal).pick(isect.normal, dot);
-
         // Specular reflection.
         // let dot = isect.normal.dot(ray.direction);
         // let direction = isect.normal.neg_mul_add(dot + dot, ray.direction);
@@ -96,7 +90,7 @@ impl MaterialBank {
         // Bounce in a random direction in the hemisphere around the surface
         // normal, with a cosine-weighted distribution, for a diffuse bounce.
         let dir_z = rng.sample_hemisphere_vector();
-        let direction = dir_z.rotate_hemisphere(normal);
+        let direction = dir_z.rotate_hemisphere(isect.normal);
 
         // Emissive materials have the sign bit set to 1, and a sign bit of 1
         // means that the ray is inactive. So hitting an emissive material
