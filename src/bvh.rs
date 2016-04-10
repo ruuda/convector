@@ -584,11 +584,11 @@ impl Bvh {
         let root_isect_1 = root_1.aabb.intersect(ray);
 
         if root_isect_0.should_try_before(&root_isect_1) {
-            if root_isect_0.any(ray.active) { stack.push((root_isect_0, root_0)); }
-            if root_isect_1.any(ray.active) { stack.push((root_isect_1, root_1)); }
+            if root_isect_0.any_masked(ray.active) { stack.push((root_isect_0, root_0)); }
+            if root_isect_1.any_masked(ray.active) { stack.push((root_isect_1, root_1)); }
         } else {
-            if root_isect_1.any(ray.active) { stack.push((root_isect_1, root_1)); }
-            if root_isect_0.any(ray.active) { stack.push((root_isect_0, root_0)); }
+            if root_isect_1.any_masked(ray.active) { stack.push((root_isect_1, root_1)); }
+            if root_isect_0.any_masked(ray.active) { stack.push((root_isect_0, root_0)); }
         }
 
         while let Some((aabb_isect, node)) = stack.pop() {
@@ -608,11 +608,11 @@ impl Bvh {
                 let child_isect_1 = child_1.aabb.intersect(ray);
 
                 if child_isect_0.should_try_before(&child_isect_1) {
-                    if child_isect_0.any(ray.active) { stack.push((child_isect_0, child_0)); }
-                    if child_isect_1.any(ray.active) { stack.push((child_isect_1, child_1)); }
+                    if child_isect_0.any_masked(ray.active) { stack.push((child_isect_0, child_0)); }
+                    if child_isect_1.any_masked(ray.active) { stack.push((child_isect_1, child_1)); }
                 } else {
-                    if child_isect_1.any(ray.active) { stack.push((child_isect_1, child_1)); }
-                    if child_isect_0.any(ray.active) { stack.push((child_isect_0, child_0)); }
+                    if child_isect_1.any_masked(ray.active) { stack.push((child_isect_1, child_1)); }
+                    if child_isect_0.any_masked(ray.active) { stack.push((child_isect_0, child_0)); }
                 }
             } else {
                 for i in node.index..node.index + node.len {

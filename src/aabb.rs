@@ -144,7 +144,16 @@ impl Aabb {
 
 impl MAabbIntersection {
     /// Returns whether any of the active rays intersected the AABB.
-    pub fn any(&self, active: Mask) -> bool {
+    pub fn any(&self) -> bool {
+        // If there was an intersection in front of the ray, then tmax will
+        // definitely be positive. The mask is only set for the rays that
+        // actually intersected the bounding box.
+        self.tmax.any_sign_bit_positive_masked(self.mask)
+    }
+
+    /// Returns whether any of the active rays intersected the AABB.
+    // TODO: I should get rid of one of these `any` methods.
+    pub fn any_masked(&self, active: Mask) -> bool {
         // If there was an intersection in front of the ray, then tmax will
         // definitely be positive. The mask is only set for the rays that
         // actually intersected the bounding box.
