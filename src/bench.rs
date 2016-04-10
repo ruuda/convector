@@ -1,6 +1,7 @@
 //! This module generates test data for the benchmarks.
 
 use aabb::Aabb;
+use material::SMaterial;
 use quaternion::{MQuaternion, SQuaternion};
 use rand;
 use rand::Rng;
@@ -168,7 +169,7 @@ pub fn triangles(n: usize) -> Vec<Triangle> {
     let v2s = svectors_on_unit_sphere(n);
     v0s.iter()
        .zip(v1s.iter().zip(v2s.iter()))
-       .map(|(&v0, (&v1, &v2))| Triangle::new(v0, v1, v2))
+       .map(|(&v0, (&v1, &v2))| Triangle::new(v0, v1, v2, SMaterial::white()))
        .collect()
 }
 

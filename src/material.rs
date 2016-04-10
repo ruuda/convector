@@ -53,9 +53,32 @@ use simd::Mf32;
 use std::f32::consts;
 use vector3::MVector3;
 
+#[derive(Copy, Clone, Debug)]
+pub struct SMaterial(u32);
+
+impl SMaterial {
+    /// A white diffuse material.
+    pub fn white() -> SMaterial {
+        SMaterial::diffuse(255, 255, 255)
+    }
+
+    /// A diffuse material with the given color.
+    pub fn diffuse(r: u8, g: u8, b: u8) -> SMaterial {
+        let mat = ((b as u32) << 16) | ((g as u32) << 8) | (r as u32);
+        SMaterial(mat)
+    }
+}
+
 pub type MMaterial = Mf32;
 
 impl MMaterial {
+    pub fn broadcast_material(material: SMaterial) -> MMaterial {
+        use std::mem::transmute;
+        let SMaterial(mat) = material;
+        let matf: f32 = unsafe { transmute(mat) };
+        Mf32::broadcast(matf)
+    }
+
     pub fn sky() -> MMaterial {
         use std::mem::transmute;
 

@@ -5,6 +5,7 @@
 //! It avoids a virtual method call, which in turn enables the triangle
 //! intersection code to be inlined.
 
+use material::{SMaterial, MMaterial};
 use ray::{MIntersection, MRay};
 use simd::Mf32;
 use vector3::{MVector3, SVector3};
@@ -17,14 +18,16 @@ pub struct Triangle {
     pub v0: SVector3,
     pub v1: SVector3,
     pub v2: SVector3,
+    pub material: SMaterial,
 }
 
 impl Triangle {
-    pub fn new(v0: SVector3, v1: SVector3, v2: SVector3) -> Triangle {
+    pub fn new(v0: SVector3, v1: SVector3, v2: SVector3, mat: SMaterial) -> Triangle {
         Triangle {
             v0: v0,
             v1: v1,
             v2: v2,
+            material: mat,
         }
     }
 
@@ -110,7 +113,7 @@ impl Triangle {
             position: ray.direction.mul_add(t, ray.origin),
             normal: normal_denorm.normalized(),
             distance: t,
-            material: Mf32::zero(), // TODO: Get material from triangle.
+            material: MMaterial::broadcast_material(self.material),
             tex_coords: (Mf32::zero(), Mf32::zero()), // TODO: Compute tex coords.
         };
 
@@ -128,7 +131,8 @@ fn intersect_triangle() {
     let triangle = Triangle::new(
         SVector3::new(0.0, 1.0, 1.0),
         SVector3::new(-1.0, -1.0, 1.0),
-        SVector3::new(1.0, -1.0, 1.0)
+        SVector3::new(1.0, -1.0, 1.0),
+        SMaterial::white(),
     );
 
     let r1 = SRay {

@@ -2,6 +2,7 @@
 //! reinventing the wheel is much more fun.
 
 use filebuffer::FileBuffer;
+use material::SMaterial;
 use std::path::Path;
 use std::str::{FromStr, from_utf8};
 use vector3::SVector3;
@@ -9,6 +10,7 @@ use vector3::SVector3;
 pub struct Mesh {
     pub vertices: Vec<SVector3>,
     pub triangles: Vec<(u32, u32, u32)>,
+    pub material: SMaterial,
 }
 
 impl Mesh {
@@ -52,6 +54,7 @@ impl Mesh {
         Mesh {
             vertices: vertices,
             triangles: triangles,
+            material: SMaterial::white(), // TODO: Allow picking the material.
         }
     }
 }

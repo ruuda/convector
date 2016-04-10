@@ -532,7 +532,7 @@ impl Bvh {
                     let v1 = mesh.vertices[i1 as usize];
                     let v2 = mesh.vertices[i2 as usize];
                     let v3 = mesh.vertices[i3 as usize];
-                    Triangle::new(v1, v2, v3)
+                    Triangle::new(v1, v2, v3, mesh.material)
                 });
             triangles.extend(mesh_triangles);
         }
