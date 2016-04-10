@@ -1,4 +1,4 @@
-use material::MaterialBank;
+use material::{continue_path, sky_intensity};
 use random::Rng;
 use scene::Scene;
 use simd::{Mf32, Mi32};
@@ -8,7 +8,6 @@ use vector3::{MVector3, SVector3};
 
 pub struct Renderer {
     scene: Scene,
-    material_bank: MaterialBank,
     width: u32,
     height: u32,
     enable_debug_view: bool,
@@ -107,7 +106,6 @@ impl Renderer {
     pub fn new(scene: Scene, width: u32, height: u32) -> Renderer {
         Renderer {
             scene: scene,
-            material_bank: MaterialBank,
             width: width,
             height: height,
             enable_debug_view: false,
@@ -276,13 +274,13 @@ impl Renderer {
             // Stop when every ray hit a light source.
             if isect.material.all_sign_bits_negative() { break }
 
-            let (factor, new_ray) = self.material_bank.continue_path(&ray, &isect, rng);
+            let (factor, new_ray) = continue_path(&ray, &isect, rng);
             ray = new_ray;
             color = color.mul_coords(factor);
         }
 
         // Compute light contribution.
-        let emission = self.material_bank.sky_intensity(ray.direction);
+        let emission = sky_intensity(ray.direction);
         color = color.mul_coords(emission);
 
         // If the last thing that a ray hit was an emissive material, it has

@@ -1,15 +1,20 @@
 //! Determines how light bounces off a surface.
 //!
-//! # Material index encoding
+//! # Material encoding
 //!
-//! A 32-bit material index is associated with every surface. This value encodes
-//! some material infomation. Additional data must be looked up in the material
-//! bank. The material index consists of the following parts:
+//! A material is associated with every surface. It is a 32-bit value that
+//! consists of the following parts:
 //!
 //!  * Bit 31 (sign bit): if 1, the material is emissive, if 0,
 //!    the material is not.
 //!
-//!  * Bits 0-2 contain the texture index ranging from 0 to 7.
+//!  * Bit 30: if 1, a primitive with this material is eligible for direct
+//!    light sampling.
+//!
+//!  * Bits 24-37 contain the texture index ranging from 0 to 7.
+//!
+//!  * Bits 0-23 contain the RGB color of the material, red in the least
+//!    significant bits, blue in the most significant bits.
 //!
 //! # A note on CPU and GPU shading
 //!
@@ -50,8 +55,6 @@ use vector3::MVector3;
 
 pub type MMaterial = Mf32;
 
-pub struct MaterialBank;
-
 impl MMaterial {
     pub fn sky() -> MMaterial {
         use std::mem::transmute;
@@ -62,54 +65,50 @@ impl MMaterial {
     }
 }
 
-impl MaterialBank {
+/// Returns the sky color for a ray in the given direction.
+pub fn sky_intensity(ray_direction: MVector3) -> MVector3 {
+    // TODO: Better sky model.
+    let up = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
+    let half = Mf32::broadcast(0.5);
+    let d = ray_direction.dot(up).mul_add(half, half);
+    let r = d;
+    let g = d * d;
+    let b = d * (d * d);
+    MVector3::new(r, g, b).mul_add(half, MVector3::new(half, half, half))
+}
 
-    /// Returns the sky color for a ray in the given direction.
-    pub fn sky_intensity(&self, ray_direction: MVector3) -> MVector3 {
-        // TODO: Better sky model.
-        let up = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
-        let half = Mf32::broadcast(0.5);
-        let d = ray_direction.dot(up).mul_add(half, half);
-        let r = d;
-        let g = d * d;
-        let b = d * (d * d);
-        MVector3::new(r, g, b).mul_add(half, MVector3::new(half, half, half))
-    }
+/// Continues the path of a photon.
+///
+/// If a ray intersected a surface with a certain material, then this will
+/// compute the ray that continues the light path. A factor to multiply the
+/// final color by is returned as well.
+pub fn continue_path(ray: &MRay, isect: &MIntersection, rng: &mut Rng) -> (MVector3, MRay) {
+    // Specular reflection.
+    // let dot = isect.normal.dot(ray.direction);
+    // let direction = isect.normal.neg_mul_add(dot + dot, ray.direction);
 
-    /// Continues the path of a photon.
-    ///
-    /// If a surface intersected a material with the specified material index,
-    /// at the given position with the given ray direction, then this will
-    /// compute the ray that continues the light path. A factor to multiply the
-    /// final color by is returned as well.
-    pub fn continue_path(&self, ray: &MRay, isect: &MIntersection, rng: &mut Rng) -> (MVector3, MRay) {
-        // Specular reflection.
-        // let dot = isect.normal.dot(ray.direction);
-        // let direction = isect.normal.neg_mul_add(dot + dot, ray.direction);
+    // Bounce in a random direction in the hemisphere around the surface
+    // normal, with a cosine-weighted distribution, for a diffuse bounce.
+    let dir_z = rng.sample_hemisphere_vector();
+    let direction = dir_z.rotate_hemisphere(isect.normal);
 
-        // Bounce in a random direction in the hemisphere around the surface
-        // normal, with a cosine-weighted distribution, for a diffuse bounce.
-        let dir_z = rng.sample_hemisphere_vector();
-        let direction = dir_z.rotate_hemisphere(isect.normal);
+    // Emissive materials have the sign bit set to 1, and a sign bit of 1
+    // means that the ray is inactive. So hitting an emissive material
+    // deactivates the ray: there is no need for an additional bounce.
+    let active = ray.active | isect.material;
 
-        // Emissive materials have the sign bit set to 1, and a sign bit of 1
-        // means that the ray is inactive. So hitting an emissive material
-        // deactivates the ray: there is no need for an additional bounce.
-        let active = ray.active | isect.material;
+    // Build a new ray, offset by an epsilon from the intersection so we
+    // don't intersect the same surface again.
+    let origin = direction.mul_add(Mf32::epsilon(), isect.position);
+    let new_ray = MRay {
+        origin: origin.pick(ray.origin, active),
+        direction: direction.pick(ray.direction, active),
+        active: active,
+    };
 
-        // Build a new ray, offset by an epsilon from the intersection so we
-        // don't intersect the same surface again.
-        let origin = direction.mul_add(Mf32::epsilon(), isect.position);
-        let new_ray = MRay {
-            origin: origin.pick(ray.origin, active),
-            direction: direction.pick(ray.direction, active),
-            active: active,
-        };
+    let norm_factor = Mf32::broadcast(1.0 / consts::PI);
+    let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
+    let color = MVector3::new(norm_factor, norm_factor, norm_factor);
 
-        let norm_factor = Mf32::broadcast(1.0 / consts::PI);
-        let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-        let color = MVector3::new(norm_factor, norm_factor, norm_factor);
-
-        (color.pick(white, active), new_ray)
-    }
+    (color.pick(white, active), new_ray)
 }
