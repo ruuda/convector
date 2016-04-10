@@ -207,9 +207,13 @@ impl MVector3 {
     }
 
     /// Given a vector in the hemisphere with pole at the positive z-axis,
-    /// rotates the vector into the hemisphere with pole given by the normal n.
-    pub fn rotate_hemisphere(self, n: MVector3) -> MVector3 {
-        // TODO: Handle the case where the normal points down along the z-axis.
+    /// rotates the vector into the hemisphere with pole given by the normal.
+    pub fn rotate_hemisphere(self, normal: MVector3) -> MVector3 {
+        // If the z-component of the normal is near -1, we might divide by 0. To
+        // avoid this, if the z-component is negative, flip the normal. Then we
+        // end up in the wrong hemisphere, so at the end, flip the computed
+        // vector again.
+        let n = normal.pick(-normal, normal.z);
 
         // One option here would be to take the cross product of the normal and
         // an up vector, and the cross product of the normal with that vector,
@@ -225,7 +229,10 @@ impl MVector3 {
         let y = v.x.neg_mul_add(c, v.y.mul_add(n.x.mul_add(n.x, n.z), v.z * n.y));
         let z = v.x.neg_mul_add(n.x, v.y.neg_mul_add(n.y, v.z * n.z));
 
-        MVector3::new(x, y, z)
+        let result = MVector3::new(x, y, z);
+
+        // If we flipped the normal, flip the result too.
+        result.pick(-result, normal.z)
     }
 
     /// Scalar multiplication and vector add using fused multiply-add.
@@ -427,6 +434,26 @@ fn verify_rotate_hemisphere() {
     // change anything.
     assert_eq!(x.rotate_hemisphere(z), x);
     assert_eq!(y.rotate_hemisphere(z), y);
+}
+
+#[test]
+fn rotate_hemisphere_extrema() {
+    let x = MVector3::new(Mf32::one(), Mf32::zero(), Mf32::zero());
+    let y = MVector3::new(Mf32::zero(), Mf32::one(), Mf32::zero());
+    let z = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
+
+    // The rotation code breaks down at a normal vector -z due to division by
+    // zero. This edge case should be handled correctly.
+
+    // If we rotate z -> -z, then a vector along x flips sign.
+    assert_eq!(x.rotate_hemisphere(-z), -x);
+
+    // A vector along y should change sign too, because the hemisphere is
+    // flipped if the z-component of the normal is negative.
+    assert_eq!(y.rotate_hemisphere(-z), -y);
+
+    // The z-axis itself should just rotate along.
+    assert_eq!(z.rotate_hemisphere(-z), -z);
 }
 
 macro_rules! unroll_10 {
