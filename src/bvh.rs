@@ -584,18 +584,18 @@ impl Bvh {
         let root_isect_1 = root_1.aabb.intersect(ray);
 
         if root_isect_0.should_try_before(&root_isect_1) {
-            if root_isect_0.any() { stack.push((root_isect_0, root_0)); }
-            if root_isect_1.any() { stack.push((root_isect_1, root_1)); }
+            if root_isect_0.any(ray.active) { stack.push((root_isect_0, root_0)); }
+            if root_isect_1.any(ray.active) { stack.push((root_isect_1, root_1)); }
         } else {
-            if root_isect_1.any() { stack.push((root_isect_1, root_1)); }
-            if root_isect_0.any() { stack.push((root_isect_0, root_0)); }
+            if root_isect_1.any(ray.active) { stack.push((root_isect_1, root_1)); }
+            if root_isect_0.any(ray.active) { stack.push((root_isect_0, root_0)); }
         }
 
         while let Some((aabb_isect, node)) = stack.pop() {
             // If the AABB is further away than the current nearest
             // intersection, then nothing inside the node can yield
             // a closer intersection, so we can skip the node.
-            if aabb_isect.is_further_away_than(isect.distance) {
+            if aabb_isect.is_further_away_than(isect.distance, ray.active) {
                 continue
             }
 
@@ -608,11 +608,11 @@ impl Bvh {
                 let child_isect_1 = child_1.aabb.intersect(ray);
 
                 if child_isect_0.should_try_before(&child_isect_1) {
-                    if child_isect_0.any() { stack.push((child_isect_0, child_0)); }
-                    if child_isect_1.any() { stack.push((child_isect_1, child_1)); }
+                    if child_isect_0.any(ray.active) { stack.push((child_isect_0, child_0)); }
+                    if child_isect_1.any(ray.active) { stack.push((child_isect_1, child_1)); }
                 } else {
-                    if child_isect_1.any() { stack.push((child_isect_1, child_1)); }
-                    if child_isect_0.any() { stack.push((child_isect_0, child_0)); }
+                    if child_isect_1.any(ray.active) { stack.push((child_isect_1, child_1)); }
+                    if child_isect_0.any(ray.active) { stack.push((child_isect_0, child_0)); }
                 }
             } else {
                 for i in node.index..node.index + node.len {

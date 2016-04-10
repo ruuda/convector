@@ -143,22 +143,29 @@ impl Aabb {
 }
 
 impl MAabbIntersection {
-    /// Returns whether any of the rays intersected the AABB.
-    pub fn any(&self) -> bool {
+    /// Returns whether any of the active rays intersected the AABB.
+    pub fn any(&self, active: Mask) -> bool {
         // If there was an intersection in front of the ray, then tmax will
         // definitely be positive. The mask is only set for the rays that
         // actually intersected the bounding box.
-        self.tmax.any_sign_bit_positive_masked(self.mask)
+        //
+        // The active mask has an unfortunate sign for this purpose: its sign
+        // bit is 0 for rays that should be considered, and 1 for rays that that
+        // can be ignored. To get (mask & !active), we can do (mask ^ active) &
+        // mask.
+        let mask = (self.mask ^ active) & self.mask;
+        self.tmax.any_sign_bit_positive_masked(mask)
     }
 
-    /// Returns whether for all rays that intersect the AABB, the given distance
-    /// is smaller than the distance to the AABB.
-    pub fn is_further_away_than(&self, distance: Mf32) -> bool {
+    /// Returns whether for all rays that intersect the AABB and for which the
+    /// sign bit in the active mask is 0 (positive) the given distance is
+    /// smaller than the distance to the AABB.
+    pub fn is_further_away_than(&self, distance: Mf32, active: Mask) -> bool {
         // If distance < self.tmin (when false should be returned for the ray),
         // the comparison results in positive 0.0. If distance < self.min for
         // any of the values for which the mask is set, then for that ray the
         // AABB is not further away. Hence all sign bits must be negative.
-        self.tmin.geq(distance).all_sign_bits_negative_masked(self.mask)
+        (self.tmin.geq(distance) | active).all_sign_bits_negative_masked(self.mask)
     }
 
     /// Returns whether this AABB should be visited before the other one.

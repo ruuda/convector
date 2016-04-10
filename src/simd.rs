@@ -454,6 +454,21 @@ impl BitOr<Mask> for Mask {
     }
 }
 
+impl BitXor<Mask> for Mask {
+    type Output = Mask;
+
+    #[inline(always)]
+    fn bitxor(self, other: Mask) -> Mask {
+        use std::mem::transmute;
+        unsafe {
+            let a: Mi32 = transmute(self);
+            let b: Mi32 = transmute(other);
+            let a_xor_b = simd_xor(a, b);
+            transmute(a_xor_b)
+        }
+    }
+}
+
 impl BitXor<Mu64> for Mu64 {
     type Output = Mu64;
 
