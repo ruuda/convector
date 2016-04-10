@@ -222,11 +222,16 @@ impl MVector3 {
         // arithmetic operations.
         // Based on https://math.stackexchange.com/a/61550/6873.
         let v = self;
+
+        // Using the fast reciprocal instead of the precise one does hurt
+        // precision, but this is used only after the first bounce, so it is
+        // less of an issue, and the performance difference is significant. The
+        // inaccurate version is about 15% faster.
         let rz = (Mf32::one() + n.z).recip_fast();
 
         let c = n.x * n.y * rz;
-        let x = v.x.mul_sub(n.y.mul_add(n.y, n.z), v.y.mul_add(c, v.z * n.x));
-        let y = v.x.neg_mul_add(c, v.y.mul_add(n.x.mul_add(n.x, n.z), v.z * n.y));
+        let x = v.x.mul_sub(n.y.mul_add(n.y * rz, n.z), v.y.mul_sub(c, v.z * n.x));
+        let y = v.x.neg_mul_add(c, v.y.mul_add(n.x.mul_add(n.x * rz, n.z), v.z * n.y));
         let z = v.x.neg_mul_add(n.x, v.y.neg_mul_add(n.y, v.z * n.z));
 
         let result = MVector3::new(x, y, z);
@@ -412,6 +417,15 @@ impl Mul<Mf32> for MVector3 {
     }
 }
 
+#[cfg(test)]
+fn assert_mvectors_equal(expected: MVector3, computed: MVector3, margin: f32) {
+    // Test that the vectors are equal, to within floating point inaccuracy
+    // margins.
+    let error = (computed - expected).norm_squared();
+    assert!((Mf32::broadcast(margin * margin) - error).all_sign_bits_positive(),
+            "expected: {:?}, computed: {:?}", expected, computed);
+}
+
 #[test]
 fn verify_rotate_hemisphere() {
     let x = MVector3::new(Mf32::one(), Mf32::zero(), Mf32::zero());
@@ -419,21 +433,44 @@ fn verify_rotate_hemisphere() {
     let z = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
 
     // If we rotate z -> y, then a vector along x does not change.
-    assert_eq!(x.rotate_hemisphere(y), x);
+    assert_mvectors_equal(x, x.rotate_hemisphere(y), 1e-3);
 
     // Same for z -> x, then y does not change.
-    assert_eq!(y.rotate_hemisphere(x), y);
+    assert_mvectors_equal(y, y.rotate_hemisphere(x), 1e-3);
 
     // If we rotate z -> y about the x-axis, then y rotates to -z.
-    assert_eq!(y.rotate_hemisphere(y), -z);
+    assert_mvectors_equal(-z, y.rotate_hemisphere(y), 1e-3);
 
     // If we rotate z -> x about the y-axis, then x rotates to -z.
-    assert_eq!(x.rotate_hemisphere(x), -z);
+    assert_mvectors_equal(-z, x.rotate_hemisphere(x), 1e-3);
 
     // A starting normal of positive z is assumed, so picking that should not
     // change anything.
-    assert_eq!(x.rotate_hemisphere(z), x);
-    assert_eq!(y.rotate_hemisphere(z), y);
+    assert_mvectors_equal(x, x.rotate_hemisphere(z), 1e-3);
+    assert_mvectors_equal(y, y.rotate_hemisphere(z), 1e-3);
+}
+
+#[test]
+fn rotate_hemisphere_is_orthogonal() {
+    let ns = bench::mvectors_on_unit_sphere(4096);
+    let xs = bench::mvectors_on_unit_sphere(4096);
+    let ys = bench::mvectors_on_unit_sphere(4096);
+
+    for (&n, (&x, &y)) in ns.iter().zip(xs.iter().zip(ys.iter())) {
+        let sum_before = x + y;
+        let sum_mapped = sum_before.rotate_hemisphere(n);
+        let n2_before = sum_before.norm_squared();
+        let n2_after = sum_mapped.norm_squared();
+
+        // An orthogonal map does not change the length of vectors.
+        let error = (n2_before - n2_after) * (n2_before - n2_after);
+        assert!((Mf32::broadcast(1e-5) - error).all_sign_bits_positive(),
+            "expected equal norm, got {:?} and {:?}", n2_before, n2_after);
+
+        // Also, an orthogonal map is linear.
+        let sum_after = x.rotate_hemisphere(n) + y.rotate_hemisphere(n);
+        assert_mvectors_equal(sum_mapped, sum_after, 1e-3);
+    }
 }
 
 #[test]
