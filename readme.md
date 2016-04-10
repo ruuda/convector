@@ -33,6 +33,7 @@ codegen options in `.cargo/config`.
 Controls
 --------
 
+ * Press `b` to toggle blending recent frames.
  * Press `d` to toggle debug view.
    The green channel shows the number of AABB intersections,
    the blue channel shows the number of triangle intersections.

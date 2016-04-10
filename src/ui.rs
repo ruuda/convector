@@ -26,7 +26,7 @@ implement_vertex!(Vertex, position, tex_coords);
 struct FullScreenQuad {
     vertex_buffer: VertexBuffer<Vertex>,
     indices: NoIndices,
-    program: Program,
+    program_blend: Program,
 }
 
 impl FullScreenQuad {
@@ -40,27 +40,30 @@ impl FullScreenQuad {
         let vertex_buffer = VertexBuffer::new(facade, &quad).unwrap();
         let indices = NoIndices(PrimitiveType::TriangleStrip);
 
-        let vertex_shader = FileBuffer::open("src/vertex.glsl")
+        let vertex_shader = FileBuffer::open("src/gpu/vertex.glsl")
             .expect("failed to load vertex shader source");
-        let fragment_shader = FileBuffer::open("src/fragment.glsl")
-            .expect("failed to load fragment shader source");
 
-        // TODO: Add `as_str()` method to Filebuffer for convenience.
-        let program = Program::from_source(facade,
-                                           str::from_utf8(&vertex_shader[..]).unwrap(),
-                                           str::from_utf8(&fragment_shader[..]).unwrap(),
-                                           None).unwrap();
+        let program_blend = {
+            let fragment_shader = FileBuffer::open("src/gpu/blend.glsl")
+                .expect("failed to load fragment shader source");
+
+            Program::from_source(facade,
+               str::from_utf8(&vertex_shader[..]).unwrap(),
+               str::from_utf8(&fragment_shader[..]).unwrap(), None
+            ).unwrap()
+        };
+
         FullScreenQuad {
             vertex_buffer: vertex_buffer,
             indices: indices,
-            program: program,
+            program_blend: program_blend,
         }
     }
 
-    /// Renders the texture to the target surface.
-    pub fn draw_to_surface<S: Surface>(&self,
-                                       target: &mut S,
-                                       frames: &[Texture2d]) {
+    /// Renders the frames blended to the target surface.
+    pub fn draw_blended<S: Surface>(&self,
+                                    target: &mut S,
+                                    frames: &[Texture2d]) {
         let uniforms = uniform! {
             frame0: &frames[0],
             frame1: &frames[1],
@@ -73,7 +76,29 @@ impl FullScreenQuad {
         };
         target.draw(&self.vertex_buffer,
                     &self.indices,
-                    &self.program,
+                    &self.program_blend,
+                    &uniforms,
+                    &Default::default()).expect("failed to draw quad");
+    }
+
+    /// Renders a single frame to the target surface.
+    pub fn draw_single<S: Surface>(&self,
+                                   target: &mut S,
+                                   frame: &Texture2d) {
+        // Draw blended as well, but blend between the same frame.
+        let uniforms = uniform! {
+            frame0: frame,
+            frame1: frame,
+            frame2: frame,
+            frame3: frame,
+            frame4: frame,
+            frame5: frame,
+            frame6: frame,
+            frame7: frame,
+        };
+        target.draw(&self.vertex_buffer,
+                    &self.indices,
+                    &self.program_blend,
                     &uniforms,
                     &Default::default()).expect("failed to draw quad");
     }
@@ -84,6 +109,7 @@ pub struct Window {
     quad: FullScreenQuad,
     frames: [Texture2d; 8],
     frame_index: u32,
+    draw_blended: bool,
     width: u32,
     height: u32,
 }
@@ -124,6 +150,7 @@ impl Window {
             quad: quad,
             frames: unsafe { mem::uninitialized() },
             frame_index: 0,
+            draw_blended: true,
             width: width,
             height: height,
         };
@@ -159,7 +186,8 @@ impl Window {
 
         let begin_texture = PreciseTime::now();
 
-        self.frames[self.frame_index as usize] = self.upload_texture(rgba_buffer);
+        let frame_index = self.frame_index as usize;
+        self.frames[frame_index] = self.upload_texture(rgba_buffer);
         self.frame_index = (self.frame_index + 1) % 8;
 
         let begin_draw = PreciseTime::now();
@@ -167,7 +195,12 @@ impl Window {
         // Draw a full-screen quad with the texture. Finishing drawing will swap
         // the buffers and wait for a vsync.
         let mut target = self.display.draw();
-        self.quad.draw_to_surface(&mut target, &self.frames[..]);
+
+        if self.draw_blended {
+            self.quad.draw_blended(&mut target, &self.frames[..]);
+        } else {
+            self.quad.draw_single(&mut target, &self.frames[frame_index]);
+        }
         target.finish().expect("failed to swap buffers");
 
         let end_draw = PreciseTime::now();
@@ -181,6 +214,8 @@ impl Window {
             match ev {
                 // Window was closed by the user.
                 Event::Closed => return Action::Quit,
+                // The user pressed 'b' to toggle blending.
+                Event::ReceivedCharacter('b') => self.draw_blended = !self.draw_blended,
                 // The user pressed 'd' to toggle debug view.
                 Event::ReceivedCharacter('d') => return Action::ToggleDebugView,
                 // The user pressed 'q' for quit.
