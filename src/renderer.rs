@@ -281,7 +281,6 @@ impl Renderer {
         assert_eq!(patch_width & 15, 0); // Patch width must be a multiple of 16.
         let w = patch_width / 16;
         let h = patch_width / 4;
-        let index = ((y / 4) * (self.width / 16) + (x / 16)) as usize;
         let mut rng = Rng::with_seed(x, y, frame_number);
 
         for i in 0..w {
@@ -289,16 +288,35 @@ impl Renderer {
                 let xb = x + i * 16;
                 let yb = y + j * 4;
                 let rgbs = self.render_block_16x4(xb, yb, &mut rng);
+                let index = ((y / 4 + j) * (self.width / 16) + (x / 16 + i)) as usize;
                 let current = hdr_buffer[index];
                 hdr_buffer[index] = generate_slice8(|k| current[k] + rgbs[k]);
             }
         }
     }
 
-    pub fn buffer_f32_to_u8(&self, hdr_buffer: &[[MVector3; 8]], num_samples: u32) -> Vec<u8> {
-        let render_buffer = RenderBuffer::new(self.width, self.height);
+    /// Creates a new float buffer, the size of the viewport, that can be
+    /// rendered to with `accumulate_patch_f32()`.
+    pub fn new_buffer_f32(&self) -> Vec<[MVector3; 8]> {
         let w = self.width / 16;
         let h = self.height / 4;
+        let mut buffer = Vec::with_capacity((w * h) as usize);
+        for _ in 0..(w * h) {
+            buffer.push(generate_slice8(|_| MVector3::zero()));
+        }
+        buffer
+    }
+
+    /// Converts a buffer of floating point values used for accumulative
+    /// rendering into a 32 bit per pixel RGBA bitmap.
+    pub fn buffer_f32_into_render_buffer(&self,
+                                         hdr_buffer: &[[MVector3; 8]],
+                                         render_buffer: &mut RenderBuffer,
+                                         num_samples: u32) {
+        let w = self.width / 16;
+        let h = self.height / 4;
+        assert_eq!(w * 16, self.width);
+        assert_eq!(h * 4, self.height);
         let factor = Mf32::broadcast(1.0 / (num_samples as f32));
 
         {
@@ -309,12 +327,10 @@ impl Renderer {
                 for i in 0..w {
                     let rgbs = hdr_buffer[(j * w + i) as usize];
                     let rgbs = generate_slice8(|k| rgbs[k] * factor);
-                    self.store_pixels_16x4(bitmap, j * 4, i * 16, &rgbs);
+                    self.store_pixels_16x4(bitmap, i * 16, j * 4, &rgbs);
                 }
             }
         }
-
-        render_buffer.into_bitmap()
     }
 
     fn render_pixels(&self, x: Mf32, y: Mf32, rng: &mut Rng) -> MVector3 {

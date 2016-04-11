@@ -82,7 +82,10 @@ fn main() {
     let mut trace_log = trace::TraceLog::with_limit(6 * 1024);
     let mut threadpool = scoped_threadpool::Pool::new(num_cpus::get() as u32);
     let mut backbuffer = RenderBuffer::new(width, height);
+    let mut f32_buffer = renderer.new_buffer_f32(); // TODO: Consistency.
+    let mut f32_buffer_samples = 0;
     let mut should_continue = true;
+    let mut render_realtime = true;
 
     backbuffer.fill_black();
     let epoch = PreciseTime::now();
@@ -96,11 +99,6 @@ fn main() {
         let frame_number = trace_log.inc_frame_number();
         let stw_frame = trace_log.scoped("render_frame", 0);
 
-        let time = epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
-        let time_delta = (stats.frame_us.median() as f32) * 1e-6;
-        renderer.set_time(time, time_delta);
-        renderer.update_scene();
-
         match window.handle_events() {
             Action::DumpTrace => {
                 trace_log.export_to_file("trace.json").expect("failed to write trace");
@@ -109,7 +107,33 @@ fn main() {
             Action::Quit => should_continue = false,
             Action::PrintStats => stats.print(),
             Action::ToggleDebugView => renderer.toggle_debug_view(),
+            Action::ToggleRealtime => {
+                render_realtime = !render_realtime;
+                f32_buffer = renderer.new_buffer_f32();
+                f32_buffer_samples = 0;
+            }
             Action::None => { }
+        }
+
+        let time = epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
+        let time_delta = (stats.frame_us.median() as f32) * 1e-6;
+
+        if render_realtime {
+            renderer.set_time(time, time_delta);
+        } else {
+            // In accumulative mode the time is fixed and there is no motion
+            // blur.
+            renderer.set_time(0.0, 0.0);
+        }
+        renderer.update_scene();
+
+        // When rendering in accumulation mode, first copy the current state
+        // into the backbuffer (which will immediately after this become the new
+        // front buffer) so we can display it later.
+        if !render_realtime {
+            let n = if f32_buffer_samples > 0 { f32_buffer_samples } else { 1 };
+            renderer.buffer_f32_into_render_buffer(&f32_buffer, &mut backbuffer, n);
+            f32_buffer_samples += 1;
         }
 
         let new_backbuffer = RenderBuffer::new(width, height);
@@ -117,6 +141,7 @@ fn main() {
         let renderer_ref = &renderer;
         let trace_log_ref = &trace_log;
         let backbuffer_ref = &backbuffer;
+        let f32_buffer_ref = &f32_buffer[..];
 
         threadpool.scoped(|scope| {
 
@@ -127,15 +152,22 @@ fn main() {
             for i in 0..w {
                 for j in 0..h {
                     scope.execute(move || {
-                        let _stw = trace_log_ref.scoped("render_patch_u8", j * w + i);
                         let x = i * patch_width;
                         let y = j * patch_width;
 
-                        // Multiple threads mutably borrow the buffer, which
-                        // could cause races, but all of the patches are
-                        // disjoint, hence this is safe.
-                        let bitmap = unsafe { backbuffer_ref.get_mut_slice() };
-                        renderer_ref.render_patch_u8(bitmap, patch_width, x, y, frame_number);
+                        // Multiple threads mutably borrow the buffer below,
+                        // which could cause races, but all of the patches are
+                        // disjoint, hence it is safe.
+
+                        if render_realtime {
+                            let _stw = trace_log_ref.scoped("render_patch_u8", j * w + i);
+                            let bitmap = unsafe { backbuffer_ref.get_mut_slice() };
+                            renderer_ref.render_patch_u8(bitmap, patch_width, x, y, frame_number);
+                        } else {
+                            let _stw = trace_log_ref.scoped("accumulate_patch_f32", j * w + i);
+                            let buffer = unsafe { util::make_mutable(f32_buffer_ref) };
+                            renderer_ref.accumulate_patch_f32(buffer, patch_width, x, y, frame_number);
+                        }
                     });
                 }
             }

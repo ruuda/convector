@@ -119,6 +119,7 @@ pub enum Action {
     PrintStats,
     Quit,
     ToggleDebugView,
+    ToggleRealtime,
 }
 
 fn black_bitmap(width: u32, height: u32) -> Vec<u8> {
@@ -221,6 +222,8 @@ impl Window {
                 Event::ReceivedCharacter('d') => return Action::ToggleDebugView,
                 // The user pressed 'q' for quit.
                 Event::ReceivedCharacter('q') => return Action::Quit,
+                // The user pressed 'r' to toggle the render mode.
+                Event::ReceivedCharacter('r') => return Action::ToggleRealtime,
                 // The user pressed 's' for stats.
                 Event::ReceivedCharacter('s') => return Action::PrintStats,
                 // The user pressed 't' for trace.

@@ -50,3 +50,12 @@ pub unsafe fn transmute_vec<T, U>(mut v: Vec<T>) -> Vec<U> {
 
     Vec::from_raw_parts(ptr, new_len, new_cap)
 }
+
+/// Transmutes an immutable slice into a mutable slice.
+#[allow(mutable_transmutes)]
+pub unsafe fn make_mutable<T>(x: &[T]) -> &mut [T] {
+    // UnsafeCell is a real pain to deal with; after 15 minutes I still did not
+    // manage to write something that compiles. Just transmute the mutability
+    // in.
+    mem::transmute(x)
+}

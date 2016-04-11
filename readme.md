@@ -38,6 +38,7 @@ Controls
    The green channel shows the number of AABB intersections,
    the blue channel shows the number of triangle intersections.
  * Press `q` to quit the application.
+ * Press `r` to switch between realtime and accumulative rendering.
  * Press `s` to print statistics to the console.
  * Press `t` to write a trace to trace.json.
    It can be opened with Chrome by going to chrome://tracing.
