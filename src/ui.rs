@@ -11,7 +11,6 @@ use glium::texture::{MipmapsOption, RawImage2d, Texture2d};
 use stats::GlobalStats;
 use std::str;
 use time::PreciseTime;
-use trace::TraceLog;
 
 /// Vertex for the full-screen quad.
 #[derive(Copy, Clone)]
@@ -115,7 +114,9 @@ pub struct Window {
 }
 
 pub enum Action {
+    DumpTrace,
     None,
+    PrintStats,
     Quit,
     ToggleDebugView,
 }
@@ -209,7 +210,7 @@ impl Window {
     }
 
     /// Handles all window events and returns an action to be performed.
-    pub fn handle_events(&mut self, stats: &GlobalStats, trace_log: &TraceLog) -> Action {
+    pub fn handle_events(&mut self) -> Action {
         for ev in self.display.poll_events() {
             match ev {
                 // Window was closed by the user.
@@ -221,14 +222,9 @@ impl Window {
                 // The user pressed 'q' for quit.
                 Event::ReceivedCharacter('q') => return Action::Quit,
                 // The user pressed 's' for stats.
-                // TODO: Invert dependency, handle_events should not take stats.
-                Event::ReceivedCharacter('s') => stats.print(),
+                Event::ReceivedCharacter('s') => return Action::PrintStats,
                 // The user pressed 't' for trace.
-                // TODO: Invert dependency, handle_events should not take the trace log.
-                Event::ReceivedCharacter('t') => {
-                    trace_log.export_to_file("trace.json").expect("failed to write trace");
-                    println!("wrote trace to trace.json");
-                },
+                Event::ReceivedCharacter('t') => return Action::DumpTrace,
                 // Something else.
                 _ => ()
             }

@@ -101,8 +101,13 @@ fn main() {
         renderer.set_time(time, time_delta);
         renderer.update_scene();
 
-        match window.handle_events(&mut stats, &trace_log) {
+        match window.handle_events() {
+            Action::DumpTrace => {
+                trace_log.export_to_file("trace.json").expect("failed to write trace");
+                println!("wrote trace to trace.json");
+            }
             Action::Quit => should_continue = false,
+            Action::PrintStats => stats.print(),
             Action::ToggleDebugView => renderer.toggle_debug_view(),
             Action::None => { }
         }
