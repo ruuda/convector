@@ -82,6 +82,13 @@ impl SMaterial {
         let mat = 0b0110_0000_00000000_00000000_00000000_u32;
         SMaterial(mat)
     }
+
+    /// Returns whether the material is eligible for direct sampling.
+    pub fn is_direct_sample(&self) -> bool {
+        let ds_mask = 0b01000000_00000000_00000000_00000000;
+        let SMaterial(mat) = *self;
+        (mat & ds_mask) == ds_mask
+    }
 }
 
 pub type MMaterial = Mf32;

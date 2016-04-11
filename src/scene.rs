@@ -90,16 +90,41 @@ impl Camera {
 }
 
 pub struct Scene {
-    pub bvh: Bvh,
     pub camera: Camera,
+
+    /// Bounding volume hierarchy of all triangles in the scene.
+    bvh: Bvh,
+
+    /// Indices into the BVH's triangle list, of triangles that have a material
+    /// eligible for direct sampling.
+    direct_sample: Vec<u32>,
 }
 
 impl Scene {
     pub fn from_meshes(meshes: &[Mesh]) -> Scene {
-        Scene {
-            bvh: Bvh::from_meshes(meshes),
-            camera: Camera::new(),
+        let bvh = Bvh::from_meshes(meshes);
+
+        let mut direct_sample = Vec::new();
+        for i in 0..bvh.triangles.len() {
+            if bvh.triangles[i].material.is_direct_sample() {
+                direct_sample.push(i as u32);
+            }
         }
+
+        Scene {
+            camera: Camera::new(),
+            bvh: bvh,
+            direct_sample: direct_sample,
+        }
+    }
+
+    pub fn print_stats(&self) {
+        self.bvh.print_stats();
+
+        println!("scene statistics:");
+        println!("  triangles eligible for direct sampling: {} / {} ({:0.1}%)",
+            self.direct_sample.len(), self.bvh.triangles.len(),
+            100.0 * self.direct_sample.len() as f32 / self.bvh.triangles.len() as f32);
     }
 
     /// Returns the interections with the shortest distance along the ray.

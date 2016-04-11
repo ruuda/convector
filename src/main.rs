@@ -60,11 +60,8 @@ fn build_scene() -> Scene {
     let meshes = [box_walls, box_windows];
 
     println!("building bvh");
-    let mut scene = Scene::from_meshes(&meshes);
-
-    scene.bvh.print_stats();
-
-    scene.camera.set_fov(0.9);
+    let scene = Scene::from_meshes(&meshes);
+    scene.print_stats();
 
     scene
 }

@@ -25,7 +25,7 @@ struct BvhNode {
 /// A bounding volume hierarchy.
 pub struct Bvh {
     nodes: Vec<BvhNode>,
-    triangles: Vec<Triangle>,
+    pub triangles: Vec<Triangle>,
 
     /// Average ratio of bounding box surface area to parent surface area.
     avg_area_ratio: f32,
