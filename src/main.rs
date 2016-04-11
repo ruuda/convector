@@ -37,6 +37,7 @@ mod wavefront;
 #[cfg(test)]
 mod bench;
 
+use material::SMaterial;
 use renderer::{RenderBuffer, Renderer};
 use scene::Scene;
 use stats::GlobalStats;
@@ -52,9 +53,11 @@ fn build_scene() -> Scene {
     // let bunny = Mesh::load("models/stanford_bunny.obj");
     // let dragon = Mesh::load("models/stanford_dragon.obj");
     // let suzannes = Mesh::load("models/suzannes_in_box.obj");
-    let box_walls = Mesh::load("models/box_walls.obj");
-    // let box_windows = Mesh::load("models/box_windows.obj");
-    let meshes = [box_walls];
+    let mut box_walls = Mesh::load("models/box_walls.obj");
+    let mut box_windows = Mesh::load("models/box_windows.obj");
+    box_walls.material = SMaterial::white();
+    box_windows.material = SMaterial::sky();
+    let meshes = [box_walls, box_windows];
 
     println!("building bvh");
     let mut scene = Scene::from_meshes(&meshes);

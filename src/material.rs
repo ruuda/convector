@@ -9,7 +9,9 @@
 //!    the material is not.
 //!
 //!  * Bit 30: if 1, a primitive with this material is eligible for direct
-//!    light sampling.
+//!    sampling.
+//!
+//!  * Bit 29: if 1, this material is a glass material.
 //!
 //!  * Bits 24-37 contain the texture index ranging from 0 to 7.
 //!
@@ -57,6 +59,13 @@ use vector3::MVector3;
 pub struct SMaterial(u32);
 
 impl SMaterial {
+    pub fn sky() -> SMaterial {
+        // Set only the emissive bit.
+        // TODO: Disable the direct sampling bit once I have glass windows.
+        let mat = 0b11000000_00000000_00000000_00000000_u32;
+        SMaterial(mat)
+    }
+
     /// A white diffuse material.
     pub fn white() -> SMaterial {
         SMaterial::diffuse(255, 255, 255)
@@ -65,6 +74,12 @@ impl SMaterial {
     /// A diffuse material with the given color.
     pub fn diffuse(r: u8, g: u8, b: u8) -> SMaterial {
         let mat = ((b as u32) << 16) | ((g as u32) << 8) | (r as u32);
+        SMaterial(mat)
+    }
+
+    /// A transparent and reflective material.
+    pub fn glass() -> SMaterial {
+        let mat = 0b0110_0000_00000000_00000000_00000000_u32;
         SMaterial(mat)
     }
 }
@@ -80,11 +95,7 @@ impl MMaterial {
     }
 
     pub fn sky() -> MMaterial {
-        use std::mem::transmute;
-
-        // Set the sign bit to indicate emissive.
-        let sky = 0x80_00_00_00_u32;
-        Mf32::broadcast(unsafe { transmute(sky) })
+        MMaterial::broadcast_material(SMaterial::sky())
     }
 }
 
