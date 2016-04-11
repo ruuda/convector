@@ -190,18 +190,9 @@ impl Renderer {
         (xs_aa, ys_aa)
     }
 
-    /// Renders a block of 16x4 pixels, where (x, y) is the coordinate of the
-    /// bottom-left pixel. Bitmap must be an array of 8 pixels at once, and it
-    /// must be aligned to 64 bytes (a cache line).
-    fn render_block_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32, rng: &mut Rng) {
-        // Render pixels, get f32 colors.
-        let (xs, ys) = self.get_pixel_coords_16x4(x, y, rng);
-        let rgbs = if self.enable_debug_view {
-            generate_slice8(|i| self.render_pixels_debug(xs[i], ys[i]))
-        } else {
-            generate_slice8(|i| self.render_pixels(xs[i], ys[i], rng))
-        };
-
+    /// Converts floating-point color values to 24-bit RGB and stores the values
+    /// in the bitmap.
+    fn store_pixels_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32, rgbs: &[MVector3; 8]) {
         // Convert f32 colors to i32 colors in the range 0-255.
         let range = Mf32::broadcast(255.0);
         let rgbas = generate_slice8(|i| {
@@ -238,21 +229,92 @@ impl Renderer {
         bitmap[idx_line3 + 1] = mk_line1(rgbas[5], rgbas[7]);
     }
 
+    /// Renders a block of 16x4 pixels, where (x, y) is the coordinate of the
+    /// bottom-left pixel. Bitmap must be an array of 8 pixels at once, and it
+    /// must be aligned to 64 bytes (a cache line).
+    fn render_block_16x4(&self, x: u32, y: u32, rng: &mut Rng) -> [MVector3; 8] {
+        let (xs, ys) = self.get_pixel_coords_16x4(x, y, rng);
+
+        if self.enable_debug_view {
+            generate_slice8(|i| self.render_pixels_debug(xs[i], ys[i]))
+        } else {
+            generate_slice8(|i| self.render_pixels(xs[i], ys[i], rng))
+        }
+    }
+
     /// Renders a square part of a frame.
     ///
     /// The (x, y) coordinate is the coordinate of the bottom-left pixel of the
     /// patch. The patch width must be a multiple of 16.
-    pub fn render_patch(&self, bitmap: &mut [Mi32], patch_width: u32, x: u32, y: u32, frame_number: u32) {
+    pub fn render_patch_u8(&self,
+                           bitmap: &mut [Mi32],
+                           patch_width: u32,
+                           x: u32,
+                           y: u32,
+                           frame_number: u32) {
         assert_eq!(patch_width & 15, 0); // Patch width must be a multiple of 16.
-        let h = patch_width / 4;
         let w = patch_width / 16;
+        let h = patch_width / 4;
         let mut rng = Rng::with_seed(x, y, frame_number);
 
         for i in 0..w {
             for j in 0..h {
-                self.render_block_16x4(bitmap, x + i * 16, y + j * 4, &mut rng);
+                let xb = x + i * 16;
+                let yb = y + j * 4;
+                let rgbs = self.render_block_16x4(xb, yb, &mut rng);
+                self.store_pixels_16x4(bitmap, xb, yb, &rgbs);
             }
         }
+    }
+
+    /// Renders a square part of a frame, adds the contribution to the buffer.
+    ///
+    /// The (x, y) coordinate is the coordinate of the bottom-left pixel of the
+    /// patch. The patch width must be a multiple of 16. The memory layout of
+    /// the HDR buffer is as a bitmap of 16x4 blocks.
+    pub fn accumulate_patch_f32(&self,
+                                hdr_buffer: &mut [[MVector3; 8]],
+                                patch_width: u32,
+                                x: u32,
+                                y: u32,
+                                frame_number: u32) {
+        assert_eq!(patch_width & 15, 0); // Patch width must be a multiple of 16.
+        let w = patch_width / 16;
+        let h = patch_width / 4;
+        let index = ((y / 4) * (self.width / 16) + (x / 16)) as usize;
+        let mut rng = Rng::with_seed(x, y, frame_number);
+
+        for i in 0..w {
+            for j in 0..h {
+                let xb = x + i * 16;
+                let yb = y + j * 4;
+                let rgbs = self.render_block_16x4(xb, yb, &mut rng);
+                let current = hdr_buffer[index];
+                hdr_buffer[index] = generate_slice8(|k| current[k] + rgbs[k]);
+            }
+        }
+    }
+
+    pub fn buffer_f32_to_u8(&self, hdr_buffer: &[[MVector3; 8]], num_samples: u32) -> Vec<u8> {
+        let render_buffer = RenderBuffer::new(self.width, self.height);
+        let w = self.width / 16;
+        let h = self.height / 4;
+        let factor = Mf32::broadcast(1.0 / (num_samples as f32));
+
+        {
+            // This is safe here because there is only one mutable borrow.
+            let bitmap = unsafe { render_buffer.get_mut_slice() };
+
+            for j in 0..h {
+                for i in 0..w {
+                    let rgbs = hdr_buffer[(j * w + i) as usize];
+                    let rgbs = generate_slice8(|k| rgbs[k] * factor);
+                    self.store_pixels_16x4(bitmap, j * 4, i * 16, &rgbs);
+                }
+            }
+        }
+
+        render_buffer.into_bitmap()
     }
 
     fn render_pixels(&self, x: Mf32, y: Mf32, rng: &mut Rng) -> MVector3 {

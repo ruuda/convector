@@ -127,7 +127,7 @@ fn main() {
             for i in 0..w {
                 for j in 0..h {
                     scope.execute(move || {
-                        let _stw = trace_log_ref.scoped("render_patch", j * w + i);
+                        let _stw = trace_log_ref.scoped("render_patch_u8", j * w + i);
                         let x = i * patch_width;
                         let y = j * patch_width;
 
@@ -135,7 +135,7 @@ fn main() {
                         // could cause races, but all of the patches are
                         // disjoint, hence this is safe.
                         let bitmap = unsafe { backbuffer_ref.get_mut_slice() };
-                        renderer_ref.render_patch(bitmap, patch_width, x, y, frame_number);
+                        renderer_ref.render_patch_u8(bitmap, patch_width, x, y, frame_number);
                     });
                 }
             }
