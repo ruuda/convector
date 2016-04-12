@@ -348,7 +348,7 @@ impl Renderer {
             // Stop when every ray hit a light source.
             if isect.material.all_sign_bits_negative() { break }
 
-            let (factor, new_ray) = continue_path(&ray, &isect, rng);
+            let (factor, new_ray) = continue_path(&self.scene, &ray, &isect, rng);
             ray = new_ray;
             color = color.mul_coords(factor);
         }

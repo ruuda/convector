@@ -51,6 +51,7 @@
 
 use random::Rng;
 use ray::{MIntersection, MRay};
+use scene::Scene;
 use simd::Mf32;
 use std::f32::consts;
 use vector3::MVector3;
@@ -124,38 +125,56 @@ pub fn sky_intensity(ray_direction: MVector3) -> MVector3 {
     MVector3::new(r, g, b).mul_add(half, MVector3::new(half, half, half))
 }
 
-/// Continues the path of a photon.
-///
-/// If a ray intersected a surface with a certain material, then this will
-/// compute the ray that continues the light path. A factor to multiply the
-/// final color by is returned as well.
-pub fn continue_path(ray: &MRay, isect: &MIntersection, rng: &mut Rng) -> (MVector3, MRay) {
-    // Specular reflection.
-    // let dot = isect.normal.dot(ray.direction);
-    // let direction = isect.normal.neg_mul_add(dot + dot, ray.direction);
-
+#[inline(always)]
+fn continue_path_brdf(ray: &MRay,
+                      isect: &MIntersection,
+                      rng: &mut Rng)
+                      -> (MVector3, MRay) {
     // Bounce in a random direction in the hemisphere around the surface
     // normal, with a cosine-weighted distribution, for a diffuse bounce.
     let dir_z = rng.sample_hemisphere_vector();
     let direction = dir_z.rotate_hemisphere(isect.normal);
 
+    // Build a new ray, offset by an epsilon from the intersection so we
+    // don't intersect the same surface again.
+    let origin = direction.mul_add(Mf32::epsilon(), isect.position);
+    let new_ray = MRay {
+        origin: origin,
+        direction: direction,
+        active: Mf32::zero(),
+    };
+
+    let norm_factor = Mf32::broadcast(1.0 / consts::PI);
+    let color = MVector3::new(norm_factor, norm_factor, norm_factor);
+
+    (color, new_ray)
+}
+
+/// Continues the path of a photon.
+///
+/// If a ray intersected a surface with a certain material, then this will
+/// compute the ray that continues the light path. A factor to multiply the
+/// final color by is returned as well.
+pub fn continue_path(scene: &Scene,
+                     ray: &MRay,
+                     isect: &MIntersection,
+                     rng: &mut Rng)
+                     -> (MVector3, MRay) {
     // Emissive materials have the sign bit set to 1, and a sign bit of 1
     // means that the ray is inactive. So hitting an emissive material
     // deactivates the ray: there is no need for an additional bounce.
     let active = ray.active | isect.material;
 
-    // Build a new ray, offset by an epsilon from the intersection so we
-    // don't intersect the same surface again.
-    let origin = direction.mul_add(Mf32::epsilon(), isect.position);
+    let (brdf_color, brdf_ray) = continue_path_brdf(ray, isect, rng);
+
     let new_ray = MRay {
-        origin: origin.pick(ray.origin, active),
-        direction: direction.pick(ray.direction, active),
+        origin: brdf_ray.origin.pick(ray.origin, active),
+        direction: brdf_ray.direction.pick(ray.direction, active),
         active: active,
     };
 
-    let norm_factor = Mf32::broadcast(1.0 / consts::PI);
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-    let color = MVector3::new(norm_factor, norm_factor, norm_factor);
+    let color = brdf_color.pick(white, active);
 
-    (color.pick(white, active), new_ray)
+    (color, new_ray)
 }
