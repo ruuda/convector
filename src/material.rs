@@ -58,6 +58,14 @@ use vector3::MVector3;
 #[derive(Copy, Clone, Debug)]
 pub struct SMaterial(u32);
 
+pub type MMaterial = Mf32;
+
+pub struct MDirectSample {
+    pub position: MVector3,
+    pub normal: MVector3,
+    pub area: Mf32,
+}
+
 impl SMaterial {
     pub fn sky() -> SMaterial {
         // Set only the emissive bit.
@@ -90,8 +98,6 @@ impl SMaterial {
         (mat & ds_mask) == ds_mask
     }
 }
-
-pub type MMaterial = Mf32;
 
 impl MMaterial {
     pub fn broadcast_material(material: SMaterial) -> MMaterial {

@@ -3,7 +3,7 @@ use random::Rng;
 use scene::Scene;
 use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
-use util;
+use util::{cache_line_aligned_vec, generate_slice8, transmute_vec};
 use vector3::{MVector3, SVector3};
 
 pub struct Renderer {
@@ -35,7 +35,7 @@ impl RenderBuffer {
         // There are 8 RGBA pixels in one mi32.
         let num_elems = (width as usize) * (height as usize) / 8;
 
-        let mut vec = util::cache_line_aligned_vec(num_elems);
+        let mut vec = cache_line_aligned_vec(num_elems);
         unsafe { vec.set_len(num_elems); }
 
         RenderBuffer {
@@ -65,13 +65,14 @@ impl RenderBuffer {
     pub fn into_bitmap(self) -> Vec<u8> {
         // This is actually safe because self is moved into the method.
         let buffer = unsafe { self.buffer.into_inner() };
-        unsafe { util::transmute_vec(buffer) }
+        unsafe { transmute_vec(buffer) }
     }
 
     /// Returns an RGBA bitmap suitable for display.
     #[cfg(windows)]
     pub fn into_bitmap(self) -> Vec<u8> {
         use std::mem;
+        use util::drop_cache_line_aligned_vec;
 
         // This is actually safe because self is moved into the method.
         let buffer = unsafe { self.buffer.into_inner() };
@@ -89,18 +90,13 @@ impl RenderBuffer {
             bytes
         }).cloned().collect();
 
-        util::drop_cache_line_aligned_vec(buffer);
+        drop_cache_line_aligned_vec(buffer);
         byte_buffer
     }
 }
 
 // The render buffer must be shared among threads, but UnsafeCell is not Sync.
 unsafe impl Sync for RenderBuffer { }
-
-/// Builds a fixed-size slice by calling f for every index.
-fn generate_slice8<T, F>(mut f: F) -> [T; 8] where F: FnMut(usize) -> T {
-    [f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7)]
-}
 
 impl Renderer {
     pub fn new(scene: Scene, width: u32, height: u32) -> Renderer {

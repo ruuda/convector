@@ -59,3 +59,8 @@ pub unsafe fn make_mutable<T>(x: &[T]) -> &mut [T] {
     // in.
     mem::transmute(x)
 }
+
+/// Builds a fixed-size slice by calling f for every index.
+pub fn generate_slice8<T, F>(mut f: F) -> [T; 8] where F: FnMut(usize) -> T {
+    [f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7)]
+}

@@ -1,9 +1,11 @@
 use bvh::Bvh;
-use material::MMaterial;
+use material::{MDirectSample, MMaterial};
 use quaternion::{MQuaternion, SQuaternion, rotate};
+use random::Rng;
 use ray::{MIntersection, MRay};
 use simd::Mf32;
 use std::f32::consts::PI;
+use util::generate_slice8;
 use vector3::{MVector3, SVector3};
 use wavefront::Mesh;
 
@@ -125,6 +127,53 @@ impl Scene {
         println!("  triangles eligible for direct sampling: {} / {} ({:0.1}%)",
             self.direct_sample.len(), self.bvh.triangles.len(),
             100.0 * self.direct_sample.len() as f32 / self.bvh.triangles.len() as f32);
+    }
+
+    pub fn get_direct_sample(&self, rng: &mut Rng) -> MDirectSample {
+        let random_bits = rng.sample_u32();
+
+        // Pick a random direct sampling triangle for every coordinate. This has
+        // to be done serially, unfortunately.  Doing the full range modulo the
+        // valid range introduces a slight bias towards lower indices, but the
+        // u32 range is so vast in comparison with the number of direct sampling
+        // triangles, that the effect is negligible.
+        // TODO: Are the bounds checks a bottleneck here?
+        let indices = generate_slice8(|i| random_bits[i] % self.direct_sample.len() as u32);
+        let tri_indices = generate_slice8(|i| self.direct_sample[indices[i] as usize]);
+        let tris = generate_slice8(|i| &self.bvh.triangles[tri_indices[i] as usize]);
+
+        // Gather the vertices of the triangles into SIMD vectors, so from now
+        // on we are not serial any more.
+        let v0 = MVector3::generate(|i| tris[i].v0);
+        let v1 = MVector3::generate(|i| tris[i].v1);
+        let v2 = MVector3::generate(|i| tris[i].v2);
+
+        let e1 = v0 - v2;
+        let e2 = v1 - v0;
+        let normal_denorm = e1.cross(e2);
+        let cross_norm_recip = normal_denorm.norm_squared().rsqrt();
+        let normal = normal_denorm * cross_norm_recip;
+        let area = Mf32::broadcast(0.5) * cross_norm_recip.recip_fast();
+
+        let u = rng.sample_unit();
+        let v = rng.sample_unit();
+        // If u + v > 1, the point lies outside of the triangle, and s will have
+        // negative sign. If the point is inside the triangle, s will have
+        // positive sign.
+        let s = (Mf32::one() - u) - v;
+        // If the point lies outside the triangle, it lies in the other half of
+        // the parallellogram, so transform the coordinates to get them into the
+        // correct triangle again.
+        let u = u.pick(Mf32::one() - u, s);
+        let v = v.pick(Mf32::one() - v, s);
+
+        let p = e2.mul_add(v, e1.neg_mul_add(u, v0));
+
+        MDirectSample {
+            position: p,
+            normal: normal,
+            area: area,
+        }
     }
 
     /// Returns the interections with the shortest distance along the ray.

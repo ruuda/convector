@@ -71,6 +71,12 @@ impl Rng {
         old_state
     }
 
+    /// Returns 8 random 32-bit integers.
+    pub fn sample_u32(&mut self) -> [u32; 8] {
+        use std::mem::transmute;
+        unsafe { transmute(self.next()) }
+    }
+
     /// Returns 8 random numbers distributed uniformly over the half-open
     /// interval [0, 1).
     pub fn sample_unit(&mut self) -> Mf32 {
