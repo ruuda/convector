@@ -149,8 +149,8 @@ fn continue_path_brdf(ray: &MRay,
     };
 
     // The probability density for the ray is dot(normal, direction) divided by
-    // the intgral of that over the hemisphere (which happens to be 2pi).
-    let pd = dir_z.z * Mf32::broadcast(0.5 / consts::PI);
+    // the intgral of that over the hemisphere (which happens to be pi).
+    let pd = dir_z.z * Mf32::broadcast(1.0 / consts::PI);
 
     // We integrate over the entire hemisphere, which has a surface area of 2pi.
     // Then there is the factor dot(normal, direction) that modulates the
