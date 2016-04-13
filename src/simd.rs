@@ -225,13 +225,7 @@ impl Mf32 {
         use std::mem::transmute;
         let a = Mf32::broadcast(4.0 / consts::PI);
         let b = Mf32::broadcast(-4.0 / (consts::PI * consts::PI));
-
-        // To compute the absolute value of a floating point number, simply set
-        // the sign bit to 0.
-        let abs_mask: f32 = unsafe { transmute(0x7f_ff_ff_ff_u32) };
-        let abs = self & Mf32::broadcast(abs_mask);
-
-        (b * self).mul_add(abs, a * self)
+        (b * self).mul_add(self.abs(), a * self)
     }
 
     /// Approximates 1 / self. Precision is poor but it is fast.
@@ -667,7 +661,7 @@ fn mf32_recip_precise() {
 
         // Compute the relative error.
         let error = Mf32::one() - (approx / expected);
-        let abs_error = error.max(-error);
+        let abs_error = error.abs();
 
         // The relative error should not be greater than 0.0001%.
         assert!((Mf32::broadcast(1e-6) - abs_error).all_sign_bits_positive(),
@@ -689,7 +683,7 @@ fn mf32_cos() {
 
         // Compute the absolute error.
         let error = approx - serial;
-        let abs_error = error.max(-error);
+        let abs_error = error.abs();
 
         // The absolute error should not be greater than 0.0082.
         assert!((Mf32::broadcast(0.0021) - abs_error).all_sign_bits_positive(),
@@ -711,7 +705,7 @@ fn mf32_sin() {
 
         // Compute the absolute error.
         let error = approx - serial;
-        let abs_error = error.max(-error);
+        let abs_error = error.abs();
 
         // The absolute error should not be greater than 0.0082.
         assert!((Mf32::broadcast(0.0082) - abs_error).all_sign_bits_positive(),
@@ -731,7 +725,7 @@ fn mf32_acos_fast() {
 
         // Compute the absolute error.
         let error = approx - serial;
-        let abs_error = error.max(-error);
+        let abs_error = error.abs();
 
         // The absolute error should not be greater than 0.075.
         assert!((Mf32::broadcast(0.075) - abs_error).all_sign_bits_positive(),
@@ -752,7 +746,7 @@ fn mf32_acos() {
 
         // Compute the absolute error.
         let error = approx - serial;
-        let abs_error = error.max(-error);
+        let abs_error = error.abs();
 
         // The absolute error should not be greater than 0.017.
         assert!((Mf32::broadcast(0.017) - abs_error).all_sign_bits_positive(),
