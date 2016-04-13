@@ -222,7 +222,6 @@ impl Mf32 {
     // might get away with the polynomials.
     #[inline(always)]
     pub fn sin_alt(self) -> Mf32 {
-        use std::mem::transmute;
         let a = Mf32::broadcast(4.0 / consts::PI);
         let b = Mf32::broadcast(-4.0 / (consts::PI * consts::PI));
         (b * self).mul_add(self.abs(), a * self)
