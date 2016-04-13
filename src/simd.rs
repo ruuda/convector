@@ -272,6 +272,17 @@ impl Mf32 {
         Mf32::zero() - self
     }
 
+    /// Takes the absolute value of self.
+    pub fn abs(self) -> Mf32 {
+        use std::mem::transmute;
+
+        // Create a mask with all bits set except the sign bit.
+        let mask: f32 = unsafe { transmute(0x7f_ff_ff_ff_u32) };
+
+        // Set the sign bit to zero (indicating positive).
+        Mf32::broadcast(mask) & self
+    }
+
     /// Computes self / denom with best precision.
     #[inline(always)]
     pub fn div(self, denom: Mf32) -> Mf32 {
@@ -747,6 +758,13 @@ fn mf32_acos() {
         assert!((Mf32::broadcast(0.017) - abs_error).all_sign_bits_positive(),
                 "Error should be small but it is {:?} for the input {:?}", abs_error, x);
     }
+}
+
+#[test]
+fn verify_abs() {
+    let x = Mf32(1.0, -1.0, 0.0, -0.0, 2.0, 3.0, 5.0, -7.0);
+    let y = Mf32(1.0, 1.0, 0.0, 0.0, 2.0, 3.0, 5.0, 7.0);
+    assert_eq!(x.abs(), y);
 }
 
 macro_rules! unroll_10 {
