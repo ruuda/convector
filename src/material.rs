@@ -125,11 +125,15 @@ pub fn sky_intensity(ray_direction: MVector3) -> MVector3 {
     MVector3::new(r, g, b).mul_add(half, MVector3::new(half, half, half))
 }
 
+/// Continues the path of a photon by sampling the BRDF.
+///
+/// Returns the new ray, the probability density for that ray, and the color
+/// modulation for the bounce.
 #[inline(always)]
 fn continue_path_brdf(ray: &MRay,
                       isect: &MIntersection,
                       rng: &mut Rng)
-                      -> (MVector3, MRay) {
+                      -> (MRay, Mf32, MVector3) {
     // Bounce in a random direction in the hemisphere around the surface
     // normal, with a cosine-weighted distribution, for a diffuse bounce.
     let dir_z = rng.sample_hemisphere_vector();
@@ -144,10 +148,17 @@ fn continue_path_brdf(ray: &MRay,
         active: Mf32::zero(),
     };
 
-    let norm_factor = Mf32::broadcast(1.0 / consts::PI);
-    let color = MVector3::new(norm_factor, norm_factor, norm_factor);
+    // The probability density for the ray is dot(normal, direction) divided by
+    // the intgral of that over the hemisphere (which happens to be 2pi).
+    let pd = dir_z.z * Mf32::broadcast(0.5 / consts::PI);
 
-    (color, new_ray)
+    // We integrate over the entire hemisphere, which has a surface area of 2pi.
+    // Then there is the factor dot(normal, direction) that modulates the
+    // incoming contribution.
+    let modulation = Mf32::broadcast(2.0 * consts::PI) * dir_z.z;
+    let color_mod = MVector3::new(modulation, modulation, modulation);
+
+    (new_ray, pd, color_mod)
 }
 
 fn continue_path_direct_sample(scene: &Scene,
@@ -195,30 +206,30 @@ pub fn continue_path(scene: &Scene,
                      ray: &MRay,
                      isect: &MIntersection,
                      rng: &mut Rng)
-                     -> (MVector3, MRay) {
+                     -> (MRay, MVector3) {
     // Emissive materials have the sign bit set to 1, and a sign bit of 1
     // means that the ray is inactive. So hitting an emissive material
     // deactivates the ray: there is no need for an additional bounce.
     let active = ray.active | isect.material;
 
-    // let (brdf_color, brdf_ray) = continue_path_brdf(ray, isect, rng);
-
-    // let new_ray = MRay {
-    //     origin: brdf_ray.origin.pick(ray.origin, active),
-    //     direction: brdf_ray.direction.pick(ray.direction, active),
-    //     active: active,
-    // };
-
-    let (direct_color, direct_ray) = continue_path_direct_sample(scene, isect, rng);
+    let (brdf_ray, brdf_pd, brdf_mod) = continue_path_brdf(ray, isect, rng);
+    let color_mod = brdf_mod * brdf_pd.recip_fast();
     let new_ray = MRay {
-        origin: direct_ray.origin.pick(ray.origin, active),
-        direction: direct_ray.direction.pick(ray.direction, active),
+        origin: brdf_ray.origin.pick(ray.origin, active),
+        direction: brdf_ray.direction.pick(ray.direction, active),
         active: active,
     };
 
-    let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-    // let color = brdf_color.pick(white, active);
-    let color = direct_color.pick(white, active);
+    // let (direct_pd, direct_ray) = continue_path_direct_sample(scene, isect, rng);
+    // let color_mod = direct_mod * direct_pd.recip();
+    // let new_ray = MRay {
+    //     origin: direct_ray.origin.pick(ray.origin, active),
+    //     direction: direct_ray.direction.pick(ray.direction, active),
+    //     active: active,
+    // };
 
-    (color, new_ray)
+    let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
+    let color_mod = color_mod.pick(white, active);
+
+    (new_ray, color_mod)
 }

@@ -348,9 +348,9 @@ impl Renderer {
             // Stop when every ray hit a light source.
             if isect.material.all_sign_bits_negative() { break }
 
-            let (factor, new_ray) = continue_path(&self.scene, &ray, &isect, rng);
+            let (new_ray, color_mod) = continue_path(&self.scene, &ray, &isect, rng);
             ray = new_ray;
-            color = color.mul_coords(factor);
+            color = color.mul_coords(color_mod);
         }
 
         // Compute light contribution.
