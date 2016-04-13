@@ -5,7 +5,7 @@
 //! grade random numbers. So it is possible to do a lot better than conventional
 //! RNGs.
 
-use simd::{Mf32, Mi32, Mu64};
+use simd::{Mask, Mf32, Mi32, Mu64};
 use std::f32::consts;
 use std::i32;
 use vector3::MVector3;
@@ -98,6 +98,16 @@ impl Rng {
         let range = Mf32::broadcast(1.0 / i32::MIN as f32);
 
         mi32.into_mf32() * range
+    }
+
+    /// Return 8 floats with a random sign bit.
+    pub fn sample_sign(&mut self) -> Mask {
+        use std::mem::transmute;
+
+        // Just return the raw bits. They are random already, so the sign bit is
+        // random, and the rest does not have to be a valid float.
+        let m: Mask = unsafe { transmute(self.next()) };
+        m
     }
 
     /// Returns 8 random numbers distributed uniformly over the half-open
