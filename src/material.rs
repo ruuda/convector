@@ -150,6 +150,42 @@ fn continue_path_brdf(ray: &MRay,
     (color, new_ray)
 }
 
+fn continue_path_direct_sample(scene: &Scene,
+                               isect: &MIntersection,
+                               rng: &mut Rng)
+                               -> (MVector3, MRay) {
+    let (ds, num) = scene.get_direct_sample(rng);
+
+    // TODO: Get multiple samples and do resampled importance sampling.
+
+    let to_surf = ds.position - isect.position;
+    let distance_sqr = to_surf.norm_squared();
+    let direction = to_surf * distance_sqr.rsqrt();
+
+    let dot_emissive = -ds.normal.dot(direction); // TODO: or abs? Do I ever sample back sides?
+    let dot_surface = isect.normal.dot(direction);
+
+    // Build a new ray, offset by an epsilon from the intersection so we
+    // don't intersect the same surface again.
+    let origin = direction.mul_add(Mf32::epsilon(), isect.position);
+    let new_ray = MRay {
+        origin: origin,
+        direction: direction,
+        active: Mf32::zero(),
+    };
+
+    // TODO: What if two direct sampling surfaces overlap? Then the result is
+    // not correct any more, there needs to be a true visibility ray. Except
+    // when using MIS?
+
+    let cosines = dot_emissive * dot_surface;
+    let direct_factor = Mf32::broadcast(num as f32) * ds.area;
+    let norm_factor = (direct_factor * cosines) * distance_sqr.recip_fast();
+    let color = MVector3::new(norm_factor, norm_factor, norm_factor);
+
+    (color, new_ray)
+}
+
 /// Continues the path of a photon.
 ///
 /// If a ray intersected a surface with a certain material, then this will
@@ -165,16 +201,24 @@ pub fn continue_path(scene: &Scene,
     // deactivates the ray: there is no need for an additional bounce.
     let active = ray.active | isect.material;
 
-    let (brdf_color, brdf_ray) = continue_path_brdf(ray, isect, rng);
+    // let (brdf_color, brdf_ray) = continue_path_brdf(ray, isect, rng);
 
+    // let new_ray = MRay {
+    //     origin: brdf_ray.origin.pick(ray.origin, active),
+    //     direction: brdf_ray.direction.pick(ray.direction, active),
+    //     active: active,
+    // };
+
+    let (direct_color, direct_ray) = continue_path_direct_sample(scene, isect, rng);
     let new_ray = MRay {
-        origin: brdf_ray.origin.pick(ray.origin, active),
-        direction: brdf_ray.direction.pick(ray.direction, active),
+        origin: direct_ray.origin.pick(ray.origin, active),
+        direction: direct_ray.direction.pick(ray.direction, active),
         active: active,
     };
 
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-    let color = brdf_color.pick(white, active);
+    // let color = brdf_color.pick(white, active);
+    let color = direct_color.pick(white, active);
 
     (color, new_ray)
 }

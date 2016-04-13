@@ -129,7 +129,9 @@ impl Scene {
             100.0 * self.direct_sample.len() as f32 / self.bvh.triangles.len() as f32);
     }
 
-    pub fn get_direct_sample(&self, rng: &mut Rng) -> MDirectSample {
+    /// Returns 8 random points on 8 random triangles eligible for direct
+    /// sampling. Also returns the number of triangles eligible.
+    pub fn get_direct_sample(&self, rng: &mut Rng) -> (MDirectSample, u32) {
         let random_bits = rng.sample_u32();
 
         // Pick a random direct sampling triangle for every coordinate. This has
@@ -169,11 +171,13 @@ impl Scene {
 
         let p = e2.mul_add(v, e1.neg_mul_add(u, v0));
 
-        MDirectSample {
+        let ds = MDirectSample {
             position: p,
             normal: normal,
             area: area,
-        }
+        };
+
+        (ds, self.direct_sample.len() as u32)
     }
 
     /// Returns the interections with the shortest distance along the ray.
