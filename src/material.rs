@@ -152,10 +152,12 @@ fn continue_path_brdf(ray: &MRay,
     // the intgral of that over the hemisphere (which happens to be pi).
     let pd = dir_z.z * Mf32::broadcast(1.0 / consts::PI);
 
-    // We integrate over the entire hemisphere, which has a surface area of 2pi.
-    // Then there is the factor dot(normal, direction) that modulates the
-    // incoming contribution.
-    let modulation = Mf32::broadcast(2.0 * consts::PI) * dir_z.z;
+    // There is the factor dot(normal, direction) that modulates the
+    // incoming contribution. The incoming energy is then radiated evenly in all
+    // directions (the diffuse assumption), so the integral over the hemisphere
+    // of that factor (excluding the dot, that one was for _incoming_ energy)
+    // should be 1. The area of the hemisphere is 2pi, so divide by that.
+    let modulation = Mf32::broadcast(0.5 / consts::PI) * dir_z.z;
     let color_mod = MVector3::new(modulation, modulation, modulation);
 
     (new_ray, pd, color_mod)
