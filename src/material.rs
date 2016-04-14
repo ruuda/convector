@@ -118,11 +118,12 @@ pub fn sky_intensity(ray_direction: MVector3) -> MVector3 {
     // TODO: Better sky model.
     let up = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
     let half = Mf32::broadcast(0.5);
+    let two = Mf32::broadcast(2.0);
     let d = ray_direction.dot(up).mul_add(half, half);
     let r = d;
     let g = d * d;
     let b = d * (d * d);
-    MVector3::new(r, g, b).mul_add(half, MVector3::new(half, half, half))
+    MVector3::new(r, g, b).mul_add(two, MVector3::new(half, half, half))
 }
 
 /// Continues the path of a photon by sampling the BRDF.
