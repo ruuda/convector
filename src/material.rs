@@ -163,10 +163,14 @@ fn continue_path_brdf(ray: &MRay,
     (new_ray, pd, color_mod)
 }
 
+/// Continues the path of a photon by sampling a point on a surface.
+///
+/// Returns the new ray, the probability density for that ray, and the color
+/// modulation for the bounce.
 fn continue_path_direct_sample(scene: &Scene,
                                isect: &MIntersection,
                                rng: &mut Rng)
-                               -> (MVector3, MRay) {
+                               -> (MRay, Mf32, MVector3) {
     let (ds, num) = scene.get_direct_sample(rng);
 
     // TODO: Get multiple samples and do resampled importance sampling.
@@ -187,16 +191,27 @@ fn continue_path_direct_sample(scene: &Scene,
         active: Mf32::zero(),
     };
 
-    // TODO: What if two direct sampling surfaces overlap? Then the result is
-    // not correct any more, there needs to be a true visibility ray. Except
-    // when using MIS?
+    // The probability density for the point on the triangle is simply 1/area,
+    // but we want to know the probability of the ray direction, not the
+    // probability of the point. The conversion factor is cos(phi)/r^2, where
+    // phi is the angle between the ray and the surface normal. A hand-waving
+    // justification: imagine a small triangle on a unit hemisphere, small
+    // enough that its area equals the solid angle it subtends. Then the pdf for
+    // the point an the ray will be equal (1/area). Now move the triangle away.
+    // The solid angle decreases proportional to r^2, so we must compensate the
+    // pdf to keep it normalized. Now rotate the small triangle. When cos(phi)
+    // is 0, the projection is a line of zero surface area, but it needs to
+    // integrate to 0, so the pdf goes to infinity as cos(phi) goes to 0. So far
+    // this is the probability per triangle, but we picked one out of num
+    // triangles uniformly, so compensate for that too.
+    let pd = distance_sqr * (ds.area * dot_emissive * Mf32::broadcast(num as f32)).recip_fast();
 
-    let cosines = dot_emissive * dot_surface;
-    let direct_factor = Mf32::broadcast(num as f32) * ds.area;
-    let norm_factor = (direct_factor * cosines) * distance_sqr.recip_fast();
-    let color = MVector3::new(norm_factor, norm_factor, norm_factor);
+    // For modulation, there is only the cosine factor of the diffuse BRDF and
+    // again its factor 1/2pi.
+    let modulation = /* Mf32::broadcast(0.5 / consts::PI) */ dot_surface;
+    let color_mod = MVector3::new(modulation, modulation, modulation);
 
-    (color, new_ray)
+    (new_ray, pd, color_mod)
 }
 
 /// Continues the path of a photon.
@@ -214,21 +229,21 @@ pub fn continue_path(scene: &Scene,
     // deactivates the ray: there is no need for an additional bounce.
     let active = ray.active | isect.material;
 
-    let (brdf_ray, brdf_pd, brdf_mod) = continue_path_brdf(ray, isect, rng);
-    let color_mod = brdf_mod * brdf_pd.recip_fast();
-    let new_ray = MRay {
-        origin: brdf_ray.origin.pick(ray.origin, active),
-        direction: brdf_ray.direction.pick(ray.direction, active),
-        active: active,
-    };
-
-    // let (direct_pd, direct_ray) = continue_path_direct_sample(scene, isect, rng);
-    // let color_mod = direct_mod * direct_pd.recip();
+    // let (brdf_ray, brdf_pd, brdf_mod) = continue_path_brdf(ray, isect, rng);
+    // let color_mod = brdf_mod * brdf_pd.recip_fast();
     // let new_ray = MRay {
-    //     origin: direct_ray.origin.pick(ray.origin, active),
-    //     direction: direct_ray.direction.pick(ray.direction, active),
+    //     origin: brdf_ray.origin.pick(ray.origin, active),
+    //     direction: brdf_ray.direction.pick(ray.direction, active),
     //     active: active,
     // };
+
+    let (direct_ray, direct_pd, direct_mod) = continue_path_direct_sample(scene, isect, rng);
+    let color_mod = direct_mod * direct_pd.recip_fast();
+    let new_ray = MRay {
+        origin: direct_ray.origin.pick(ray.origin, active),
+        direction: direct_ray.direction.pick(ray.direction, active),
+        active: active,
+    };
 
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
     let color_mod = color_mod.pick(white, active);
