@@ -60,7 +60,7 @@ void main() {
     vec4 c7 = texture(frame7, v_tex_coords);
     sort(c0, c1, c2, c3, c4, c5, c6, c7);
     // color = (c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7) * 0.125f;
-    if (v_tex_coords.x > 0.5) {
+    if (v_tex_coords.x > 0.9) {
         color = (c3 + c4) * 0.5;
     } else {
         color = (c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7) * 0.125f;

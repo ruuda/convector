@@ -130,8 +130,8 @@ impl Scene {
     }
 
     /// Returns 8 random points on 8 random triangles eligible for direct
-    /// sampling. Also returns the number of triangles eligible.
-    pub fn get_direct_sample(&self, rng: &mut Rng) -> (MDirectSample, u32) {
+    /// sampling.
+    pub fn get_direct_sample(&self, rng: &mut Rng) -> MDirectSample {
         let random_bits = rng.sample_u32();
 
         // Pick a random direct sampling triangle for every coordinate. This has
@@ -182,7 +182,12 @@ impl Scene {
         debug_assert!(area.all_finite());
         debug_assert!(area.all_sign_bits_positive(), "area must be positive");
 
-        (ds, self.direct_sample.len() as u32)
+        ds
+    }
+
+    /// Returns the number of triangles eligible for direct sampling.
+    pub fn direct_sample_num(&self) -> usize {
+        self.direct_sample.len()
     }
 
     /// Returns the interections with the shortest distance along the ray.

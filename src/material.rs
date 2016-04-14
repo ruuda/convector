@@ -171,20 +171,46 @@ fn continue_path_direct_sample(scene: &Scene,
                                isect: &MIntersection,
                                rng: &mut Rng)
                                -> (MRay, Mf32, MVector3) {
-    let (ds, num) = scene.get_direct_sample(rng);
+    // Get two candidate points on a light source to sample. One of those will
+    // be picked by resampled importance sampling.
+    let ds_0 = scene.get_direct_sample(rng);
+    let ds_1 = scene.get_direct_sample(rng);
+    let num = scene.direct_sample_num();
     debug_assert!(num > 0);
 
-    // TODO: Get multiple samples and do resampled importance sampling.
-
-    let to_surf = ds.position - isect.position;
-    let distance_sqr = to_surf.norm_squared();
-    let direction = to_surf * distance_sqr.rsqrt();
+    let to_surf_0 = ds_0.position - isect.position;
+    let to_surf_1 = ds_1.position - isect.position;
+    let distance_sqr_0 = to_surf_0.norm_squared();
+    let distance_sqr_1 = to_surf_1.norm_squared();
+    let direction_0 = to_surf_0 * distance_sqr_0.rsqrt();
+    let direction_1 = to_surf_1 * distance_sqr_1.rsqrt();
 
     // Take the absolute value because the probability density should not be
     // negative. This is equivalent to making direct sampling surfaces
     // two-sided.
-    let dot_emissive = ds.normal.dot(direction).abs();
-    let dot_surface = isect.normal.dot(direction).abs();
+    let dot_surface_0 = isect.normal.dot(direction_0).abs();
+    let dot_surface_1 = isect.normal.dot(direction_1).abs();
+
+    // Now pick either sample 0 or sample 1 with a probability weighed by the
+    // angle with the surface. After all, this angle weighs the contribution,
+    // so to lower variance, favor a sample that will contribute more.
+    let (w0, w1) = (dot_surface_0, dot_surface_1);
+    let w = (w0 + w1).recip_fast();
+    let (p0, p1) = (w0 * w, w1 * w);
+
+    // If the sign bit of rr is positive (which happens with probability p0), we
+    // take sample 0, otherwise take sample 1.
+    let rr = p0 - rng.sample_unit();
+
+    let direction = direction_0.pick(direction_1, rr);
+    let distance_sqr = distance_sqr_0.pick(distance_sqr_1, rr);
+    let area = ds_0.area.pick(ds_1.area, rr);
+    let dot_emissive = ds_0.normal.pick(ds_1.normal, rr).dot(direction).abs();
+    let dot_surface = dot_surface_0.pick(dot_surface_1, rr);
+
+    // We need to modulate the results by p0 or p1 based on which one we picked
+    // to keep the estimator unbiased.
+    let modulation = Mf32::broadcast(0.5) * p0.pick(p1, rr).recip_fast();
 
     // Build a new ray, offset by an epsilon from the intersection so we
     // don't intersect the same surface again.
@@ -208,11 +234,14 @@ fn continue_path_direct_sample(scene: &Scene,
     // integrate to 0, so the pdf goes to infinity as cos(phi) goes to 0. So far
     // this is the probability per triangle, but we picked one out of num
     // triangles uniformly, so compensate for that too.
-    let pd = distance_sqr * (ds.area * dot_emissive * Mf32::broadcast(num as f32)).recip_fast();
+    let numf = Mf32::broadcast(num as f32);
+    let pd = distance_sqr * (area * dot_emissive * numf).recip_fast();
+    // TODO: Do I need to mix in p0 or p1 here? Because now my original
+    // probability is not simply 1/area any more.
 
     // For modulation, there is only the cosine factor of the diffuse BRDF and
     // again its factor 1/2pi.
-    let modulation = /* Mf32::broadcast(0.5 / consts::PI) */ dot_surface;
+    let modulation = modulation * /* Mf32::broadcast(0.5 / consts::PI) */ dot_surface;
     let color_mod = MVector3::new(modulation, modulation, modulation);
 
     debug_assert!(pd.all_finite());
