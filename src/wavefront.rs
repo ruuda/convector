@@ -22,11 +22,11 @@ fn assert_nondegenerate(vertices: &[SVector3], line: u32, i0: u32, i1: u32, i2: 
     // vertices are collinear.
     let e1 = v0 - v2;
     let e2 = v1 - v0;
-    if e1.cross(e2).norm_squared() != 0.0 {
+    if e1.cross(e2).norm_squared() == 0.0 {
         println!("encountered degenerate triangle while loading mesh");
         println!("  line:     {}", line);
         println!("  vertices: {}, {}, {}", v0, v1, v2);
-        println!("  indices:  {}, {}, {}", i0, i1, i2);
+        println!("  indices:  {}, {}, {}", i0 + 1, i1 + 1, i2 + 1);
         panic!("go clean your geometry");
     }
 }
@@ -37,7 +37,7 @@ impl Mesh {
         let input = from_utf8(&fbuffer[..]).expect("obj must be valid utf-8");
         let mut vertices = Vec::new();
         let mut triangles = Vec::new();
-        for (line, line_nr) in input.lines().zip(0u32..) {
+        for (line, line_nr) in input.lines().zip(1u32..) {
             if line.is_empty() { continue }
             let mut pieces = line.split_whitespace();
             match pieces.next() {
