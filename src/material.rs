@@ -241,7 +241,7 @@ fn continue_path_direct_sample(scene: &Scene,
 
     // For modulation, there is only the cosine factor of the diffuse BRDF and
     // again its factor 1/2pi.
-    let modulation = modulation * /* Mf32::broadcast(0.5 / consts::PI) */ dot_surface;
+    let modulation = modulation * Mf32::broadcast(0.5 / consts::PI) * dot_surface;
     let color_mod = MVector3::new(modulation, modulation, modulation);
 
     debug_assert!(pd.all_finite());
