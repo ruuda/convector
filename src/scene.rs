@@ -177,6 +177,8 @@ impl Scene {
             area: area,
         };
 
+        debug_assert!(area.all_sign_bits_positive(), "area must be positive");
+
         (ds, self.direct_sample.len() as u32)
     }
 

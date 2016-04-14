@@ -179,8 +179,11 @@ fn continue_path_direct_sample(scene: &Scene,
     let distance_sqr = to_surf.norm_squared();
     let direction = to_surf * distance_sqr.rsqrt();
 
-    let dot_emissive = -ds.normal.dot(direction); // TODO: or abs? Do I ever sample back sides?
-    let dot_surface = isect.normal.dot(direction);
+    // Take the absolute value because the probability density should not be
+    // negative. This is equivalent to making direct sampling surfaces
+    // two-sided.
+    let dot_emissive = ds.normal.dot(direction).abs();
+    let dot_surface = isect.normal.dot(direction).abs();
 
     // Build a new ray, offset by an epsilon from the intersection so we
     // don't intersect the same surface again.
@@ -210,6 +213,9 @@ fn continue_path_direct_sample(scene: &Scene,
     // again its factor 1/2pi.
     let modulation = /* Mf32::broadcast(0.5 / consts::PI) */ dot_surface;
     let color_mod = MVector3::new(modulation, modulation, modulation);
+
+    debug_assert!(pd.all_sign_bits_positive(), "probability density cannot be negative");
+    debug_assert!(modulation.all_sign_bits_positive(), "color modulation cannot be negative");
 
     (new_ray, pd, color_mod)
 }
