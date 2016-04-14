@@ -73,8 +73,10 @@ impl Rng {
 
     /// Returns 8 random 32-bit integers.
     pub fn sample_u32(&mut self) -> [u32; 8] {
-        use std::mem::transmute;
-        unsafe { transmute(self.next()) }
+        use std::mem::transmute_copy;
+        // Note: using a `transmute` instead of `transmute_copy` can cause a
+        // segmentation fault. See https://github.com/rust-lang/rust/issues/32947.
+        unsafe { transmute_copy(&self.next()) }
     }
 
     /// Returns 8 random numbers distributed uniformly over the half-open
