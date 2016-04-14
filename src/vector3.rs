@@ -2,6 +2,7 @@
 
 use simd::{Mask, Mf32};
 use std::f32;
+use std::fmt;
 use std::ops::{Add, Sub, Neg, Mul};
 
 #[cfg(test)]
@@ -414,6 +415,12 @@ impl Mul<Mf32> for MVector3 {
             y: self.y * a,
             z: self.z * a,
         }
+    }
+}
+
+impl fmt::Display for SVector3 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {}, {})", self.x, self.y, self.z)
     }
 }
 
