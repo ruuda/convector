@@ -248,5 +248,9 @@ pub fn continue_path(scene: &Scene,
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
     let color_mod = color_mod.pick(white, active);
 
+    debug_assert!(color_mod.x.all_sign_bits_positive(), "red color modulation can never be negative");
+    debug_assert!(color_mod.y.all_sign_bits_positive(), "green color modulation can never be negative");
+    debug_assert!(color_mod.z.all_sign_bits_positive(), "blue color modulation can never be negative");
+
     (new_ray, color_mod)
 }
