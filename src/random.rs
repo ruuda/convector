@@ -225,6 +225,25 @@ fn sample_hemisphere_vector_has_unit_norm() {
     }
 }
 
+#[test]
+fn sample_u32_does_not_cause_sigsegv() {
+    use util::generate_slice8;
+
+    let mut rng = Rng::with_seed(2, 5, 7);
+    let mut x = generate_slice8(|_| 0);
+
+    for _ in 0..4096 {
+        let y = rng.sample_u32();
+        x = generate_slice8(|i| x[i] ^ y[i]);
+    }
+
+    for i in 0..8 {
+        // It could be 0 in theory, but that probability is 1/2^32. Mainly put
+        // something here to ensure that nothing is optimized away.
+        assert!(x[i] != 0);
+    }
+}
+
 macro_rules! unroll_10 {
     { $x: block } => {
         $x $x $x $x $x $x $x $x $x $x
