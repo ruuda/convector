@@ -172,6 +172,7 @@ fn continue_path_direct_sample(scene: &Scene,
                                rng: &mut Rng)
                                -> (MRay, Mf32, MVector3) {
     let (ds, num) = scene.get_direct_sample(rng);
+    debug_assert!(num > 0);
 
     // TODO: Get multiple samples and do resampled importance sampling.
 
@@ -214,7 +215,9 @@ fn continue_path_direct_sample(scene: &Scene,
     let modulation = /* Mf32::broadcast(0.5 / consts::PI) */ dot_surface;
     let color_mod = MVector3::new(modulation, modulation, modulation);
 
+    debug_assert!(pd.all_finite());
     debug_assert!(pd.all_sign_bits_positive(), "probability density cannot be negative");
+    debug_assert!(modulation.all_finite());
     debug_assert!(modulation.all_sign_bits_positive(), "color modulation cannot be negative");
 
     (new_ray, pd, color_mod)

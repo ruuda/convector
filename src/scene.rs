@@ -177,6 +177,9 @@ impl Scene {
             area: area,
         };
 
+        // Prevent NaNs from creeping in, and ensure that the sample is valid.
+        debug_assert!(normal.all_finite());
+        debug_assert!(area.all_finite());
         debug_assert!(area.all_sign_bits_positive(), "area must be positive");
 
         (ds, self.direct_sample.len() as u32)
