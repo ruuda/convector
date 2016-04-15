@@ -5,6 +5,7 @@ use random::Rng;
 use ray::{MIntersection, MRay};
 use simd::Mf32;
 use std::f32::consts::PI;
+use triangle::Triangle;
 use util::generate_slice8;
 use vector3::{MVector3, SVector3};
 use wavefront::Mesh;
@@ -188,6 +189,14 @@ impl Scene {
     /// Returns the number of triangles eligible for direct sampling.
     pub fn direct_sample_num(&self) -> usize {
         self.direct_sample.len()
+    }
+
+    pub fn foreach_direct_sample<F: FnMut(&Triangle)>(&self, mut f: F) {
+        for i in &self.direct_sample {
+            // TODO: Remove the bounds check?
+            let triangle = &self.bvh.triangles[*i as usize];
+            f(triangle);
+        }
     }
 
     /// Returns the interections with the shortest distance along the ray.

@@ -253,6 +253,27 @@ fn continue_path_direct_sample(scene: &Scene,
     (new_ray, pd, color_mod)
 }
 
+pub fn pd_brdf(isect: &MIntersection, ray: &MRay) -> Mf32 {
+    let dot_surface = isect.normal.dot(ray.direction).abs();
+    dot_surface * Mf32::broadcast(1.0 / consts::PI)
+}
+
+/// Returns the probability density for the given ray, for the direct sampling
+/// distribution.
+pub fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
+    let mut pd_total = Mf32::zero();
+    scene.foreach_direct_sample(|triangle| {
+        let isect = triangle.intersect_direct(ray);
+        let distance_sqr = isect.distance * isect.distance;
+        let dot_emissive = isect.normal.dot(ray.direction).abs();
+        let pd = distance_sqr * (isect.area * dot_emissive).recip_fast();
+
+        // Add the probability density if the triangle was intersected.
+        pd_total = (pd_total + pd).pick(pd_total, isect.mask);
+    });
+    pd_total * Mf32::broadcast(1.0 / scene.direct_sample_num() as f32)
+}
+
 /// Continues the path of a photon.
 ///
 /// If a ray intersected a surface with a certain material, then this will
@@ -268,21 +289,21 @@ pub fn continue_path(scene: &Scene,
     // deactivates the ray: there is no need for an additional bounce.
     let active = ray.active | isect.material;
 
-    // let (brdf_ray, brdf_pd, brdf_mod) = continue_path_brdf(ray, isect, rng);
-    // let color_mod = brdf_mod * brdf_pd.recip_fast();
-    // let new_ray = MRay {
-    //     origin: brdf_ray.origin.pick(ray.origin, active),
-    //     direction: brdf_ray.direction.pick(ray.direction, active),
-    //     active: active,
-    // };
-
-    let (direct_ray, direct_pd, direct_mod) = continue_path_direct_sample(scene, isect, rng);
-    let color_mod = direct_mod * direct_pd.recip_fast();
+    let (brdf_ray, brdf_pd, brdf_mod) = continue_path_brdf(ray, isect, rng);
+    let color_mod = brdf_mod * brdf_pd.recip_fast();
     let new_ray = MRay {
-        origin: direct_ray.origin.pick(ray.origin, active),
-        direction: direct_ray.direction.pick(ray.direction, active),
+        origin: brdf_ray.origin.pick(ray.origin, active),
+        direction: brdf_ray.direction.pick(ray.direction, active),
         active: active,
     };
+
+    // let (direct_ray, direct_pd, direct_mod) = continue_path_direct_sample(scene, isect, rng);
+    // let color_mod = direct_mod * direct_pd.recip_fast();
+    // let new_ray = MRay {
+    //     origin: direct_ray.origin.pick(ray.origin, active),
+    //     direction: direct_ray.direction.pick(ray.direction, active),
+    //     active: active,
+    // };
 
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
     let color_mod = color_mod.pick(white, active);
