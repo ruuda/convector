@@ -289,21 +289,33 @@ pub fn continue_path(scene: &Scene,
     // deactivates the ray: there is no need for an additional bounce.
     let active = ray.active | isect.material;
 
+    // Generate one ray by sampling the BRDF, and one ray for direct light
+    // sampling.
     let (brdf_ray, brdf_pd, brdf_mod) = continue_path_brdf(ray, isect, rng);
-    let color_mod = brdf_mod * brdf_pd.recip_fast();
+    let (direct_ray, direct_pd, direct_mod) = continue_path_direct_sample(scene, isect, rng);
+
+    // Randomly pick one of the two samples to use, the compute the weight for
+    // multiple importance sampling.
+    let rr = rng.sample_sign();
+    let pd = brdf_pd.pick(direct_pd, rr);
+    let origin = brdf_ray.origin.pick(direct_ray.origin, rr);
+    let direction = brdf_ray.direction.pick(direct_ray.direction, rr);
+    let color_mod = brdf_mod.pick(direct_mod, rr);
+
     let new_ray = MRay {
-        origin: brdf_ray.origin.pick(ray.origin, active),
-        direction: brdf_ray.direction.pick(ray.direction, active),
+        origin: origin.pick(ray.origin, active),
+        direction: direction.pick(ray.direction, active),
         active: active,
     };
 
-    // let (direct_ray, direct_pd, direct_mod) = continue_path_direct_sample(scene, isect, rng);
-    // let color_mod = direct_mod * direct_pd.recip_fast();
-    // let new_ray = MRay {
-    //     origin: direct_ray.origin.pick(ray.origin, active),
-    //     direction: direct_ray.direction.pick(ray.direction, active),
-    //     active: active,
-    // };
+    // Adjust the modulation for multiple importance sampling in the one-sample
+    // model (Section 9.2.4 of Veach et al.)
+    let pd_brdf = pd_brdf(isect, ray);
+    let pd_direct_sample = pd_direct_sample(scene, ray);
+    // TODO: I need to compute these probability densities anyway, the perhaps
+    // not return them from the sampling function?
+    let weight = Mf32::broadcast(2.0) * pd_brdf.pick(pd_direct_sample, rr) / (pd_brdf + pd_direct_sample);
+    let color_mod = color_mod * pd.recip_fast() * weight;
 
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
     let color_mod = color_mod.pick(white, active);
