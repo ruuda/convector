@@ -54,7 +54,7 @@ use ray::{MIntersection, MRay};
 use scene::Scene;
 use simd::Mf32;
 use std::f32::consts;
-use vector3::MVector3;
+use vector3::{MVector3, SVector3};
 
 #[derive(Copy, Clone, Debug)]
 pub struct SMaterial(u32);
@@ -237,6 +237,7 @@ pub fn continue_path(scene: &Scene,
                      isect: &MIntersection,
                      rng: &mut Rng)
                      -> (MRay, MVector3) {
+
     // Emissive materials have the sign bit set to 1, and a sign bit of 1
     // means that the ray is inactive. So hitting an emissive material
     // deactivates the ray: there is no need for an additional bounce.
@@ -270,7 +271,7 @@ pub fn continue_path(scene: &Scene,
     // been left out. The factor 2.0 is because each sampling method has
     // probability 0.5 of being chosen.
     let modulation = weight_denom.recip_fast() * Mf32::broadcast(2.0);
-    let brdf_term = diffuse_brdf(isect, &new_ray);
+    let brdf_term = microfacet_brdf(&new_ray, ray, isect);
     let color_mod = brdf_term * modulation;
 
     debug_assert!(modulation.all_finite());
@@ -290,4 +291,41 @@ pub fn continue_path(scene: &Scene,
     let color_mod = color_mod.pick(white, active);
 
     (new_ray, color_mod)
+}
+
+fn microfacet_brdf(ray_in: &MRay, ray_out: &MRay, isect: &MIntersection) -> MVector3 {
+    // Compute the half-way vector. The outgoing ray points to the surface,
+    // so negate it.
+    // TODO: take color from material.
+    let color = MVector3::broadcast(SVector3::new(0.8, 0.8, 0.5));
+    let h = (ray_in.direction - ray_out.direction).normalized();
+    let f = microfacet_fresnel(ray_in.direction, h, color);
+    let d = microfacet_normal_dist(h);
+    let cosl = isect.normal.dot(ray_out.direction);
+    let cosv = isect.normal.dot(ray_in.direction);
+
+    // Compute the final microfacet transmission. There is a factor 4 in the
+    // denominator. The minus compensates for the reversed direction of the
+    // outgoing (view) ray.
+    f * ((d * Mf32::broadcast(-0.25)) * (cosl * cosv).recip_fast())
+}
+
+/// Computes the Fresnel term using Schlick’s approximation.
+fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -> MVector3 {
+    let r0 = color;
+    let r1 = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one()) - r0;
+    let ct = Mf32::one() - half_way.dot(incoming);
+    let ct2 = ct * ct;
+    let ct3 = ct2 * ct;
+    let ct5 = ct2 * ct3;
+    r0 + r1 * ct5
+}
+
+/// The term due to the surface normal.
+///
+/// (This is not related to the statistical distribution called "normal
+/// distribution".)
+fn microfacet_normal_dist(half_way: MVector3) -> Mf32 {
+    // For diffuse materials this is just a constant.
+    Mf32::one()
 }
