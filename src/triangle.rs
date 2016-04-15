@@ -21,6 +21,14 @@ pub struct Triangle {
     pub material: SMaterial,
 }
 
+/// The result of intersecting a triangle to compute a probability density.
+pub struct MDirectIntersection {
+    pub normal: MVector3,
+    pub area: Mf32,
+    pub distance: Mf32,
+    pub mask: Mf32,
+}
+
 impl Triangle {
     pub fn new(v0: SVector3, v1: SVector3, v2: SVector3, mat: SMaterial) -> Triangle {
         Triangle {
@@ -122,6 +130,43 @@ impl Triangle {
         // intersection otherwise.
         new_isect.pick(&isect, (ray.active | mask_positive) | (mask_uv | mask_closer))
     }
+
+    /// Intersects the triangle to determine the probability density for the
+    /// given ray.
+    pub fn intersect_direct(&self, ray: &MRay) -> MDirectIntersection {
+        // See `intersect()` for commented version.
+        let v0 = MVector3::broadcast(self.v0);
+        let e1 = MVector3::broadcast(self.v0) - MVector3::broadcast(self.v2);
+        let e2 = MVector3::broadcast(self.v1) - MVector3::broadcast(self.v0);
+
+        let normal_denorm = e1.cross(e2);
+        let norm_sqr = normal_denorm.norm_squared();
+        let rnorm = norm_sqr.rsqrt();
+        let area = Mf32::broadcast(0.5) * rnorm.recip_fast();
+        let from_ray = v0 - ray.origin;
+
+        // This version does not need to be as accurate as the regular intersect
+        // because it is only used to estimate probability densities. Hence the
+        // fast reciprocal approximation is fine here.
+        let denom = ray.direction.dot(normal_denorm).recip_fast();
+        let t = from_ray.dot(normal_denorm) * denom;
+
+        let cross = ray.direction.cross(from_ray);
+        let u = cross.dot(e2) * denom;
+        let v = cross.dot(e1) * denom;
+
+        // If the sign bit of mask is 0 (positive), the triangle was
+        // intersected.
+        let mask_uv = (u + v).geq(Mf32::one());
+        let mask = (u | v) | (t | mask_uv);
+
+        MDirectIntersection {
+            normal: normal_denorm * rnorm,
+            distance: t,
+            area: area,
+            mask: mask,
+        }
+    }
 }
 
 #[test]
@@ -154,6 +199,10 @@ fn intersect_triangle() {
     assert!(isect.distance.0 < 1.01);
     assert!(isect.distance.0 > 0.99);
     assert_eq!(isect.distance.1, 1e5);
+
+    let isect_direct = triangle.intersect_direct(&ray);
+    assert!(isect_direct.distance.0 < 1.01);
+    assert!(isect_direct.distance.0 > 0.99);
 
     let up = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
     let should_be_origin = isect.position - up;
@@ -191,5 +240,18 @@ fn bench_intersect_8_tris_per_mray(b: &mut test::Bencher) {
             isect = triangle.intersect(&ray, isect);
         }
         test::black_box(isect);
+    });
+}
+
+#[bench]
+fn bench_intersect_direct_8_tris_per_mray(b: &mut test::Bencher) {
+    let rays = bench::mrays_inward(4096 / 8);
+    let tris = bench::triangles(8);
+    let mut rays_it = rays.iter().cycle();
+    b.iter(|| {
+        let ray = rays_it.next().unwrap();
+        for triangle in &tris {
+            test::black_box(triangle.intersect_direct(&ray));
+        }
     });
 }
