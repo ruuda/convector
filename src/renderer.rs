@@ -192,7 +192,9 @@ impl Renderer {
         // Convert f32 colors to i32 colors in the range 0-255.
         let range = Mf32::broadcast(255.0);
         let rgbas = generate_slice8(|i| {
-            let rgb_255 = rgbs[i].clamp_one() * range;
+            // TODO: Remove this factor 3.0, it is just to account for my dark
+            // scene.
+            let rgb_255 = (rgbs[i] * Mf32::broadcast(3.0)).clamp_one() * range;
             let r = rgb_255.x.into_mi32();
             let g = rgb_255.y.into_mi32().map(|x| x << 8);
             let b = rgb_255.z.into_mi32().map(|x| x << 16);
