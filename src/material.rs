@@ -303,11 +303,12 @@ fn microfacet_brdf(ray_in: &MRay, ray_out: &MRay, isect: &MIntersection) -> MVec
     let d = microfacet_normal_dist(h);
     let cosl = isect.normal.dot(ray_out.direction);
     let cosv = isect.normal.dot(ray_in.direction);
+    // Add a small constant to avoid division by 0.
+    let denom = (cosl * cosv).abs() + Mf32::broadcast(0.001);
 
     // Compute the final microfacet transmission. There is a factor 4 in the
-    // denominator. The minus compensates for the reversed direction of the
-    // outgoing (view) ray.
-    f * ((d * Mf32::broadcast(-0.25)) * (cosl * cosv).recip_fast())
+    // denominator.
+    f * ((d * Mf32::broadcast(0.25)) * denom.recip_fast())
 }
 
 /// Computes the Fresnel term using Schlick’s approximation.
@@ -327,5 +328,5 @@ fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -
 /// distribution".)
 fn microfacet_normal_dist(half_way: MVector3) -> Mf32 {
     // For diffuse materials this is just a constant.
-    Mf32::one()
+    Mf32::broadcast(0.5 / consts::PI)
 }
