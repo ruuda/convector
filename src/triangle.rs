@@ -200,14 +200,46 @@ fn intersect_triangle() {
     assert!(isect.distance.0 > 0.99);
     assert_eq!(isect.distance.1, 1e5);
 
-    let isect_direct = triangle.intersect_direct(&ray);
-    assert!(isect_direct.distance.0 < 1.01);
-    assert!(isect_direct.distance.0 > 0.99);
-
     let up = MVector3::new(Mf32::zero(), Mf32::zero(), Mf32::one());
     let should_be_origin = isect.position - up;
     let should_be_zero = should_be_origin.norm_squared();
     assert!(should_be_zero.0 < 0.01);
+}
+
+#[test]
+fn intersect_triangle_direct() {
+    use ray::SRay;
+
+    let triangle = Triangle::new(
+        SVector3::new(0.0, 1.0, 1.0),
+        SVector3::new(-1.0, -1.0, 1.0),
+        SVector3::new(1.0, -1.0, 1.0),
+        SMaterial::white(),
+    );
+
+    let r1 = SRay {
+        origin: SVector3::zero(),
+        direction: SVector3::new(0.0, 0.0, 1.0),
+    };
+
+    let r2 = SRay {
+        origin: SVector3::new(-1.0, 0.0, 0.0),
+        direction: SVector3::new(0.0, 0.0, 1.0),
+    };
+
+    let ray = MRay::generate(|i| if i % 2 == 0 { r1.clone() } else { r2.clone() });
+
+    let isect_direct = triangle.intersect_direct(&ray);
+    assert!(isect_direct.distance.0 < 1.01);
+    assert!(isect_direct.distance.0 > 0.99);
+    assert!(isect_direct.distance.1 < 1.01);
+    assert!(isect_direct.distance.1 > 0.99);
+
+    let normal_norm = isect_direct.normal.norm_squared();
+    assert!(normal_norm.0 < 1.01);
+    assert!(normal_norm.0 > 0.99);
+    assert!(normal_norm.1 < 1.01);
+    assert!(normal_norm.1 > 0.99);
 }
 
 #[bench]
