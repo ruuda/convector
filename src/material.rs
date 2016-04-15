@@ -126,15 +126,28 @@ pub fn sky_intensity(ray_direction: MVector3) -> MVector3 {
     MVector3::new(r, g, b).mul_add(two, MVector3::new(half, half, half))
 }
 
+/// Returns the proportion of incoming energy that is transmitted into the
+/// outgoing direction.
+fn diffuse_brdf(isect: &MIntersection, ray_in: &MRay) -> MVector3 {
+    // There is the factor dot(normal, direction) that modulates the incoming
+    // contribution. The incoming energy is then radiated evenly in all
+    // directions, so the energy density in every direction is 1/2pi, to
+    // ensure that energy density integrates to 1.
+    let cos_theta = isect.normal.dot(ray_in.direction).max(Mf32::zero());
+    let modulation = Mf32::broadcast(0.5 / consts::PI) * cos_theta;
+
+    debug_assert!(modulation.all_finite());
+    debug_assert!(modulation.all_sign_bits_positive(), "color modulation cannot be negative");
+
+    MVector3::new(modulation, modulation, modulation)
+}
+
 /// Continues the path of a photon by sampling the BRDF.
-///
-/// Returns the new ray, the probability density for that ray, and the color
-/// modulation for the bounce.
 #[inline(always)]
 fn continue_path_brdf(ray: &MRay,
                       isect: &MIntersection,
                       rng: &mut Rng)
-                      -> (MRay, Mf32, MVector3) {
+                      -> MRay {
     // Bounce in a random direction in the hemisphere around the surface
     // normal, with a cosine-weighted distribution, for a diffuse bounce.
     let dir_z = rng.sample_hemisphere_vector();
@@ -143,119 +156,37 @@ fn continue_path_brdf(ray: &MRay,
     // Build a new ray, offset by an epsilon from the intersection so we
     // don't intersect the same surface again.
     let origin = direction.mul_add(Mf32::epsilon(), isect.position);
-    let new_ray = MRay {
+    MRay {
         origin: origin,
         direction: direction,
         active: Mf32::zero(),
-    };
+    }
+}
 
+/// Returns the probability density for the BRDF sampler at a given ray.
+pub fn pd_brdf(isect: &MIntersection, ray: &MRay) -> Mf32 {
     // The probability density for the ray is dot(normal, direction) divided by
     // the intgral of that over the hemisphere (which happens to be pi).
-    let pd = dir_z.z * Mf32::broadcast(1.0 / consts::PI);
-
-    // There is the factor dot(normal, direction) that modulates the
-    // incoming contribution. The incoming energy is then radiated evenly in all
-    // directions (the diffuse assumption), so the integral over the hemisphere
-    // of that factor (excluding the dot, that one was for _incoming_ energy)
-    // should be 1. The area of the hemisphere is 2pi, so divide by that.
-    let modulation = Mf32::broadcast(0.5 / consts::PI) * dir_z.z;
-    let color_mod = MVector3::new(modulation, modulation, modulation);
-
-    (new_ray, pd, color_mod)
+    let dot_surface = isect.normal.dot(ray.direction).max(Mf32::zero());
+    dot_surface * Mf32::broadcast(1.0 / consts::PI)
 }
 
 /// Continues the path of a photon by sampling a point on a surface.
-///
-/// Returns the new ray, the probability density for that ray, and the color
-/// modulation for the bounce.
 fn continue_path_direct_sample(scene: &Scene,
                                isect: &MIntersection,
                                rng: &mut Rng)
-                               -> (MRay, Mf32, MVector3) {
-    // Get two candidate points on a light source to sample. One of those will
-    // be picked by resampled importance sampling.
-    let ds_0 = scene.get_direct_sample(rng);
-    let ds_1 = scene.get_direct_sample(rng);
-    let num = scene.direct_sample_num();
-    debug_assert!(num > 0);
-
-    let to_surf_0 = ds_0.position - isect.position;
-    let to_surf_1 = ds_1.position - isect.position;
-    let distance_sqr_0 = to_surf_0.norm_squared();
-    let distance_sqr_1 = to_surf_1.norm_squared();
-    let direction_0 = to_surf_0 * distance_sqr_0.rsqrt();
-    let direction_1 = to_surf_1 * distance_sqr_1.rsqrt();
-
-    // Take the absolute value because the probability density should not be
-    // negative. This is equivalent to making direct sampling surfaces
-    // two-sided.
-    let dot_surface_0 = isect.normal.dot(direction_0).abs();
-    let dot_surface_1 = isect.normal.dot(direction_1).abs();
-
-    // Now pick either sample 0 or sample 1 with a probability weighed by the
-    // angle with the surface. After all, this angle weighs the contribution,
-    // so to lower variance, favor a sample that will contribute more.
-    let (w0, w1) = (dot_surface_0, dot_surface_1);
-    let w = (w0 + w1).recip_fast();
-    let (p0, p1) = (w0 * w, w1 * w);
-
-    // If the sign bit of rr is positive (which happens with probability p0), we
-    // take sample 0, otherwise take sample 1.
-    let rr = p0 - rng.sample_unit();
-
-    let direction = direction_0.pick(direction_1, rr);
-    let distance_sqr = distance_sqr_0.pick(distance_sqr_1, rr);
-    let area = ds_0.area.pick(ds_1.area, rr);
-    let dot_emissive = ds_0.normal.pick(ds_1.normal, rr).dot(direction).abs();
-    let dot_surface = dot_surface_0.pick(dot_surface_1, rr);
-
-    // We need to modulate the results by p0 or p1 based on which one we picked
-    // to keep the estimator unbiased.
-    let modulation = Mf32::broadcast(0.5) * p0.pick(p1, rr).recip_fast();
+                               -> MRay {
+    let ds = scene.get_direct_sample(rng);
+    let direction = (ds.position - isect.position).normalized();
 
     // Build a new ray, offset by an epsilon from the intersection so we
     // don't intersect the same surface again.
     let origin = direction.mul_add(Mf32::epsilon(), isect.position);
-    let new_ray = MRay {
+    MRay {
         origin: origin,
         direction: direction,
         active: Mf32::zero(),
-    };
-
-    // The probability density for the point on the triangle is simply 1/area,
-    // but we want to know the probability of the ray direction, not the
-    // probability of the point. The conversion factor is cos(phi)/r^2, where
-    // phi is the angle between the ray and the surface normal. A hand-waving
-    // justification: imagine a small triangle on a unit hemisphere, small
-    // enough that its area equals the solid angle it subtends. Then the pdf for
-    // the point an the ray will be equal (1/area). Now move the triangle away.
-    // The solid angle decreases proportional to r^2, so we must compensate the
-    // pdf to keep it normalized. Now rotate the small triangle. When cos(phi)
-    // is 0, the projection is a line of zero surface area, but it needs to
-    // integrate to 0, so the pdf goes to infinity as cos(phi) goes to 0. So far
-    // this is the probability per triangle, but we picked one out of num
-    // triangles uniformly, so compensate for that too.
-    let numf = Mf32::broadcast(num as f32);
-    let pd = distance_sqr * (area * dot_emissive * numf).recip_fast();
-    // TODO: Do I need to mix in p0 or p1 here? Because now my original
-    // probability is not simply 1/area any more.
-
-    // For modulation, there is only the cosine factor of the diffuse BRDF and
-    // again its factor 1/2pi.
-    let modulation = modulation * Mf32::broadcast(0.5 / consts::PI) * dot_surface;
-    let color_mod = MVector3::new(modulation, modulation, modulation);
-
-    debug_assert!(pd.all_finite());
-    debug_assert!(pd.all_sign_bits_positive(), "probability density cannot be negative");
-    debug_assert!(modulation.all_finite());
-    debug_assert!(modulation.all_sign_bits_positive(), "color modulation cannot be negative");
-
-    (new_ray, pd, color_mod)
-}
-
-pub fn pd_brdf(isect: &MIntersection, ray: &MRay) -> Mf32 {
-    let dot_surface = isect.normal.dot(ray.direction).abs();
-    dot_surface * Mf32::broadcast(1.0 / consts::PI)
+    }
 }
 
 /// Returns the probability density for the given ray, for the direct sampling
@@ -263,14 +194,36 @@ pub fn pd_brdf(isect: &MIntersection, ray: &MRay) -> Mf32 {
 pub fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
     let mut pd_total = Mf32::zero();
     scene.foreach_direct_sample(|triangle| {
-        let isect = triangle.intersect_direct(ray);
-        let distance_sqr = isect.distance * isect.distance;
-        let dot_emissive = isect.normal.dot(ray.direction).abs();
-        let pd = distance_sqr * (isect.area * dot_emissive).recip_fast();
+        // The probability density for the point on the triangle is simply
+        // 1/area, but we want to know the probability of the ray direction, not
+        // the probability of the point. The conversion factor is cos(phi)/r^2,
+        // where phi is the angle between the ray and the surface normal. A
+        // hand-waving justification: imagine a small triangle on a unit
+        // hemisphere, small enough that its area equals the solid angle it
+        // subtends. Then the pdf for the point and the ray will be equal
+        // (1/area). Now move the triangle away. The solid angle decreases
+        // proportional to r^2, so we must compensate the pdf to keep it
+        // normalized. Now rotate the small triangle. When cos(phi) is 0, the
+        // projection is a line of zero surface area, but it needs to integrate
+        // to 1, so the pdf goes to infinity as cos(phi) goes to 0.
+        let sample_isect = triangle.intersect_direct(ray);
+        let distance_sqr = sample_isect.distance * sample_isect.distance;
+        let dot_emissive = sample_isect.normal.dot(ray.direction).abs();
+        let pd = distance_sqr * (sample_isect.area * dot_emissive).recip_fast();
 
-        // Add the probability density if the triangle was intersected.
-        pd_total = (pd_total + pd).pick(pd_total, isect.mask);
+        // Add the probability density if the triangle was intersected. If the
+        // triangle was not intersected, the probability of sampling it directly
+        // was 0.
+        pd_total = (pd_total + pd).pick(pd_total, sample_isect.mask);
+
+        debug_assert!(pd_total.all_finite());
+        debug_assert!(pd_total.all_sign_bits_positive(), "probability density must be positive");
     });
+
+    // So far we computed the probability density per triangle, but we picked
+    // one triangle uniformly, so compensate for that too.
+    // TODO: I can make my pick non-uniform but take the angle into account.
+    // That should reduce variance.
     pd_total * Mf32::broadcast(1.0 / scene.direct_sample_num() as f32)
 }
 
@@ -291,38 +244,50 @@ pub fn continue_path(scene: &Scene,
 
     // Generate one ray by sampling the BRDF, and one ray for direct light
     // sampling.
-    let (brdf_ray, brdf_pd, brdf_mod) = continue_path_brdf(ray, isect, rng);
-    let (direct_ray, direct_pd, direct_mod) = continue_path_direct_sample(scene, isect, rng);
+    let ray_brdf = continue_path_brdf(ray, isect, rng);
+    let ray_direct = continue_path_direct_sample(scene, isect, rng);
 
-    // Randomly pick one of the two samples to use, the compute the weight for
+    // Randomly pick one of the two rays to use, then compute the weight for
     // multiple importance sampling.
     let rr = rng.sample_sign();
-    let pd = brdf_pd.pick(direct_pd, rr);
-    let origin = brdf_ray.origin.pick(direct_ray.origin, rr);
-    let direction = brdf_ray.direction.pick(direct_ray.direction, rr);
-    let color_mod = brdf_mod.pick(direct_mod, rr);
+    let new_ray = MRay {
+        origin: ray_brdf.origin.pick(ray_direct.origin, rr),
+        direction: ray_brdf.direction.pick(ray_direct.direction, rr),
+        active: Mf32::zero(),
+    };
+    let pd_brdf = pd_brdf(isect, &new_ray);
+    let pd_direct = pd_direct_sample(scene, &new_ray);
+    // Add a small constant to avoid division by zero later on.
+    let weight_denom = pd_brdf + pd_direct + Mf32::broadcast(0.001);
+
+    debug_assert!(weight_denom.all_finite());
+    debug_assert!(pd_brdf.all_sign_bits_positive(), "probability density cannot be negative");
+    debug_assert!(pd_direct.all_sign_bits_positive(), "probability density cannot be negative");
+
+    // Compute the contribution using the one-sample multiple importance
+    // sampler. This is equation 9.15 from section 9.2.4 of Veach, 1998. The
+    // probability densities in the weight and denominator cancel, so they have
+    // been left out. The factor 2.0 is because each sampling method has
+    // probability 0.5 of being chosen.
+    let modulation = weight_denom.recip_fast() * Mf32::broadcast(2.0);
+    let brdf_term = diffuse_brdf(isect, &new_ray);
+    let color_mod = brdf_term * modulation;
+
+    debug_assert!(modulation.all_finite());
+    debug_assert!(brdf_term.all_finite());
+    debug_assert!(modulation.all_sign_bits_positive(), "color modulation can never be negative");
+    debug_assert!(brdf_term.x.all_sign_bits_positive(), "red brdf term can never be negative");
+    debug_assert!(brdf_term.y.all_sign_bits_positive(), "green brdf term can never be negative");
+    debug_assert!(brdf_term.z.all_sign_bits_positive(), "blue brdf term can never be negative");
 
     let new_ray = MRay {
-        origin: origin.pick(ray.origin, active),
-        direction: direction.pick(ray.direction, active),
+        origin: new_ray.origin.pick(ray.origin, active),
+        direction: new_ray.direction.pick(ray.direction, active),
         active: active,
     };
 
-    // Adjust the modulation for multiple importance sampling in the one-sample
-    // model (Section 9.2.4 of Veach et al.)
-    let pd_brdf = pd_brdf(isect, ray);
-    let pd_direct_sample = pd_direct_sample(scene, ray);
-    // TODO: I need to compute these probability densities anyway, the perhaps
-    // not return them from the sampling function?
-    let weight = Mf32::broadcast(2.0) * pd_brdf.pick(pd_direct_sample, rr) / (pd_brdf + pd_direct_sample);
-    let color_mod = color_mod * pd.recip_fast() * weight;
-
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
     let color_mod = color_mod.pick(white, active);
-
-    debug_assert!(color_mod.x.all_sign_bits_positive(), "red color modulation can never be negative");
-    debug_assert!(color_mod.y.all_sign_bits_positive(), "green color modulation can never be negative");
-    debug_assert!(color_mod.z.all_sign_bits_positive(), "blue color modulation can never be negative");
 
     (new_ray, color_mod)
 }
