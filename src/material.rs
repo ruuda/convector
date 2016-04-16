@@ -256,7 +256,7 @@ pub fn continue_path(scene: &Scene,
 
     // Randomly pick one of the two rays to use, then compute the weight for
     // multiple importance sampling.
-    let rr = rng.sample_sign() & ignore_direct;
+    let rr = ignore_direct; // rng.sample_sign() & ignore_direct;
     let new_ray = MRay {
         origin: ray_brdf.origin.pick(ray_direct.origin, rr),
         direction: ray_brdf.direction.pick(ray_direct.direction, rr),
@@ -277,6 +277,7 @@ pub fn continue_path(scene: &Scene,
     // been left out. The factor 2.0 is because each sampling method has
     // probability 0.5 of being chosen.
     let modulation = weight_denom.recip_fast() * Mf32::broadcast(2.0);
+    let modulation = Mf32::zero().pick(modulation, ignore_direct);
     let brdf_term = microfacet_brdf(&new_ray, ray, isect);
     let color_mod = brdf_term * modulation;
 
