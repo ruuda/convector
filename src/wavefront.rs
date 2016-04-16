@@ -9,6 +9,7 @@ use vector3::SVector3;
 
 pub struct Mesh {
     pub vertices: Vec<SVector3>,
+    pub tex_coords: Vec<(f32, f32)>,
     pub triangles: Vec<(u32, u32, u32)>,
     pub material: SMaterial,
 }
@@ -35,10 +36,14 @@ impl Mesh {
     pub fn load<P: AsRef<Path>>(path: P) -> Mesh {
         let fbuffer = FileBuffer::open(path).expect("failed to open file");
         let input = from_utf8(&fbuffer[..]).expect("obj must be valid utf-8");
+
         let mut vertices = Vec::new();
+        let mut tex_coords = Vec::new();
         let mut triangles = Vec::new();
+
         for (line, line_nr) in input.lines().zip(1u32..) {
             if line.is_empty() { continue }
+
             let mut pieces = line.split_whitespace();
             match pieces.next() {
                 Some("v") => {
@@ -49,6 +54,12 @@ impl Mesh {
                         z: coords.next().expect("missing z coordinate"),
                     };
                     vertices.push(vertex);
+                }
+                Some("vt") => {
+                    let mut coords = pieces.map(|v| f32::from_str(v).unwrap());
+                    let u = coords.next().expect("missing u coordinate");
+                    let v = coords.next().expect("missing v coordinate");
+                    tex_coords.push((u, v));
                 }
                 Some("f") => {
                     // Indices stored are 1-based, convert to 0-based.
@@ -75,6 +86,7 @@ impl Mesh {
         Mesh {
             vertices: vertices,
             triangles: triangles,
+            tex_coords: tex_coords,
             material: SMaterial::white(), // TODO: Allow picking the material.
         }
     }
