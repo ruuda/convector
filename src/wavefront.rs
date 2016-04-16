@@ -91,3 +91,21 @@ impl Mesh {
         }
     }
 }
+
+// The loader should be able to load all of these files without crashing. The
+// files are known to be well-formed and without degenerate faces.
+
+#[test]
+fn read_stanford_bunny() {
+    Mesh::load("models/stanford_bunny.obj");
+}
+
+#[test]
+fn read_stanford_dragon() {
+    Mesh::load("models/stanford_dragon.obj");
+}
+
+#[test]
+fn read_suzanne() {
+    Mesh::load("models/suzanne.obj");
+}
