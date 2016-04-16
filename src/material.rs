@@ -248,9 +248,15 @@ pub fn continue_path(scene: &Scene,
     let ray_brdf = continue_path_brdf(ray, isect, rng);
     let ray_direct = continue_path_direct_sample(scene, isect, rng);
 
+    // If the direct sampling ray shears the surface, we are likely to get
+    // artifacts due to division by almost zero and floating point inprecision.
+    // In that case, always pick the BRDF sample.
+    let direct_degenerate = ray_direct.direction.dot(isect.normal).abs();
+    let ignore_direct = direct_degenerate.geq(Mf32::broadcast(0.01));
+
     // Randomly pick one of the two rays to use, then compute the weight for
     // multiple importance sampling.
-    let rr = rng.sample_sign();
+    let rr = rng.sample_sign() & ignore_direct;
     let new_ray = MRay {
         origin: ray_brdf.origin.pick(ray_direct.origin, rr),
         direction: ray_brdf.direction.pick(ray_direct.direction, rr),
