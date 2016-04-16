@@ -248,15 +248,9 @@ pub fn continue_path(scene: &Scene,
     let ray_brdf = continue_path_brdf(ray, isect, rng);
     let ray_direct = continue_path_direct_sample(scene, isect, rng);
 
-    // If the direct sampling ray shears the surface, we are likely to get
-    // artifacts due to division by almost zero and floating point inprecision.
-    // In that case, always pick the BRDF sample.
-    let direct_degenerate = ray_direct.direction.dot(isect.normal).abs();
-    let ignore_direct = direct_degenerate.geq(Mf32::broadcast(0.0001));
-
     // Randomly pick one of the two rays to use, then compute the weight for
     // multiple importance sampling.
-    let rr = ignore_direct; // rng.sample_sign() & ignore_direct;
+    let rr = rng.sample_sign();
     let new_ray = MRay {
         origin: ray_brdf.origin.pick(ray_direct.origin, rr),
         direction: ray_brdf.direction.pick(ray_direct.direction, rr),
@@ -265,7 +259,7 @@ pub fn continue_path(scene: &Scene,
     let pd_brdf = pd_brdf(isect, &new_ray);
     let pd_direct = pd_direct_sample(scene, &new_ray);
     // Add a small constant to avoid division by zero later on.
-    let weight_denom = pd_brdf + pd_direct + Mf32::broadcast(0.001);
+    let weight_denom = pd_brdf + pd_direct + Mf32::broadcast(0.01);
 
     debug_assert!(weight_denom.all_finite());
     debug_assert!(pd_brdf.all_sign_bits_positive(), "probability density cannot be negative");
@@ -278,7 +272,6 @@ pub fn continue_path(scene: &Scene,
     // probability 0.5 of being chosen. Finally, there is the correction factor
     // for the incident angle.
     let modulation = weight_denom.recip_fast() * Mf32::broadcast(2.0);
-    let modulation = Mf32::zero().pick(modulation, ignore_direct);
     let cos_theta = isect.normal.dot(new_ray.direction).max(Mf32::zero());
     let brdf_term = microfacet_brdf(&new_ray, ray, isect);
     let color_mod = brdf_term * (modulation * cos_theta);
@@ -290,14 +283,28 @@ pub fn continue_path(scene: &Scene,
     debug_assert!(brdf_term.y.all_sign_bits_positive(), "green brdf term can never be negative");
     debug_assert!(brdf_term.z.all_sign_bits_positive(), "blue brdf term can never be negative");
 
+    // Limit the color modulation to avoid fireflies in the final image.
+    let color_mod = MVector3 {
+        x: color_mod.x.min(Mf32::broadcast(2.0)),
+        y: color_mod.y.min(Mf32::broadcast(2.0)),
+        z: color_mod.z.min(Mf32::broadcast(2.0)),
+    };
+
+    // If the ray shears the surface, we are likely to get artifacts due to
+    // division by almost zero and floating point imprecision. In that case,
+    // just ignore the sample. The cosine theta term will be ~0 anyway.
+    // The sign bit of this variable is 0 (positive) if the ray is fine, and 1
+    // (negative) if the ray should be discarded.
+    let degenerate = new_ray.direction.dot(isect.normal).abs() - Mf32::broadcast(0.001);
+
     let new_ray = MRay {
         origin: new_ray.origin.pick(ray.origin, active),
         direction: new_ray.direction.pick(ray.direction, active),
-        active: active,
+        active: active | degenerate
     };
 
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-    let color_mod = color_mod.pick(white, active);
+    let color_mod = color_mod.pick(white, active).pick(MVector3::zero(), degenerate);
 
     (new_ray, color_mod)
 }
