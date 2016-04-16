@@ -3,7 +3,7 @@ use random::Rng;
 use scene::Scene;
 use simd::{Mf32, Mi32};
 use std::cell::UnsafeCell;
-use util::{cache_line_aligned_vec, generate_slice8, transmute_vec};
+use util::{cache_line_aligned_vec, generate_slice8};
 use vector3::{MVector3, SVector3};
 
 pub struct Renderer {
@@ -63,6 +63,8 @@ impl RenderBuffer {
     /// Returns an RGBA bitmap suitable for display.
     #[cfg(not(windows))]
     pub fn into_bitmap(self) -> Vec<u8> {
+        use util::transmute_vec;
+
         // This is actually safe because self is moved into the method.
         let buffer = unsafe { self.buffer.into_inner() };
         unsafe { transmute_vec(buffer) }
