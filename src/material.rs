@@ -252,7 +252,7 @@ pub fn continue_path(scene: &Scene,
     // artifacts due to division by almost zero and floating point inprecision.
     // In that case, always pick the BRDF sample.
     let direct_degenerate = ray_direct.direction.dot(isect.normal).abs();
-    let ignore_direct = direct_degenerate.geq(Mf32::broadcast(0.00001));
+    let ignore_direct = direct_degenerate.geq(Mf32::broadcast(0.0001));
 
     // Randomly pick one of the two rays to use, then compute the weight for
     // multiple importance sampling.
@@ -275,11 +275,13 @@ pub fn continue_path(scene: &Scene,
     // sampler. This is equation 9.15 from section 9.2.4 of Veach, 1998. The
     // probability densities in the weight and denominator cancel, so they have
     // been left out. The factor 2.0 is because each sampling method has
-    // probability 0.5 of being chosen.
+    // probability 0.5 of being chosen. Finally, there is the correction factor
+    // for the incident angle.
     let modulation = weight_denom.recip_fast() * Mf32::broadcast(2.0);
     let modulation = Mf32::zero().pick(modulation, ignore_direct);
+    let cos_theta = isect.normal.dot(new_ray.direction).max(Mf32::zero());
     let brdf_term = microfacet_brdf(&new_ray, ray, isect);
-    let color_mod = brdf_term * modulation;
+    let color_mod = brdf_term * (modulation * cos_theta);
 
     debug_assert!(modulation.all_finite());
     debug_assert!(brdf_term.all_finite());
@@ -307,20 +309,19 @@ fn microfacet_brdf(ray_in: &MRay, ray_out: &MRay, isect: &MIntersection) -> MVec
     let color = MVector3::broadcast(SVector3::new(0.9, 0.7, 0.9));
     let h = (ray_in.direction - ray_out.direction).normalized();
     let f = microfacet_fresnel(ray_in.direction, h, color);
+    let g = microfacet_geometry(ray_in.direction, h);
     let d = microfacet_normal_dist(h, isect);
-    let cosl = isect.normal.dot(ray_out.direction);
-    let cosv = isect.normal.dot(ray_in.direction);
-    // Add a small constant to avoid division by 0.
-    let denom = (cosl * cosv).abs() + Mf32::broadcast(0.01);
 
     // Compute the final microfacet transmission. There is a factor 4 in the
-    // denominator.
+    // denominator. The factor dot(n, l) * dot(n, v) has been absorbed into the
+    // geometry factor.
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-    // f * (Mf32::broadcast(0.25) * d * denom.recip_fast())
-    white * Mf32::broadcast(0.25) * denom.recip_fast()
+    // f * (Mf32::broadcast(0.25) * g * d)
+    white * (Mf32::broadcast(0.25) * g)
 }
 
-/// Computes the Fresnel term using Schlick’s approximation.
+/// Computes the Fresnel factor using Schlick’s approximation.
+#[inline(always)]
 fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -> MVector3 {
     let r0 = color;
     let r1 = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one()) - r0;
@@ -331,7 +332,16 @@ fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -
     r0 + r1 * ct5
 }
 
-/// The term due to the surface normal.
+/// The geometry factor in the microfacet model.
+///
+/// This particular function is the Kelemen-Szirmay-Kalos geometry factor.
+#[inline(always)]
+fn microfacet_geometry(incoming: MVector3, half_way: MVector3) -> Mf32 {
+    let dot = half_way.dot(incoming);
+    (dot * dot).recip_fast()
+}
+
+/// The factor due to the surface normal.
 ///
 /// (This is not related to the statistical distribution called "normal
 /// distribution".)
