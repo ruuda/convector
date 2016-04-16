@@ -309,15 +309,15 @@ fn microfacet_brdf(ray_in: &MRay, ray_out: &MRay, isect: &MIntersection) -> MVec
     let color = MVector3::broadcast(SVector3::new(0.9, 0.7, 0.9));
     let h = (ray_in.direction - ray_out.direction).normalized();
     let f = microfacet_fresnel(ray_in.direction, h, color);
-    let g = microfacet_geometry(ray_in.direction, h);
     let d = microfacet_normal_dist(h, isect);
 
-    // Compute the final microfacet transmission. There is a factor 4 in the
-    // denominator. The factor dot(n, l) * dot(n, v) has been absorbed into the
-    // geometry factor.
+    // Compute the final microfacet transmission. The factor
+    // dot(n, l) * dot(n, v) has been absorbed into the geometry factor,
+    // which is set to 1 now. (I tried a Kelemen-Szirmay-Kalos geometry term,
+    // but it gave unrealistic results with hemisphere sampling.)
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-    // f * (Mf32::broadcast(0.25) * g * d)
-    white * (Mf32::broadcast(0.25) * g)
+    // f * (Mf32::broadcast(0.25) * d)
+    white * Mf32::broadcast(0.25)
 }
 
 /// Computes the Fresnel factor using Schlick’s approximation.
@@ -330,15 +330,6 @@ fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -
     let ct3 = ct2 * ct;
     let ct5 = ct2 * ct3;
     r0 + r1 * ct5
-}
-
-/// The geometry factor in the microfacet model.
-///
-/// This particular function is the Kelemen-Szirmay-Kalos geometry factor.
-#[inline(always)]
-fn microfacet_geometry(incoming: MVector3, half_way: MVector3) -> Mf32 {
-    let dot = half_way.dot(incoming);
-    (dot * dot).recip_fast()
 }
 
 /// The factor due to the surface normal.
