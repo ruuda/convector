@@ -319,12 +319,10 @@ fn microfacet_brdf(ray_in: &MRay, ray_out: &MRay, isect: &MIntersection) -> MVec
     let d = microfacet_normal_dist(h, isect);
 
     // Compute the final microfacet transmission. The factor
-    // dot(n, l) * dot(n, v) has been absorbed into the geometry factor,
+    // 4 * dot(n, l) * dot(n, v) has been absorbed into the geometry factor,
     // which is set to 1 now. (I tried a Kelemen-Szirmay-Kalos geometry term,
     // but it gave unrealistic results with hemisphere sampling.)
-    let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-    // f * (Mf32::broadcast(0.25) * d)
-    white * Mf32::broadcast(0.25)
+    f * d
 }
 
 /// Computes the Fresnel factor using Schlick’s approximation.
@@ -347,19 +345,26 @@ fn microfacet_normal_dist(half_way: MVector3, isect: &MIntersection) -> Mf32 {
     let cos = half_way.dot(isect.normal);
 
     // Blinn-Phong with parameter alpha = 1.
-    // cos * Mf32::broadcast(1.5 * consts::PI)
+    // cos * Mf32::broadcast(0.5 * consts::PI)
 
     // Blinn-Phong with parameter alpha = 2.
-    // (cos * cos) * Mf32::broadcast(1.0 / consts::PI)
+    // (cos * cos) * Mf32::broadcast(1.5 / consts::PI)
 
     // Blinn-Phong with parameter alpha = 4;
-    // let c2 = cos * cos;
-    // let c4 = c2 * c2;
-    // c4 * Mf32::broadcast(1.5 / consts::PI)
-
-    // Blinn-Phong with parameter alpha = 8;
     let c2 = cos * cos;
     let c4 = c2 * c2;
-    let c8 = c4 * c4;
-    c8 * Mf32::broadcast(2.5 / consts::PI)
+    c4 * Mf32::broadcast(2.5 / consts::PI)
+
+    // Blinn-Phong with parameter alpha = 8;
+    // let c2 = cos * cos;
+    // let c4 = c2 * c2;
+    // let c8 = c4 * c4;
+    // c8 * Mf32::broadcast(4.5 / consts::PI)
+
+    // Blinn-Phong with parameter alpha = 16;
+    // let c2 = cos * cos;
+    // let c4 = c2 * c2;
+    // let c8 = c4 * c4;
+    // let c16 = c8 * c8;
+    // c16 * Mf32::broadcast(8.5 / consts::PI)
 }
