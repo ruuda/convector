@@ -315,7 +315,9 @@ fn microfacet_brdf(ray_in: &MRay, ray_out: &MRay, isect: &MIntersection) -> MVec
 
     // Compute the final microfacet transmission. There is a factor 4 in the
     // denominator.
-    f * (Mf32::broadcast(0.25) * d * denom.recip_fast())
+    let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
+    // f * (Mf32::broadcast(0.25) * d * denom.recip_fast())
+    white * Mf32::broadcast(0.25) * denom.recip_fast()
 }
 
 /// Computes the Fresnel term using Schlick’s approximation.
