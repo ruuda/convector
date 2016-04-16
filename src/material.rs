@@ -252,7 +252,7 @@ pub fn continue_path(scene: &Scene,
     // artifacts due to division by almost zero and floating point inprecision.
     // In that case, always pick the BRDF sample.
     let direct_degenerate = ray_direct.direction.dot(isect.normal).abs();
-    let ignore_direct = direct_degenerate.geq(Mf32::broadcast(0.01));
+    let ignore_direct = direct_degenerate.geq(Mf32::broadcast(0.00001));
 
     // Randomly pick one of the two rays to use, then compute the weight for
     // multiple importance sampling.
@@ -303,25 +303,25 @@ fn microfacet_brdf(ray_in: &MRay, ray_out: &MRay, isect: &MIntersection) -> MVec
     // Compute the half-way vector. The outgoing ray points to the surface,
     // so negate it.
     // TODO: take color from material.
-    let color = MVector3::broadcast(SVector3::new(0.8, 0.8, 0.5));
+    let color = MVector3::broadcast(SVector3::new(0.9, 0.7, 0.9));
     let h = (ray_in.direction - ray_out.direction).normalized();
     let f = microfacet_fresnel(ray_in.direction, h, color);
-    let d = microfacet_normal_dist(h);
+    let d = microfacet_normal_dist(h, isect);
     let cosl = isect.normal.dot(ray_out.direction);
     let cosv = isect.normal.dot(ray_in.direction);
     // Add a small constant to avoid division by 0.
-    let denom = (cosl * cosv).abs() + Mf32::broadcast(0.001);
+    let denom = (cosl * cosv).abs() + Mf32::broadcast(0.01);
 
     // Compute the final microfacet transmission. There is a factor 4 in the
     // denominator.
-    f * ((d * Mf32::broadcast(0.25)) * denom.recip_fast())
+    f * (Mf32::broadcast(0.25) * d * denom.recip_fast())
 }
 
 /// Computes the Fresnel term using Schlick’s approximation.
 fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -> MVector3 {
     let r0 = color;
     let r1 = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one()) - r0;
-    let ct = Mf32::one() - half_way.dot(incoming);
+    let ct = Mf32::one() - half_way.dot(incoming).abs();
     let ct2 = ct * ct;
     let ct3 = ct2 * ct;
     let ct5 = ct2 * ct3;
@@ -332,7 +332,17 @@ fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -
 ///
 /// (This is not related to the statistical distribution called "normal
 /// distribution".)
-fn microfacet_normal_dist(half_way: MVector3) -> Mf32 {
-    // For diffuse materials this is just a constant.
-    Mf32::broadcast(0.5 / consts::PI)
+fn microfacet_normal_dist(half_way: MVector3, isect: &MIntersection) -> Mf32 {
+    let cos = half_way.dot(isect.normal);
+
+    // Blinn-Phong with parameter alpha = 1.
+    // cos * Mf32::broadcast(1.5 * consts::PI)
+
+    // Blinn-Phong with parameter alpha = 2.
+    (cos * cos) * Mf32::broadcast(1.0 / consts::PI)
+
+    // Blinn-Phong with parameter alpha = 4;
+    // let c2 = cos * cos;
+    // let c4 = c2 * c2;
+    // c4 * Mf32::broadcast(3.0 / consts::PI)
 }

@@ -194,7 +194,7 @@ impl Renderer {
         let rgbas = generate_slice8(|i| {
             // TODO: Remove this factor 3.0, it is just to account for my dark
             // scene.
-            let rgb_255 = (rgbs[i] * Mf32::broadcast(3.0)).clamp_one() * range;
+            let rgb_255 = (rgbs[i] * Mf32::broadcast(2.0)).clamp_one() * range;
             let r = rgb_255.x.into_mi32();
             let g = rgb_255.y.into_mi32().map(|x| x << 8);
             let b = rgb_255.z.into_mi32().map(|x| x << 16);
