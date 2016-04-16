@@ -41,6 +41,7 @@ use material::SMaterial;
 use renderer::{RenderBuffer, Renderer};
 use scene::Scene;
 use stats::GlobalStats;
+use std::collections::HashMap;
 use std::mem;
 use time::PreciseTime;
 use ui::{Action, Window};
@@ -48,19 +49,19 @@ use wavefront::Mesh;
 
 fn build_scene() -> Scene {
     println!("loading geometry");
-    // let plane = Mesh::load("models/plane.obj");
-    // let suzanne = Mesh::load("models/suzanne.obj");
-    // let bunny = Mesh::load("models/stanford_bunny.obj");
-    // let dragon = Mesh::load("models/stanford_dragon.obj");
-    // let suzannes = Mesh::load("models/suzannes_in_box.obj");
-    let mut box_walls = Mesh::load("models/box_walls.obj");
-    let mut box_windows = Mesh::load("models/box_windows.obj");
-    box_walls.material = SMaterial::white();
-    box_windows.material = SMaterial::sky();
-    let meshes = [box_walls, box_windows];
+    let mut materials = HashMap::new();
+    materials.insert("baseboard", SMaterial::white());
+    materials.insert("ceiling", SMaterial::white());
+    materials.insert("fauteuil", SMaterial::diffuse(1.0, 0.6, 0.8));
+    materials.insert("floor", SMaterial::white());
+    materials.insert("glass", SMaterial::sky());
+    materials.insert("wall", SMaterial::white());
+    materials.insert("wood_light", SMaterial::white());
+    let indoor = Mesh::load("models/indoor.obj");
+    let meshes = [indoor];
 
     println!("building bvh");
-    let scene = Scene::from_meshes(&meshes);
+    let scene = Scene::from_meshes(&meshes, &materials);
     scene.print_stats();
 
     scene

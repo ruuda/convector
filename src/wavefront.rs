@@ -2,16 +2,21 @@
 //! reinventing the wheel is much more fun.
 
 use filebuffer::FileBuffer;
-use material::SMaterial;
 use std::path::Path;
 use std::str::{FromStr, from_utf8};
 use vector3::SVector3;
 
+pub struct Triangle {
+    pub vertices: (u32, u32, u32),
+    pub tex_coords: Option<(u32, u32, u32)>,
+    pub material: u32,
+}
+
 pub struct Mesh {
     pub vertices: Vec<SVector3>,
     pub tex_coords: Vec<(f32, f32)>,
-    pub triangles: Vec<(u32, u32, u32)>,
-    pub material: SMaterial,
+    pub materials: Vec<String>,
+    pub triangles: Vec<Triangle>,
 }
 
 fn assert_nondegenerate(vertices: &[SVector3], line: u32, i0: u32, i1: u32, i2: u32) {
@@ -32,6 +37,36 @@ fn assert_nondegenerate(vertices: &[SVector3], line: u32, i0: u32, i1: u32, i2: 
     }
 }
 
+/// Returns the vertex index, and the texture coordinate index if there is one.
+fn parse_vertex_index(index: &str) -> (u32, Option<u32>) {
+    let mut parts = index.split('/').map(|i| u32::from_str(i).unwrap());
+    let vidx = parts.next().expect("missing vertex index");
+    let tidx = parts.next();
+    // Indices in the obj file are 1-based, but Rust is 0-based.
+    (vidx - 1, tidx.map(|i| i - 1))
+}
+
+pub fn push_triangle(vertices: &[SVector3],
+                     triangles: &mut Vec<Triangle>,
+                     i0: (u32, Option<u32>),
+                     i1: (u32, Option<u32>),
+                     i2: (u32, Option<u32>),
+                     material: u32,
+                     line_nr: u32) {
+    assert_nondegenerate(&vertices, line_nr, i0.0, i1.0, i2.0);
+    let vidxs = (i0.0, i1.0, i2.0);
+    let tidxs = match (i0.1, i1.1, i2.1) {
+        (Some(t0), Some(t1), Some(t2)) => Some((t0, t1, t2)),
+        _ => None,
+    };
+    let triangle = Triangle {
+        vertices: vidxs,
+        tex_coords: tidxs,
+        material: material,
+    };
+    triangles.push(triangle);
+}
+
 impl Mesh {
     pub fn load<P: AsRef<Path>>(path: P) -> Mesh {
         let fbuffer = FileBuffer::open(path).expect("failed to open file");
@@ -39,7 +74,9 @@ impl Mesh {
 
         let mut vertices = Vec::new();
         let mut tex_coords = Vec::new();
+        let mut materials = vec!["none".to_string()];
         let mut triangles = Vec::new();
+        let mut material = 0;
 
         for (line, line_nr) in input.lines().zip(1u32..) {
             if line.is_empty() { continue }
@@ -61,21 +98,24 @@ impl Mesh {
                     let v = coords.next().expect("missing v coordinate");
                     tex_coords.push((u, v));
                 }
+                Some("usemtl") => {
+                    material = materials.len() as u32;
+                    let material_name = pieces.next().expect("missing material name");
+                    materials.push(material_name.to_string());
+                }
                 Some("f") => {
                     // Indices stored are 1-based, convert to 0-based.
-                    let mut indices = pieces.map(|i| u32::from_str(i).unwrap() - 1);
+                    let mut indices = pieces.map(parse_vertex_index);
                     let i0 = indices.next().expect("missing triangle index");
                     let i1 = indices.next().expect("missing triangle index");
                     let mut i2 = indices.next().expect("missing triangle index");
 
-                    assert_nondegenerate(&vertices, line_nr, i0, i1, i2);
-                    triangles.push((i0, i1, i2));
+                    push_triangle(&vertices, &mut triangles, i0, i1, i2, material, line_nr);
 
                     // There might be a quad or n-gon. Assuming it is convex, we
                     // can triangulate it at import time.
                     while let Some(i3) = indices.next() {
-                        assert_nondegenerate(&vertices, line_nr, i0, i2, i3);
-                        triangles.push((i0, i2, i3));
+                        push_triangle(&vertices, &mut triangles, i0, i2, i3, material, line_nr);
                         i2 = i3;
                     }
                 },
@@ -86,14 +126,21 @@ impl Mesh {
         Mesh {
             vertices: vertices,
             triangles: triangles,
+            materials: materials,
             tex_coords: tex_coords,
-            material: SMaterial::white(), // TODO: Allow picking the material.
         }
     }
 }
 
 // The loader should be able to load all of these files without crashing. The
 // files are known to be well-formed and without degenerate faces.
+
+#[test]
+fn read_indoor() {
+    let mesh = Mesh::load("models/indoor.obj");
+    assert_eq!(mesh.materials[1], "baseboard");
+    assert_eq!(mesh.materials[2], "wall");
+}
 
 #[test]
 fn read_stanford_bunny() {

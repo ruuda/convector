@@ -77,12 +77,12 @@ impl SMaterial {
 
     /// A white diffuse material.
     pub fn white() -> SMaterial {
-        SMaterial::diffuse(255, 255, 255)
+        SMaterial::diffuse(1.0, 1.0, 1.0)
     }
 
     /// A diffuse material with the given color.
-    pub fn diffuse(r: u8, g: u8, b: u8) -> SMaterial {
-        let mat = ((b as u32) << 16) | ((g as u32) << 8) | (r as u32);
+    pub fn diffuse(r: f32, g: f32, b: f32) -> SMaterial {
+        let mat = (((b * 255.0) as u32) << 16) | (((g * 255.0) as u32) << 8) | ((r * 255.0) as u32);
         SMaterial(mat)
     }
 

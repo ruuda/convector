@@ -1,9 +1,10 @@
 use bvh::Bvh;
-use material::{MDirectSample, MMaterial};
+use material::{MDirectSample, MMaterial, SMaterial};
 use quaternion::{MQuaternion, SQuaternion, rotate};
 use random::Rng;
 use ray::{MIntersection, MRay};
 use simd::Mf32;
+use std::collections::HashMap;
 use std::f32::consts::PI;
 use triangle::Triangle;
 use util::generate_slice8;
@@ -104,8 +105,8 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn from_meshes(meshes: &[Mesh]) -> Scene {
-        let bvh = Bvh::from_meshes(meshes);
+    pub fn from_meshes(meshes: &[Mesh], materials: &HashMap<&str, SMaterial>) -> Scene {
+        let bvh = Bvh::from_meshes(meshes, materials);
 
         let mut direct_sample = Vec::new();
         for i in 0..bvh.triangles.len() {
@@ -133,6 +134,8 @@ impl Scene {
     /// Returns 8 random points on 8 random triangles eligible for direct
     /// sampling.
     pub fn get_direct_sample(&self, rng: &mut Rng) -> MDirectSample {
+        debug_assert!(self.direct_sample.len() > 0);
+
         let random_bits = rng.sample_u32();
 
         // Pick a random direct sampling triangle for every coordinate. This has
