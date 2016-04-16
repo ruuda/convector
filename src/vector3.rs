@@ -500,6 +500,36 @@ fn rotate_hemisphere_extrema() {
     assert_eq!(z.rotate_hemisphere(-z), -z);
 }
 
+#[test]
+fn rotate_hemisphere_random() {
+    use random::Rng;
+    let x = MVector3::new(Mf32::one(), Mf32::zero(), Mf32::zero());
+    let epsilon = Mf32::broadcast(0.0001);
+    let mut rng = Rng::with_seed(1, 2, 3);
+    let mut had_negative_y = false;
+    let mut had_positive_y = false;
+    let mut had_negative_z = false;
+    let mut had_positive_z = false;
+    for _ in 0..4096 {
+        let v = rng.sample_hemisphere_vector();
+        let w = v.rotate_hemisphere(x);
+        assert!((w.x + epsilon).all_sign_bits_positive(),
+            "when rotating {:?} to the positive x-axis, no x-coordinate should be negative, \
+             but the result is {:?}", v, w);
+
+        // After rotation, (y, z) should lie on a circle, and every sign should
+        // occur for these two coordinates.
+        had_negative_y = had_negative_y || !(epsilon + w.y).all_sign_bits_positive();
+        had_positive_y = had_positive_y || !(epsilon - w.y).all_sign_bits_positive();
+        had_negative_z = had_negative_z || !(epsilon + w.z).all_sign_bits_positive();
+        had_positive_z = had_positive_z || !(epsilon - w.z).all_sign_bits_positive();
+    }
+    assert!(had_negative_y);
+    assert!(had_positive_y);
+    assert!(had_negative_z);
+    assert!(had_positive_z);
+}
+
 macro_rules! unroll_10 {
     { $x: block } => {
         $x $x $x $x $x $x $x $x $x $x
