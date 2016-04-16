@@ -99,6 +99,9 @@ fn main() {
         let frame_number = trace_log.inc_frame_number();
         let stw_frame = trace_log.scoped("render_frame", 0);
 
+        let time = epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
+        let time_delta = (stats.frame_us.median() as f32) * 1e-6;
+
         match window.handle_events() {
             Action::DumpTrace => {
                 trace_log.export_to_file("trace.json").expect("failed to write trace");
@@ -111,20 +114,14 @@ fn main() {
                 render_realtime = !render_realtime;
                 f32_buffer = renderer.new_buffer_f32();
                 f32_buffer_samples = 0;
+                // In accumulative mode the time is fixed and there is no motion
+                // blur.
+                renderer.set_time(time, 0.0);
             }
             Action::None => { }
         }
 
-        let time = epoch.to(PreciseTime::now()).num_milliseconds() as f32 * 1e-3;
-        let time_delta = (stats.frame_us.median() as f32) * 1e-6;
-
-        if render_realtime {
-            renderer.set_time(time, time_delta);
-        } else {
-            // In accumulative mode the time is fixed and there is no motion
-            // blur.
-            renderer.set_time(0.0, 0.0);
-        }
+        if render_realtime { renderer.set_time(time, time_delta); }
         renderer.update_scene();
 
         // When rendering in accumulation mode, first copy the current state
