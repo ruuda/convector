@@ -339,10 +339,16 @@ fn microfacet_normal_dist(half_way: MVector3, isect: &MIntersection) -> Mf32 {
     // cos * Mf32::broadcast(1.5 * consts::PI)
 
     // Blinn-Phong with parameter alpha = 2.
-    (cos * cos) * Mf32::broadcast(1.0 / consts::PI)
+    // (cos * cos) * Mf32::broadcast(1.0 / consts::PI)
 
     // Blinn-Phong with parameter alpha = 4;
     // let c2 = cos * cos;
     // let c4 = c2 * c2;
-    // c4 * Mf32::broadcast(3.0 / consts::PI)
+    // c4 * Mf32::broadcast(1.5 / consts::PI)
+
+    // Blinn-Phong with parameter alpha = 8;
+    let c2 = cos * cos;
+    let c4 = c2 * c2;
+    let c8 = c4 * c4;
+    c8 * Mf32::broadcast(2.5 / consts::PI)
 }
