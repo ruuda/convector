@@ -65,8 +65,11 @@ impl Rng {
         // number here. Try multiplying it by two and observe how the state
         // reaches 0 after a few iterations.
 
-        let factor = 3 * 5 * 7 * 4294967387;
-        self.state = self.state * Mu64(factor, factor, factor, factor);
+        let f1 = 3 * 1073243692214514217;
+        let f2 = 5 * 335100457702756523;
+        let f3 = 7 * 8789056573444181;
+        let f4 = 11 * 781436371140791701;
+        self.state = self.state * Mu64(f1, f2, f3, f4);
 
         old_state
     }
