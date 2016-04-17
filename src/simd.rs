@@ -434,12 +434,14 @@ impl BitAnd<Mask> for Mask {
     }
 }
 
-impl BitOr<Mi32> for Mi32 {
+impl BitAnd<Mi32> for Mi32 {
     type Output = Mi32;
 
     #[inline(always)]
-    fn bitor(self, other: Mi32) -> Mi32 {
-        unsafe { simd_or(self, other) }
+    fn bitand(self, other: Mi32) -> Mi32 {
+        unsafe {
+            simd_and(self, other)
+        }
     }
 }
 
@@ -455,6 +457,15 @@ impl BitOr<Mask> for Mask {
             let a_or_b = simd_or(a, b);
             transmute(a_or_b)
         }
+    }
+}
+
+impl BitOr<Mi32> for Mi32 {
+    type Output = Mi32;
+
+    #[inline(always)]
+    fn bitor(self, other: Mi32) -> Mi32 {
+        unsafe { simd_or(self, other) }
     }
 }
 

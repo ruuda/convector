@@ -52,9 +52,9 @@
 use random::Rng;
 use ray::{MIntersection, MRay};
 use scene::Scene;
-use simd::Mf32;
+use simd::{Mf32, Mi32};
 use std::f32::consts;
-use vector3::{MVector3, SVector3};
+use vector3::MVector3;
 
 #[derive(Copy, Clone, Debug)]
 pub struct SMaterial(u32);
@@ -110,6 +110,26 @@ impl MMaterial {
 
     pub fn sky() -> MMaterial {
         MMaterial::broadcast_material(SMaterial::sky())
+    }
+
+    /// Unpacks the color information from the material.
+    fn get_color(&self) -> MVector3 {
+        use std::mem::transmute;
+        let mask = Mi32::broadcast(0xff);
+
+        // Shift and mask out the component bytes.
+        let mi32: Mi32 = unsafe { transmute(*self) };
+        let mir255 = mi32 & mask;
+        let mig255 = mi32.map(|x| x >> 8) & mask;
+        let mib255 = mi32.map(|x| x >> 16) & mask;
+
+        // Convert bytes into floats in the range [0.0, 255.0].
+        let mfr255 = mir255.into_mf32();
+        let mfg255 = mig255.into_mf32();
+        let mfb255 = mib255.into_mf32();
+
+        // Convert to a color in the range [0.0, 1.0].
+        MVector3::new(mfr255, mfg255, mfb255) * Mf32::broadcast(1.0 / 255.0)
     }
 }
 
@@ -246,7 +266,8 @@ fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
 /// If a ray intersected a surface with a certain material, then this will
 /// compute the ray that continues the light path. A factor to multiply the
 /// final color by is returned as well.
-pub fn continue_path(scene: &Scene,
+pub fn continue_path(material: MMaterial,
+                     scene: &Scene,
                      ray: &MRay,
                      isect: &MIntersection,
                      rng: &mut Rng)
@@ -287,7 +308,7 @@ pub fn continue_path(scene: &Scene,
     // for the incident angle.
     let modulation = weight_denom.recip_fast() * Mf32::broadcast(2.0);
     let cos_theta = isect.normal.dot(new_ray.direction).max(Mf32::zero());
-    let brdf_term = microfacet_brdf(&new_ray, ray, isect);
+    let brdf_term = microfacet_brdf(material, &new_ray, ray, isect);
     let color_mod = brdf_term * (modulation * cos_theta);
 
     debug_assert!(modulation.all_finite());
@@ -316,11 +337,14 @@ pub fn continue_path(scene: &Scene,
     (new_ray, color_mod)
 }
 
-fn microfacet_brdf(ray_in: &MRay, ray_out: &MRay, isect: &MIntersection) -> MVector3 {
+fn microfacet_brdf(material: MMaterial,
+                   ray_in: &MRay,
+                   ray_out: &MRay,
+                   isect: &MIntersection)
+                   -> MVector3 {
     // Compute the half-way vector. The outgoing ray points to the surface,
     // so negate it.
-    // TODO: take color from material.
-    let color = MVector3::broadcast(SVector3::new(0.9, 0.7, 0.9));
+    let color = material.get_color();
     let h = (ray_in.direction - ray_out.direction).normalized();
     let f = microfacet_fresnel(ray_in.direction, h, color);
     let d = microfacet_normal_dist(h, isect);

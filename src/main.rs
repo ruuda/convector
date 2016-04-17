@@ -52,11 +52,11 @@ fn build_scene() -> Scene {
     let mut materials = HashMap::new();
     materials.insert("baseboard", SMaterial::white());
     materials.insert("ceiling", SMaterial::white());
-    materials.insert("fauteuil", SMaterial::diffuse(1.0, 0.6, 0.8));
-    materials.insert("floor", SMaterial::white());
+    materials.insert("fauteuil", SMaterial::diffuse(1.0, 0.1, 0.4));
+    materials.insert("floor", SMaterial::diffuse(0.3, 0.1, 0.0));
     materials.insert("glass", SMaterial::sky());
-    materials.insert("wall", SMaterial::white());
-    materials.insert("wood_light", SMaterial::white());
+    materials.insert("wall", SMaterial::diffuse(0.9, 0.9, 0.8));
+    materials.insert("wood_light", SMaterial::diffuse(0.5, 0.3, 0.1));
     let indoor = Mesh::load_with_materials("models/indoor.obj", &materials);
     let meshes = [indoor];
 
@@ -77,7 +77,7 @@ fn main() {
     let height = 736;
     let patch_width = 32;
 
-    let mut window = Window::new(width, height, "infomagr interactive raytracer");
+    let mut window = Window::new(width, height, "infomagr interactive path tracer");
     let mut renderer = Renderer::new(build_scene(), width, height);
     let mut stats = GlobalStats::new();
     let mut trace_log = trace::TraceLog::with_limit(6 * 1024);
