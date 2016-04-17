@@ -164,7 +164,7 @@ fn continue_path_brdf(ray: &MRay,
 }
 
 /// Returns the probability density for the BRDF sampler at a given ray.
-pub fn pd_brdf(isect: &MIntersection, ray: &MRay) -> Mf32 {
+fn pd_brdf(isect: &MIntersection, ray: &MRay) -> Mf32 {
     // The probability density for the ray is dot(normal, direction) divided by
     // the intgral of that over the hemisphere (which happens to be pi).
     let dot_surface = isect.normal.dot(ray.direction).max(Mf32::zero());
@@ -189,9 +189,20 @@ fn continue_path_direct_sample(scene: &Scene,
     }
 }
 
+fn debug_assert_all_nonzero(x: Mf32, tag: &str) {
+    debug_assert!(x.0 != 0.0, "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.1 != 0.0, "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.2 != 0.0, "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.3 != 0.0, "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.4 != 0.0, "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.5 != 0.0, "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.6 != 0.0, "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.7 != 0.0, "{} {:?} must be nonzero", tag, x);
+}
+
 /// Returns the probability density for the given ray, for the direct sampling
 /// distribution.
-pub fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
+fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
     let mut pd_total = Mf32::zero();
     scene.foreach_direct_sample(|triangle| {
         // The probability density for the point on the triangle is simply
@@ -210,6 +221,9 @@ pub fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
         let distance_sqr = sample_isect.distance * sample_isect.distance;
         let dot_emissive = sample_isect.normal.dot(ray.direction).abs();
         let pd = distance_sqr * (sample_isect.area * dot_emissive).recip_fast();
+
+        debug_assert_all_nonzero(sample_isect.area, "area");
+        debug_assert_all_nonzero(dot_emissive, "dot_emissive");
 
         // Add the probability density if the triangle was intersected. If the
         // triangle was not intersected, the probability of sampling it directly
