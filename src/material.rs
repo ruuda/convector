@@ -304,21 +304,14 @@ pub fn continue_path(scene: &Scene,
         z: color_mod.z.min(Mf32::broadcast(2.0)),
     };
 
-    // If the ray shears the surface, we are likely to get artifacts due to
-    // division by almost zero and floating point imprecision. In that case,
-    // just ignore the sample. The cosine theta term will be ~0 anyway.
-    // The sign bit of this variable is 0 (positive) if the ray is fine, and 1
-    // (negative) if the ray should be discarded.
-    let degenerate = new_ray.direction.dot(isect.normal).abs() - Mf32::broadcast(0.001);
-
     let new_ray = MRay {
         origin: new_ray.origin.pick(ray.origin, active),
         direction: new_ray.direction.pick(ray.direction, active),
-        active: active | degenerate
+        active: active
     };
 
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
-    let color_mod = color_mod.pick(white, active).pick(MVector3::zero(), degenerate);
+    let color_mod = color_mod.pick(white, active);
 
     (new_ray, color_mod)
 }
