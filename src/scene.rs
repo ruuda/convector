@@ -30,7 +30,7 @@ impl Camera {
             position_delta: SVector3::zero(),
             orientation: SQuaternion::new(1.0, 0.0, 0.0, 0.0),
             orientation_delta: SQuaternion::new(0.0, 0.0, 0.0, 0.0),
-            screen_distance: 1.0 / (PI / 6.0).sin(),
+            screen_distance: 1.0 / (PI / 5.0).sin(),
         }
     }
 
