@@ -57,7 +57,7 @@ fn build_scene() -> Scene {
     materials.insert("glass", SMaterial::sky());
     materials.insert("wall", SMaterial::white());
     materials.insert("wood_light", SMaterial::white());
-    let indoor = Mesh::load("models/indoor.obj");
+    let indoor = Mesh::load("models/box_windows.obj");
     let meshes = [indoor];
 
     println!("building bvh");
