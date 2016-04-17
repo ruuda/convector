@@ -138,7 +138,7 @@ impl Scene {
         let random_bits = rng.sample_u32();
 
         // Pick a random direct sampling triangle for every coordinate. This has
-        // to be done serially, unfortunately.  Doing the full range modulo the
+        // to be done serially, unfortunately. Doing the full range modulo the
         // valid range introduces a slight bias towards lower indices, but the
         // u32 range is so vast in comparison with the number of direct sampling
         // triangles, that the effect is negligible.
