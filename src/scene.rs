@@ -133,17 +133,22 @@ impl Scene {
     /// Returns 8 random points on 8 random triangles eligible for direct
     /// sampling.
     pub fn get_direct_sample(&self, rng: &mut Rng) -> MDirectSample {
-        debug_assert!(self.direct_sample.len() > 0);
+        // The number of triangles eligible for direct sampling must be greater
+        // than 0, bute for good random number, I assume below that there are 8.
+        // This is the case for my hard-coded scene.
+        debug_assert!(self.direct_sample.len() == 8);
 
         let random_bits = rng.sample_u32();
 
         // Pick a random direct sampling triangle for every coordinate. This has
-        // to be done serially, unfortunately. Doing the full range modulo the
-        // valid range introduces a slight bias towards lower indices, but the
-        // u32 range is so vast in comparison with the number of direct sampling
-        // triangles, that the effect is negligible.
+        // to be done serially, unfortunately. The low order bits of the random
+        // number are not really random modulo 8, but the high order bits are.
+        // This has to do with how Rng works. In short, the sequence x*p^n is
+        // not random modulo 8, because p^n can take at most 4 values mod 8. And
+        // if you are unlucky, x = 0 mod 8, and then all indices are the same.
+        // Therefore take the high order bits, which are sufficiently random.
         // TODO: Are the bounds checks a bottleneck here?
-        let indices = generate_slice8(|i| random_bits[i] % self.direct_sample.len() as u32);
+        let indices = generate_slice8(|i| (random_bits[i] >> 29) as u32);
         let tri_indices = generate_slice8(|i| self.direct_sample[indices[i] as usize]);
         let tris = generate_slice8(|i| &self.bvh.triangles[tri_indices[i] as usize]);
 

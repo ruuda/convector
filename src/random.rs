@@ -47,7 +47,15 @@ impl Rng {
         let b = (y as u64).wrapping_mul(7661526868048087387);
         let c = (i as u64).wrapping_mul(2268244495640532043);
         let seed = a.wrapping_add(b).wrapping_add(c);
-        let primes = Mu64(14491630826648199307, 13149596372461506791, 6119410235796055883, 14990141545859273659);
+
+        // If I only use the above scheme, the seed has a severe bias modulo
+        // small powers of two. (For instance, x and y are always multiples of
+        // 16 and 4, so modulo 8, a + b is always 0 or 4.) To avoid this, take
+        // the seed modulo a prime. This removes the correlation modulo small
+        // powers of two.
+        let seed = seed + (seed % 9358246936573323101);
+
+        let primes = Mu64(14491630826648200009, 13149596372461506851, 6119410235796056053, 14990141545859273719);
 
         Rng {
             state: Mu64(seed, seed, seed, seed) * primes,
@@ -66,15 +74,19 @@ impl Rng {
         // reaches 0 after a few iterations.
 
         let f1 = 3 * 1073243692214514217;
-        let f2 = 5 * 335100457702756523;
+        let f2 = 5 * 3335100457702756523;
         let f3 = 7 * 8789056573444181;
-        let f4 = 11 * 781436371140791701;
+        let f4 = 11 * 781436371140792079;
         self.state = self.state * Mu64(f1, f2, f3, f4);
 
         old_state
     }
 
     /// Returns 8 random 32-bit integers.
+    ///
+    /// Note: a sequence of generated numbers is not random modulo small
+    /// composite numbers. Take the high order bits of this random number to
+    /// avoid bias and correlations.
     pub fn sample_u32(&mut self) -> [u32; 8] {
         use std::mem::transmute_copy;
         // Note: using a `transmute` instead of `transmute_copy` can cause a
