@@ -284,8 +284,9 @@ pub fn continue_path(material: MMaterial,
     let ray_direct = continue_path_direct_sample(scene, isect, rng);
 
     // Randomly pick one of the two rays to use, then compute the weight for
-    // multiple importance sampling.
-    let rr = rng.sample_sign();
+    // multiple importance sampling. Do direct sampling with probability 0.7
+    // and BRDF sampling with probability 0.3.
+    let rr = rng.sample_biunit().geq(Mf32::broadcast(-0.4));
     let new_ray = MRay {
         origin: ray_brdf.origin.pick(ray_direct.origin, rr),
         direction: ray_brdf.direction.pick(ray_direct.direction, rr),
@@ -300,13 +301,16 @@ pub fn continue_path(material: MMaterial,
     debug_assert!(pd_brdf.all_sign_bits_positive(), "probability density cannot be negative");
     debug_assert!(pd_direct.all_sign_bits_positive(), "probability density cannot be negative");
 
+    // There is a compensation factor 1 / (probability that sampling method was
+    // chosen) in the multiple importance sampler.
+    let p_recip = Mf32::broadcast(1.0 / 0.3).pick(Mf32::broadcast(1.0 / 0.7), rr);
+
     // Compute the contribution using the one-sample multiple importance
     // sampler. This is equation 9.15 from section 9.2.4 of Veach, 1998. The
     // probability densities in the weight and denominator cancel, so they have
-    // been left out. The factor 2.0 is because each sampling method has
-    // probability 0.5 of being chosen. Finally, there is the correction factor
-    // for the incident angle.
-    let modulation = weight_denom.recip_fast() * Mf32::broadcast(2.0);
+    // been left out. Finally, there is the correction factor for the incident
+    // angle.
+    let modulation = weight_denom.recip_fast() * p_recip;
     let cos_theta = isect.normal.dot(new_ray.direction).max(Mf32::zero());
     let brdf_term = microfacet_brdf(material, &new_ray, ray, isect);
     let color_mod = brdf_term * (modulation * cos_theta);
