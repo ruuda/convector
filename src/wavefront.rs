@@ -2,6 +2,8 @@
 //! reinventing the wheel is much more fun.
 
 use filebuffer::FileBuffer;
+use material::SMaterial;
+use std::collections::HashMap;
 use std::path::Path;
 use std::str::{FromStr, from_utf8};
 use vector3::SVector3;
@@ -9,13 +11,12 @@ use vector3::SVector3;
 pub struct Triangle {
     pub vertices: (u32, u32, u32),
     pub tex_coords: Option<(u32, u32, u32)>,
-    pub material: u32,
+    pub material: SMaterial,
 }
 
 pub struct Mesh {
     pub vertices: Vec<SVector3>,
     pub tex_coords: Vec<(f32, f32)>,
-    pub materials: Vec<String>,
     pub triangles: Vec<Triangle>,
 }
 
@@ -51,7 +52,7 @@ pub fn push_triangle(vertices: &[SVector3],
                      i0: (u32, Option<u32>),
                      i1: (u32, Option<u32>),
                      i2: (u32, Option<u32>),
-                     material: u32,
+                     material: SMaterial,
                      line_nr: u32) {
     assert_nondegenerate(&vertices, line_nr, i0.0, i1.0, i2.0);
     let vidxs = (i0.0, i1.0, i2.0);
@@ -69,14 +70,19 @@ pub fn push_triangle(vertices: &[SVector3],
 
 impl Mesh {
     pub fn load<P: AsRef<Path>>(path: P) -> Mesh {
+        Mesh::load_with_materials(path, &HashMap::new())
+    }
+
+    pub fn load_with_materials<P: AsRef<Path>>(path: P,
+                                               materials: &HashMap<&str, SMaterial>)
+                                               -> Mesh {
         let fbuffer = FileBuffer::open(path).expect("failed to open file");
         let input = from_utf8(&fbuffer[..]).expect("obj must be valid utf-8");
 
         let mut vertices = Vec::new();
         let mut tex_coords = Vec::new();
-        let mut materials = vec!["none".to_string()];
         let mut triangles = Vec::new();
-        let mut material = 0;
+        let mut material = SMaterial::white(); // The default material.
 
         for (line, line_nr) in input.lines().zip(1u32..) {
             if line.is_empty() { continue }
@@ -99,9 +105,13 @@ impl Mesh {
                     tex_coords.push((u, v));
                 }
                 Some("usemtl") => {
-                    material = materials.len() as u32;
                     let material_name = pieces.next().expect("missing material name");
-                    materials.push(material_name.to_string());
+                    if let Some(&new_mat) = materials.get(material_name) {
+                        material = new_mat;
+                    } else {
+                        panic!("material '{}' not present in material dictionary",
+                                material_name);
+                    }
                 }
                 Some("f") => {
                     // Indices stored are 1-based, convert to 0-based.
@@ -126,7 +136,6 @@ impl Mesh {
         Mesh {
             vertices: vertices,
             triangles: triangles,
-            materials: materials,
             tex_coords: tex_coords,
         }
     }
@@ -137,9 +146,10 @@ impl Mesh {
 
 #[test]
 fn read_indoor() {
-    let mesh = Mesh::load("models/indoor.obj");
-    assert_eq!(mesh.materials[1], "baseboard");
-    assert_eq!(mesh.materials[2], "wall");
+    let mut materials = HashMap::new();
+    materials.insert("wall", SMaterial::white());
+    materials.insert("glass", SMaterial::sky());
+    Mesh::load_with_materials("models/box_walls.obj", &materials);
 }
 
 #[test]

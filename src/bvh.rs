@@ -1,9 +1,7 @@
 //! Implements a bounding volume hierarchy.
 
 use aabb::Aabb;
-use material::SMaterial;
 use ray::{MIntersection, MRay};
-use std::collections::HashMap;
 use triangle::Triangle;
 use util;
 use vector3::{Axis, SVector3};
@@ -525,8 +523,7 @@ impl Bvh {
         }
     }
 
-    pub fn from_meshes(meshes: &[Mesh], materials: &HashMap<&str, SMaterial>) -> Bvh {
-        let white = SMaterial::white();
+    pub fn from_meshes(meshes: &[Mesh]) -> Bvh {
         let mut triangles = Vec::new();
 
         for mesh in meshes {
@@ -536,9 +533,7 @@ impl Bvh {
                     let v0 = mesh.vertices[i0 as usize];
                     let v1 = mesh.vertices[i1 as usize];
                     let v2 = mesh.vertices[i2 as usize];
-                    let material_name = mesh.materials.get(tri.material as usize);
-                    let material = material_name.and_then(|name| materials.get(&name[..]));
-                    Triangle::new(v0, v1, v2, *material.unwrap_or(&white))
+                    Triangle::new(v0, v1, v2, tri.material)
                 });
             triangles.extend(mesh_triangles);
         }
@@ -658,7 +653,7 @@ impl Drop for Bvh {
 fn bench_intersect_decoherent_mray_suzanne(b: &mut test::Bencher) {
     use wavefront::Mesh;
     let suzanne = Mesh::load("models/suzanne.obj");
-    let bvh = Bvh::from_meshes(&[suzanne], &HashMap::new());
+    let bvh = Bvh::from_meshes(&[suzanne]);
     let rays = bench::mrays_inward(4096 / 8);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
@@ -673,7 +668,7 @@ fn bench_intersect_decoherent_mray_suzanne(b: &mut test::Bencher) {
 fn bench_intersect_coherent_mray_suzanne(b: &mut test::Bencher) {
     use wavefront::Mesh;
     let suzanne = Mesh::load("models/suzanne.obj");
-    let bvh = Bvh::from_meshes(&[suzanne], &HashMap::new());
+    let bvh = Bvh::from_meshes(&[suzanne]);
     let rays = bench::mrays_inward_coherent(4096 / 8);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
@@ -688,7 +683,7 @@ fn bench_intersect_coherent_mray_suzanne(b: &mut test::Bencher) {
 fn bench_intersect_decoherent_mray_bunny(b: &mut test::Bencher) {
     use wavefront::Mesh;
     let bunny = Mesh::load("models/stanford_bunny.obj");
-    let bvh = Bvh::from_meshes(&[bunny], &HashMap::new());
+    let bvh = Bvh::from_meshes(&[bunny]);
     let rays = bench::mrays_inward(4096 / 8);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {
@@ -703,7 +698,7 @@ fn bench_intersect_decoherent_mray_bunny(b: &mut test::Bencher) {
 fn bench_intersect_coherent_mray_bunny(b: &mut test::Bencher) {
     use wavefront::Mesh;
     let bunny = Mesh::load("models/stanford_bunny.obj");
-    let bvh = Bvh::from_meshes(&[bunny], &HashMap::new());
+    let bvh = Bvh::from_meshes(&[bunny]);
     let rays = bench::mrays_inward_coherent(4096 / 8);
     let mut rays_it = rays.iter().cycle();
     b.iter(|| {

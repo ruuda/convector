@@ -1,10 +1,9 @@
 use bvh::Bvh;
-use material::{MDirectSample, MMaterial, SMaterial};
+use material::{MDirectSample, MMaterial};
 use quaternion::{MQuaternion, SQuaternion, rotate};
 use random::Rng;
 use ray::{MIntersection, MRay};
 use simd::Mf32;
-use std::collections::HashMap;
 use std::f32::consts::PI;
 use triangle::Triangle;
 use util::generate_slice8;
@@ -105,8 +104,8 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn from_meshes(meshes: &[Mesh], materials: &HashMap<&str, SMaterial>) -> Scene {
-        let bvh = Bvh::from_meshes(meshes, materials);
+    pub fn from_meshes(meshes: &[Mesh]) -> Scene {
+        let bvh = Bvh::from_meshes(meshes);
 
         let mut direct_sample = Vec::new();
         for i in 0..bvh.triangles.len() {
