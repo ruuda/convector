@@ -124,8 +124,8 @@ impl Renderer {
     pub fn update_scene(&mut self) {
         let alpha = self.time * -0.05 + 0.5;
         let alpha_delta = self.time_delta * -0.05;
-        let cam_position = SVector3::new(-3.8 * alpha.sin(), 1.8, 3.8 * alpha.cos());
-        let cam_pos_delta = SVector3::new(-3.8 * alpha.cos(), 0.0, -3.8 * alpha.sin()) * alpha_delta;
+        let cam_position = SVector3::new(-3.8 * alpha.sin(), 1.6, 3.0 * alpha.cos());
+        let cam_pos_delta = SVector3::new(-3.8 * alpha.cos(), 0.0, -3.0 * alpha.sin()) * alpha_delta;
         self.scene.camera.set_position(cam_position, cam_pos_delta);
         self.scene.camera.set_rotation(alpha, alpha_delta);
     }
