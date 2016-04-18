@@ -37,6 +37,7 @@ Controls
  * Press `d` to toggle debug view.
    The green channel shows the number of AABB intersections,
    the blue channel shows the number of triangle intersections.
+ * Press `m` to toggle the median filter for noise reduction.
  * Press `q` to quit the application.
  * Press `r` to switch between realtime and accumulative rendering.
  * Press `s` to print statistics to the console.

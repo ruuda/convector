@@ -27,6 +27,7 @@ struct FullScreenQuad {
     indices: NoIndices,
     program_blend: Program,
     program_median: Program,
+    program_id: Program,
 }
 
 impl FullScreenQuad {
@@ -63,11 +64,22 @@ impl FullScreenQuad {
             ).unwrap()
         };
 
+        let program_id = {
+            let fragment_shader = FileBuffer::open("src/gpu/id.glsl")
+                .expect("failed to load fragment shader source");
+
+            Program::from_source(facade,
+               str::from_utf8(&vertex_shader[..]).unwrap(),
+               str::from_utf8(&fragment_shader[..]).unwrap(), None
+            ).unwrap()
+        };
+
         FullScreenQuad {
             vertex_buffer: vertex_buffer,
             indices: indices,
             program_blend: program_blend,
             program_median: program_median,
+            program_id: program_id,
         }
     }
 
@@ -130,6 +142,23 @@ impl FullScreenQuad {
                     &uniforms,
                     &Default::default()).expect("failed to draw quad");
     }
+
+    /// Draws the source onto the target.
+    ///
+    /// This does not have the same effect as using `source.fill()`, because
+    /// that does not apply the linear RGB -> sRGB conversion when the target is
+    /// the framebuffer, whereas this method does (this is handled automatically
+    /// by OpenGL).
+    pub fn draw_id<S: Surface>(&self, target: &mut S, source: &Texture2d) {
+        let uniforms = uniform! {
+            frame: source,
+        };
+        target.draw(&self.vertex_buffer,
+                    &self.indices,
+                    &self.program_id,
+                    &uniforms,
+                    &Default::default()).expect("failed to draw quad");
+    }
 }
 
 pub struct Window {
@@ -138,7 +167,8 @@ pub struct Window {
     frames: [Texture2d; 8],
     scratch: Texture2d,
     frame_index: u32,
-    draw_blended: bool,
+    enable_blend: bool,
+    enable_median: bool,
     width: u32,
     height: u32,
 }
@@ -186,7 +216,8 @@ impl Window {
             frames: unsafe { mem::uninitialized() },
             scratch: scratch,
             frame_index: 0,
-            draw_blended: true,
+            enable_blend: true,
+            enable_median: true,
             width: width,
             height: height,
         };
@@ -231,16 +262,21 @@ impl Window {
         // Blend the past eight frames together into the scratch texture. (Or
         // not, if blending is disabled.)
         let mut target = self.scratch.as_surface();
-        if self.draw_blended {
+        if self.enable_blend {
             self.quad.draw_blended(&mut target, &self.frames[..]);
         } else {
             self.quad.draw_single(&mut target, &self.frames[frame_index]);
         }
 
-        // Apply a median filter to the scratch texture and display that.
-        // Finishing drawing will swap the buffers and wait for a vsync.
+        // Apply a median filter to the scratch texture (or not if disabled) and
+        // display that.  Finishing drawing will swap the buffers and wait for a
+        // vsync.
         let mut target = self.display.draw();
-        self.quad.draw_median(&mut target, &self.scratch, self.width, self.height);
+        if self.enable_median {
+            self.quad.draw_median(&mut target, &self.scratch, self.width, self.height);
+        } else {
+            self.quad.draw_id(&mut target, &self.scratch);
+        }
         target.finish().expect("failed to swap buffers");
 
         let end_draw = PreciseTime::now();
@@ -255,9 +291,11 @@ impl Window {
                 // Window was closed by the user.
                 Event::Closed => return Action::Quit,
                 // The user pressed 'b' to toggle blending.
-                Event::ReceivedCharacter('b') => self.draw_blended = !self.draw_blended,
+                Event::ReceivedCharacter('b') => self.enable_blend = !self.enable_blend,
                 // The user pressed 'd' to toggle debug view.
                 Event::ReceivedCharacter('d') => return Action::ToggleDebugView,
+                // The user pressed 'm' to toggle the median filter.
+                Event::ReceivedCharacter('m') => self.enable_median = !self.enable_median,
                 // The user pressed 'q' for quit.
                 Event::ReceivedCharacter('q') => return Action::Quit,
                 // The user pressed 'r' to toggle the render mode.
