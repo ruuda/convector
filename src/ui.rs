@@ -26,6 +26,7 @@ struct FullScreenQuad {
     vertex_buffer: VertexBuffer<Vertex>,
     indices: NoIndices,
     program_blend: Program,
+    program_median: Program,
 }
 
 impl FullScreenQuad {
@@ -52,10 +53,21 @@ impl FullScreenQuad {
             ).unwrap()
         };
 
+        let program_median = {
+            let fragment_shader = FileBuffer::open("src/gpu/median.glsl")
+                .expect("failed to load fragment shader source");
+
+            Program::from_source(facade,
+               str::from_utf8(&vertex_shader[..]).unwrap(),
+               str::from_utf8(&fragment_shader[..]).unwrap(), None
+            ).unwrap()
+        };
+
         FullScreenQuad {
             vertex_buffer: vertex_buffer,
             indices: indices,
             program_blend: program_blend,
+            program_median: program_median,
         }
     }
 
@@ -101,12 +113,30 @@ impl FullScreenQuad {
                     &uniforms,
                     &Default::default()).expect("failed to draw quad");
     }
+
+    /// Applies a median filter to the source and draws that to the target.
+    pub fn draw_median<S: Surface>(&self,
+                                   target: &mut S,
+                                   source: &Texture2d,
+                                   width: u32,
+                                   height: u32) {
+        let uniforms = uniform! {
+            frame: source,
+            pixel_size: [1.0 / width as f32, 1.0 / height as f32],
+        };
+        target.draw(&self.vertex_buffer,
+                    &self.indices,
+                    &self.program_median,
+                    &uniforms,
+                    &Default::default()).expect("failed to draw quad");
+    }
 }
 
 pub struct Window {
     display: GlutinFacade,
     quad: FullScreenQuad,
     frames: [Texture2d; 8],
+    scratch: Texture2d,
     frame_index: u32,
     draw_blended: bool,
     width: u32,
@@ -147,10 +177,14 @@ impl Window {
 
         let quad = FullScreenQuad::new(&display);
 
+        let scratch = Texture2d::empty(&display, width, height)
+            .expect("failed to create scratch texture");
+
         let mut window = Window {
             display: display,
             quad: quad,
             frames: unsafe { mem::uninitialized() },
+            scratch: scratch,
             frame_index: 0,
             draw_blended: true,
             width: width,
@@ -194,15 +228,19 @@ impl Window {
 
         let begin_draw = PreciseTime::now();
 
-        // Draw a full-screen quad with the texture. Finishing drawing will swap
-        // the buffers and wait for a vsync.
-        let mut target = self.display.draw();
-
+        // Blend the past eight frames together into the scratch texture. (Or
+        // not, if blending is disabled.)
+        let mut target = self.scratch.as_surface();
         if self.draw_blended {
             self.quad.draw_blended(&mut target, &self.frames[..]);
         } else {
             self.quad.draw_single(&mut target, &self.frames[frame_index]);
         }
+
+        // Apply a median filter to the scratch texture and display that.
+        // Finishing drawing will swap the buffers and wait for a vsync.
+        let mut target = self.display.draw();
+        self.quad.draw_median(&mut target, &self.scratch, self.width, self.height);
         target.finish().expect("failed to swap buffers");
 
         let end_draw = PreciseTime::now();
