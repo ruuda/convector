@@ -1,7 +1,7 @@
 Infomagr
 ========
 
-Interactive ray tracer. Copyright 2016 Ruud van Asseldonk.
+Interactive path tracer. Copyright 2016 Ruud van Asseldonk.
 
 TL;DR
 -----
@@ -17,7 +17,8 @@ means Sandy Bridge or later. FMA instructions can be taken advantage of too,
 those are Haswell or later.
 
 Software: a recent nightly version of the
-[Rust programming language](https://rust-lang.org) is required.
+[Rust programming language](https://rust-lang.org) is required. On Windows you
+need the version with the MSVC ABI.
 
 Compiling and Running
 ---------------------
