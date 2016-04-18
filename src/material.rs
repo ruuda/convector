@@ -316,7 +316,7 @@ pub fn continue_path(material: MMaterial,
     let p = p_brdf.pick(p_direct, rr);
 
     // Compute the contribution using the one-sample multiple importance
-    // sampler. This is equation 9.15 from section 9.2.4 of Veach, 1998. The
+    // sampler. This is equation 9.15 from section 9.2.4 of Veach, 1997. The
     // probability densities in the weight and denominator cancel, so they have
     // been left out. Finally, there is the correction factor for the incident
     // angle.
