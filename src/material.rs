@@ -284,9 +284,15 @@ pub fn continue_path(material: MMaterial,
     let ray_direct = continue_path_direct_sample(scene, isect, rng);
 
     // Randomly pick one of the two rays to use, then compute the weight for
-    // multiple importance sampling. Do direct sampling with probability 0.7
-    // and BRDF sampling with probability 0.3.
-    let rr = rng.sample_biunit().geq(Mf32::broadcast(-0.4));
+    // multiple importance sampling. **Cheat Alert** with which probability do
+    // we pick BRDF sampling or direct sampling? All my light sources are on one
+    // side of the scene, so for surfaces that face the light source, direct
+    // sampling is going to work well. For surfaces that do not face the light
+    // source, direct sampling is going to return black and the only
+    // contribution comes from indirect light. So there we want to sample the
+    // BRDF. Solution: pick with a probability proportional to the z-component
+    // of the normal.
+    let rr = rng.sample_biunit() + isect.normal.z;
     let new_ray = MRay {
         origin: ray_brdf.origin.pick(ray_direct.origin, rr),
         direction: ray_brdf.direction.pick(ray_direct.direction, rr),
@@ -302,15 +308,19 @@ pub fn continue_path(material: MMaterial,
     debug_assert!(pd_direct.all_sign_bits_positive(), "probability density cannot be negative");
 
     // There is a compensation factor 1 / (probability that sampling method was
-    // chosen) in the multiple importance sampler.
-    let p_recip = Mf32::broadcast(1.0 / 0.3).pick(Mf32::broadcast(1.0 / 0.7), rr);
+    // chosen) in the multiple importance sampler. There is a probability of
+    // (0.5 + normal.z * 0.5) of picking BRDF sampling.
+    let half = Mf32::broadcast(0.5);
+    let p_brdf = isect.normal.z.mul_add(half, half);
+    let p_direct = isect.normal.z.neg_mul_add(half, half);
+    let p = p_brdf.pick(p_direct, rr);
 
     // Compute the contribution using the one-sample multiple importance
     // sampler. This is equation 9.15 from section 9.2.4 of Veach, 1998. The
     // probability densities in the weight and denominator cancel, so they have
     // been left out. Finally, there is the correction factor for the incident
     // angle.
-    let modulation = weight_denom.recip_fast() * p_recip;
+    let modulation = (weight_denom * p).recip_fast();
     let cos_theta = isect.normal.dot(new_ray.direction).max(Mf32::zero());
     let brdf_term = microfacet_brdf(material, &new_ray, ray, isect);
     let color_mod = brdf_term * (modulation * cos_theta);
