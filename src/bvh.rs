@@ -533,7 +533,13 @@ impl Bvh {
                     let v0 = mesh.vertices[i0 as usize];
                     let v1 = mesh.vertices[i1 as usize];
                     let v2 = mesh.vertices[i2 as usize];
-                    Triangle::new(v0, v1, v2, tri.material)
+                    let mut triangle = Triangle::new(v0, v1, v2, tri.material);
+                    if let Some((tx0, tx1, tx2)) = tri.tex_coords {
+                        triangle.uv0 = mesh.tex_coords[tx0 as usize];
+                        triangle.uv1 = mesh.tex_coords[tx1 as usize];
+                        triangle.uv2 = mesh.tex_coords[tx2 as usize];
+                    }
+                    triangle
                 });
             triangles.extend(mesh_triangles);
         }

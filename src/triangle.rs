@@ -18,6 +18,9 @@ pub struct Triangle {
     pub v0: SVector3,
     pub v1: SVector3,
     pub v2: SVector3,
+    pub uv0: (f32, f32),
+    pub uv1: (f32, f32),
+    pub uv2: (f32, f32),
     pub material: SMaterial,
 }
 
@@ -35,6 +38,9 @@ impl Triangle {
             v0: v0,
             v1: v1,
             v2: v2,
+            uv0: (0.0, 0.0),
+            uv1: (0.0, 0.0),
+            uv2: (0.0, 0.0),
             material: mat,
         }
     }
