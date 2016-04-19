@@ -330,7 +330,7 @@ pub fn continue_path(material: MMaterial,
     // contribution comes from indirect light. So there we want to sample the
     // BRDF. Solution: pick with a probability proportional to the z-component
     // of the normal.
-    let rr = rng.sample_biunit() + isect.normal.z;
+    let rr = isect.normal.z.mul_add(Mf32::broadcast(0.8), rng.sample_biunit());
     let new_ray = MRay {
         origin: ray_brdf.origin.pick(ray_direct.origin, rr),
         direction: ray_brdf.direction.pick(ray_direct.direction, rr),
@@ -347,10 +347,10 @@ pub fn continue_path(material: MMaterial,
 
     // There is a compensation factor 1 / (probability that sampling method was
     // chosen) in the multiple importance sampler. There is a probability of
-    // (0.5 + normal.z * 0.5) of picking BRDF sampling.
+    // (0.5 + normal.z * 0.4) of picking BRDF sampling.
     let half = Mf32::broadcast(0.5);
-    let p_brdf = isect.normal.z.mul_add(half, half);
-    let p_direct = isect.normal.z.neg_mul_add(half, half);
+    let p_brdf = isect.normal.z.mul_add(Mf32::broadcast(0.4), half);
+    let p_direct = isect.normal.z.neg_mul_add(Mf32::broadcast(0.4), half);
     let p = p_brdf.pick(p_direct, rr);
 
     // Compute the contribution using the one-sample multiple importance
