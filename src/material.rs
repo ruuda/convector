@@ -402,6 +402,8 @@ fn microfacet_brdf(material: MMaterial,
     let f = microfacet_fresnel(ray_in.direction, h, color);
     let d = microfacet_normal_dist(h, isect, gloss);
 
+    debug_assert!(d.all_sign_bits_positive(), "surface normal density must not be negative");
+
     // Compute the final microfacet transmission. The factor
     // 4 * dot(n, l) * dot(n, v) has been absorbed into the geometry factor,
     // which is set to 1 now. (I tried a Kelemen-Szirmay-Kalos geometry term,
@@ -448,7 +450,7 @@ fn microfacet_normal_dist(half_way: MVector3,
     // Blinn-Phong with exponents alpha = 0 (just Lambertian diffuse) through
     // 16 (a bit glossy, but not yet mirror-like).
     let a0 = Mf32::broadcast(0.5 / consts::PI);
-    let a1 = c1 * Mf32::broadcast(1.0 / consts::PI);
+    let a1 = c1.max(Mf32::zero()) * Mf32::broadcast(1.0 / consts::PI);
     let a2 = c2 * Mf32::broadcast(1.5 / consts::PI);
     let a4 = c4 * Mf32::broadcast(2.5 / consts::PI);
     let a8 = c8 * Mf32::broadcast(4.5 / consts::PI);
