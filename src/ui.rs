@@ -159,9 +159,11 @@ impl FullScreenQuad {
     pub fn draw_gbuffer<S: Surface>(&self,
                                     target: &mut S,
                                     frame: &Texture2d,
+                                    gbuffer: &Texture2d,
                                     textures: &[SrgbTexture2d]) {
         let uniforms = uniform! {
             frame: frame,
+            gbuffer: gbuffer,
             texture1: &textures[0],
             texture2: &textures[1],
         };
@@ -195,6 +197,7 @@ pub struct Window {
     quad: FullScreenQuad,
     frames: [Texture2d; 8],
     scratch: Texture2d,
+    gbuffer_texture: Texture2d,
     textures: Vec<SrgbTexture2d>,
     frame_index: u32,
     enable_blend: bool,
@@ -240,11 +243,15 @@ impl Window {
         let scratch = Texture2d::empty(&display, width, height)
             .expect("failed to create scratch texture");
 
+        let gbuffer_tex = Texture2d::empty(&display, width, height)
+            .expect("failed to create scratch texture");
+
         let mut window = Window {
             display: display,
             quad: quad,
             frames: unsafe { mem::uninitialized() },
             scratch: scratch,
+            gbuffer_texture: gbuffer_tex,
             textures: Vec::new(),
             frame_index: 0,
             enable_blend: true,
@@ -305,6 +312,7 @@ impl Window {
         // Upload the render result to the GPU. It is not yet correct, it needs
         // a gbuffer pass to add the textures.
         self.scratch = self.upload_frame(rgba_buffer);
+        self.gbuffer_texture = self.upload_frame(gbuffer);
 
         // TODO: Fix timers and trace here.
 
@@ -312,7 +320,7 @@ impl Window {
         // are kept on the GPU.
         let frame_index = self.frame_index as usize;
         let mut target = self.frames[frame_index].as_surface();
-        self.quad.draw_gbuffer(&mut target, &self.scratch, &self.textures[..]);
+        self.quad.draw_gbuffer(&mut target, &self.scratch, &self.gbuffer_texture, &self.textures[..]);
         self.frame_index = (self.frame_index + 1) % 8;
 
         let begin_draw = PreciseTime::now();
