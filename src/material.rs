@@ -13,7 +13,11 @@
 //!
 //!  * Bit 29: if 1, this material is a glass material.
 //!
-//!  * Bits 24-37 contain the texture index ranging from 0 to 7.
+//!  * Bits 26-28: the 2-log of the exponent for the Blinn-Phong BRDF plus one.
+//!    Must be between 0 and 6 (inclusive), so the exponent can be 0, 1, 2, 4,
+//!    8, or 16.
+//!
+//!  * Bits 24-25: the texture index, ranging from 0 to 3.
 //!
 //!  * Bits 0-23 contain the RGB color of the material, red in the least
 //!    significant bits, blue in the most significant bits.
@@ -48,6 +52,9 @@
 //!  * For pure specular reflections, the texture lookup can be postponed to the
 //!    next bounce. It does not matter for which bounce we do the lookup, but we
 //!    can only do one per pixel.
+//!
+//!  * When the Fresnel factor is taken into account, it must be sent to the GPU
+//!    too (because it blends between the surface color and pure white).
 
 use random::Rng;
 use ray::{MIntersection, MRay};
