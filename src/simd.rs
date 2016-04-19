@@ -35,7 +35,7 @@ impl Mf32 {
 
     /// A small value that can be used tolerate numerical imprecision.
     pub fn epsilon() -> Mf32 {
-        Mf32::broadcast(1.0e-3)
+        Mf32::broadcast(1.0e-4)
     }
 
     /// Builds an mf32 by applying the function to the numbers 0..7.
