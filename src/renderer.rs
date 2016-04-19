@@ -236,14 +236,10 @@ impl Renderer {
         let rgbas = generate_slice8(|i| {
             // Multiply color by 2.0 to brighten up the scene a bit.
             let rgb_255 = (data[i].color * Mf32::broadcast(2.0)).clamp_one() * range;
-            let tex_index = data[i].tex_index;
             let r = rgb_255.x.into_mi32();
             let g = rgb_255.y.into_mi32().map(|x| x << 8);
             let b = rgb_255.z.into_mi32().map(|x| x << 16);
-
-            // Store the texture index in the alpha channel.
-            let a = tex_index.map(|x| x << 24);
-            (r | g) | (b | a)
+            (r | g) | b
         });
 
         self.store_mi32_16x4(bitmap, x, y, &rgbas);
@@ -259,6 +255,7 @@ impl Renderer {
         // Generate the pixels for texture coordinates and the Fresnel factor.
         let range = Mf32::broadcast(255.0);
         let uvs = generate_slice8(|i| {
+            let tex_index = data[i].tex_index;
             let tex_x = data[i].tex_coords.0 * range;
             let tex_y = data[i].tex_coords.1 * range;
             let fresnel = data[i].fresnel * range;
@@ -269,7 +266,10 @@ impl Renderer {
             let g = (tex_y.into_mi32() & wrap).map(|x| x << 8);
             let b = fresnel.into_mi32().map(|x| x << 16);
 
-            (r | g) | b
+            // Store the texture index in the alpha channel.
+            let a = tex_index.map(|x| x << 24);
+
+            (r | g) | (b | a)
         });
 
         self.store_mi32_16x4(gbuffer, x, y, &uvs);
