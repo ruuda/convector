@@ -1,4 +1,4 @@
-//! An interactive raytracer.
+//! An interactive path tracer.
 
 #![allow(dead_code)] // TODO: Remove at some point.
 
