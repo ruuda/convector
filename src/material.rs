@@ -159,6 +159,16 @@ impl MMaterial {
         // Convert to a color in the range [0.0, 1.0].
         MVector3::new(mfr255, mfg255, mfb255) * Mf32::broadcast(1.0 / 255.0)
     }
+
+    /// Unpacks the Blinn-Phong glossiness exponent.
+    fn get_glossiness(&self) -> Mi32 {
+        use std::mem::transmute;
+
+        // Extract the three glossiness exponent bits.
+        let mati: Mi32 = unsafe { transmute(*self) };
+        let exponent = mati.map(|x| x >> 26);
+        exponent & Mi32::broadcast(0b111)
+    }
 }
 
 /// Returns the sky color for a ray in the given direction.
@@ -387,9 +397,10 @@ fn microfacet_brdf(material: MMaterial,
     // Compute the half-way vector. The outgoing ray points to the surface,
     // so negate it.
     let color = material.get_color();
+    let gloss = material.get_glossiness();
     let h = (ray_in.direction - ray_out.direction).normalized();
     let f = microfacet_fresnel(ray_in.direction, h, color);
-    let d = microfacet_normal_dist(h, isect);
+    let d = microfacet_normal_dist(h, isect, gloss);
 
     // Compute the final microfacet transmission. The factor
     // 4 * dot(n, l) * dot(n, v) has been absorbed into the geometry factor,
@@ -414,30 +425,41 @@ fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -
 ///
 /// (This is not related to the statistical distribution called "normal
 /// distribution".)
-fn microfacet_normal_dist(half_way: MVector3, isect: &MIntersection) -> Mf32 {
-    let cos = half_way.dot(isect.normal);
-
-    // Blinn-Phong with parameter alpha = 1.
-    // cos * Mf32::broadcast(0.5 * consts::PI)
-
-    // Blinn-Phong with parameter alpha = 2.
-    // (cos * cos) * Mf32::broadcast(1.5 / consts::PI)
-
-    // Blinn-Phong with parameter alpha = 4;
-    // let c2 = cos * cos;
-    // let c4 = c2 * c2;
-    // c4 * Mf32::broadcast(2.5 / consts::PI)
-
-    // Blinn-Phong with parameter alpha = 8;
-    // let c2 = cos * cos;
-    // let c4 = c2 * c2;
-    // let c8 = c4 * c4;
-    // c8 * Mf32::broadcast(4.5 / consts::PI)
-
-    // Blinn-Phong with parameter alpha = 16;
-    let c2 = cos * cos;
+fn microfacet_normal_dist(half_way: MVector3,
+                          isect: &MIntersection,
+                          glossiness_exponent_index: Mi32) -> Mf32 {
+    // Compute powers of the cosine.
+    let c1 = half_way.dot(isect.normal);
+    let c2 = c1 * c1;
     let c4 = c2 * c2;
     let c8 = c4 * c4;
     let c16 = c8 * c8;
-    c16 * Mf32::broadcast(8.5 / consts::PI)
+
+    // The normalization factor for Blinn-Phong with exponent n in (n + 1)/2pi.
+
+    // Blinn-Phong with exponents alpha = 0 (just Lambertian diffuse) through
+    // 16 (a bit glossy, but not yet mirror-like).
+    let a0 = Mf32::broadcast(0.5 / consts::PI);
+    let a1 = c1 * Mf32::broadcast(1.0 / consts::PI);
+    let a2 = c2 * Mf32::broadcast(1.5 / consts::PI);
+    let a4 = c4 * Mf32::broadcast(2.5 / consts::PI);
+    let a8 = c8 * Mf32::broadcast(4.5 / consts::PI);
+    let a16 = c16 * Mf32::broadcast(8.5 / consts::PI);
+
+    let values = [a0, a1, a2, a4, a8, a16];
+
+    // For simplicity (or rather, to keep myself sane), I stray from the SIMD
+    // path here and pick the correct value for every element separately. If it
+    // were done with AVX it would take at least 6 AVX steps anyway, so 8 serial
+    // steps is not so much worse.
+
+    Mf32::generate(|i| {
+        // The exponent index ranges from 0 through 5, so this should be within
+        // bounds. If it is not, then that is a bug in how the material was
+        // constructed. In release, we don't want to pay the bounds check
+        // overhead here.
+        let index = glossiness_exponent_index.get_coord(i);
+        debug_assert!(0 <= index && index <= 5);
+        unsafe { values.get_unchecked(index as usize).get_coord(i) }
+    })
 }

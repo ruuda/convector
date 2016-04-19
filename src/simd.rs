@@ -51,6 +51,22 @@ impl Mf32 {
              f(self.4), f(self.5), f(self.6), f(self.7))
     }
 
+    /// Returns the i-th coordinate. Index must be in the range 0-7 (inclusive).
+    #[inline(always)]
+    pub fn get_coord(self, i: usize) -> f32 {
+        match i {
+            0 => self.0,
+            1 => self.1,
+            2 => self.2,
+            3 => self.3,
+            4 => self.4,
+            5 => self.5,
+            6 => self.6,
+            7 => self.7,
+            _ => panic!("index out of bounds"),
+        }
+    }
+
     #[inline(always)]
     pub fn broadcast(x: f32) -> Mf32 {
         Mf32(x, x, x, x, x, x, x, x)
@@ -392,6 +408,22 @@ impl Mi32 {
     #[inline(always)]
     pub fn into_mf32(self) -> Mf32 {
         unsafe { x86_mm256_cvtepi32_ps(self) }
+    }
+
+    /// Returns the i-th coordinate. Index must be in the range 0-7 (inclusive).
+    #[inline(always)]
+    pub fn get_coord(self, i: usize) -> i32 {
+        match i {
+            0 => self.0,
+            1 => self.1,
+            2 => self.2,
+            3 => self.3,
+            4 => self.4,
+            5 => self.5,
+            6 => self.6,
+            7 => self.7,
+            _ => panic!("index out of bounds"),
+        }
     }
 }
 
