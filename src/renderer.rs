@@ -129,8 +129,8 @@ impl Renderer {
     /// For an interactive scene, updates the scene for the new frame.
     /// TODO: This method does not really belong here.
     pub fn update_scene(&mut self) {
-        let alpha = self.time * -0.01 + 0.1;
-        let alpha_delta = self.time_delta * -0.01;
+        let alpha = self.time * -0.02 + 0.1;
+        let alpha_delta = self.time_delta * -0.02;
         let cam_position = SVector3::new(-3.8 * alpha.sin(), 1.6, 3.0 * alpha.cos());
         let cam_pos_delta = SVector3::new(-3.8 * alpha.cos(), 0.0, -3.0 * alpha.sin()) * alpha_delta;
         self.scene.camera.set_position(cam_position, cam_pos_delta);

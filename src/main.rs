@@ -188,8 +188,6 @@ fn main() {
                             let buffer = unsafe { util::make_mutable(f32_buffer_ref) };
                             let gbuffer = unsafe { backbuffer_g_ref.get_mut_slice() };
                             renderer_ref.accumulate_patch_f32(buffer, gbuffer, patch_width, x, y, frame_number);
-                            let bitmap = unsafe { backbuffer_ref.get_mut_slice() };
-                            renderer_ref.render_patch_u8(bitmap, gbuffer, patch_width, x, y, frame_number);
                         }
                     });
                 }
