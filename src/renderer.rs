@@ -321,8 +321,14 @@ impl Renderer {
     /// The (x, y) coordinate is the coordinate of the bottom-left pixel of the
     /// patch. The patch width must be a multiple of 16. The memory layout of
     /// the HDR buffer is as a bitmap of 16x4 blocks.
+    ///
+    /// This also fills the gbuffer. This is not done accumulatively, it is
+    /// filled for the current frame. (Though the gbuffer should be fairly
+    /// constant anyway, and there is no way to blend it, apart from averaging
+    /// texture coordinates.)
     pub fn accumulate_patch_f32(&self,
                                 hdr_buffer: &mut [[MVector3; 8]],
+                                gbuffer: &mut [Mi32],
                                 patch_width: u32,
                                 x: u32,
                                 y: u32,
@@ -340,6 +346,7 @@ impl Renderer {
                 let index = ((y / 4 + j) * (self.width / 16) + (x / 16 + i)) as usize;
                 let current = hdr_buffer[index];
                 hdr_buffer[index] = generate_slice8(|k| current[k] + data[k].color);
+                self.store_pixels_gbuffer_16x4(gbuffer, xb, yb, &data);
             }
         }
     }

@@ -318,10 +318,10 @@ impl Window {
 
         // Apply the gbuffer pass and render into one of the eight frames that
         // are kept on the GPU.
+        self.frame_index = (self.frame_index + 1) % 8;
         let frame_index = self.frame_index as usize;
         let mut target = self.frames[frame_index].as_surface();
         self.quad.draw_gbuffer(&mut target, &self.scratch, &self.gbuffer_texture, &self.textures[..]);
-        self.frame_index = (self.frame_index + 1) % 8;
 
         let begin_draw = PreciseTime::now();
 
