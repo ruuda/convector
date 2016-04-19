@@ -17,8 +17,8 @@ means Sandy Bridge or later. FMA instructions can be taken advantage of too,
 those are Haswell or later.
 
 Software: a recent nightly version of the
-[Rust programming language](https://rust-lang.org) is required. On Windows you
-need the version with the MSVC ABI.
+[Rust programming language](https://rust-lang.org) is required. Version 1.10 is
+recommended. On Windows you need the version with the MSVC ABI.
 
 Compiling and Running
 ---------------------
