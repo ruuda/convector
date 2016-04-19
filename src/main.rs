@@ -51,12 +51,12 @@ fn build_scene() -> Scene {
     println!("loading geometry");
     let mut materials = HashMap::new();
     materials.insert("baseboard", SMaterial::white());
-    materials.insert("ceiling", SMaterial::white());
+    materials.insert("ceiling", SMaterial::white().with_glossiness(1));
     materials.insert("fauteuil", SMaterial::diffuse(1.0, 0.1, 0.4));
-    materials.insert("floor", SMaterial::diffuse(0.3, 0.1, 0.0));
+    materials.insert("floor", SMaterial::diffuse(0.3, 0.1, 0.0).with_glossiness(4));
     materials.insert("glass", SMaterial::sky());
-    materials.insert("wall", SMaterial::diffuse(0.9, 0.9, 0.8));
-    materials.insert("wood_light", SMaterial::diffuse(0.5, 0.3, 0.1));
+    materials.insert("wall", SMaterial::diffuse(0.9, 0.9, 0.8).with_glossiness(1));
+    materials.insert("wood_light", SMaterial::diffuse(0.5, 0.3, 0.1).with_glossiness(3));
     let indoor = Mesh::load_with_materials("models/indoor.obj", &materials);
     let meshes = [indoor];
 
