@@ -195,11 +195,39 @@ impl Renderer {
         (xs_aa, ys_aa)
     }
 
-    /// Converts floating-point color values to 24-bit RGB and stores the values
-    /// in the bitmap.
-    fn store_pixels_16x4(&self,
+    /// Shuffles bytes around to store 16x4 rendered pixels in the correct
+    /// location in a bitmap.
+    fn store_mi32_16x4(&self, target: &mut [Mi32], x: u32, y: u32, data: &[Mi32; 8]) {
+        // Helper functions to shuffle around the pixels from the order as
+        // described in `get_pixel_coords_16x4` into four rows of 16 pixels.
+        let mk_line0 = |left: Mi32, right: Mi32|
+            Mi32(left.0, left.1, left.2, left.3, right.0, right.1, right.2, right.3);
+        let mk_line1 = |left: Mi32, right: Mi32|
+            Mi32(left.4, left.5, left.6, left.7, right.4, right.5, right.6, right.7);
+
+        // Store the pixels in the bitmap. If the bitmap is aligned to the cache
+        // line size, this stores exactly four cache lines, so there is no need
+        // to fetch those lines because all bytes are overwritten. This saves a
+        // trip to memory, which makes this store fast.
+        let idx_line0 = ((y * self.width + 0 * self.width + x) / 8) as usize;
+        let idx_line1 = ((y * self.width + 1 * self.width + x) / 8) as usize;
+        let idx_line2 = ((y * self.width + 2 * self.width + x) / 8) as usize;
+        let idx_line3 = ((y * self.width + 3 * self.width + x) / 8) as usize;
+
+        target[idx_line0 + 0] = mk_line0(data[0], data[2]);
+        target[idx_line0 + 1] = mk_line0(data[4], data[6]);
+        target[idx_line1 + 0] = mk_line1(data[0], data[2]);
+        target[idx_line1 + 1] = mk_line1(data[4], data[6]);
+        target[idx_line2 + 0] = mk_line0(data[1], data[3]);
+        target[idx_line2 + 1] = mk_line0(data[5], data[7]);
+        target[idx_line3 + 0] = mk_line1(data[1], data[3]);
+        target[idx_line3 + 1] = mk_line1(data[5], data[7]);
+    }
+
+    /// Converts floating-point color values to 32-bit RGBA and stores the
+    /// values in the bitmap.
+    fn store_pixels_color_16x4(&self,
                          bitmap: &mut [Mi32],
-                         gbuffer: &mut [Mi32],
                          x: u32,
                          y: u32,
                          data: &[MPixelData; 8]) {
@@ -218,8 +246,18 @@ impl Renderer {
             (r | g) | (b | a)
         });
 
-        // Also generate the pixels for texture coordinates and the Fresnel
-        // factor.
+        self.store_mi32_16x4(bitmap, x, y, &rgbas);
+    }
+
+    /// Converts floating-point texture coordinates to integers and stores the
+    /// values in the bitmap.
+    fn store_pixels_gbuffer_16x4(&self,
+                                 gbuffer: &mut [Mi32],
+                                 x: u32,
+                                 y: u32,
+                                 data: &[MPixelData; 8]) {
+        // Generate the pixels for texture coordinates and the Fresnel factor.
+        let range = Mf32::broadcast(255.0);
         let uvs = generate_slice8(|i| {
             let tex_x = data[i].tex_coords.0 * range;
             let tex_y = data[i].tex_coords.1 * range;
@@ -234,39 +272,7 @@ impl Renderer {
             (r | g) | b
         });
 
-        // Helper functions to shuffle around the pixels from the order as
-        // described in `get_pixel_coords_16x4` into four rows of 16 pixels.
-        let mk_line0 = |left: Mi32, right: Mi32|
-            Mi32(left.0, left.1, left.2, left.3, right.0, right.1, right.2, right.3);
-        let mk_line1 = |left: Mi32, right: Mi32|
-            Mi32(left.4, left.5, left.6, left.7, right.4, right.5, right.6, right.7);
-
-        // Store the pixels in the bitmap. If the bitmap is aligned to the cache
-        // line size, this stores exactly four cache lines, so there is no need
-        // to fetch those lines because all bytes are overwritten. This saves a
-        // trip to memory, which makes this store fast.
-        let idx_line0 = ((y * self.width + 0 * self.width + x) / 8) as usize;
-        let idx_line1 = ((y * self.width + 1 * self.width + x) / 8) as usize;
-        let idx_line2 = ((y * self.width + 2 * self.width + x) / 8) as usize;
-        let idx_line3 = ((y * self.width + 3 * self.width + x) / 8) as usize;
-
-        bitmap[idx_line0 + 0] = mk_line0(rgbas[0], rgbas[2]);
-        bitmap[idx_line0 + 1] = mk_line0(rgbas[4], rgbas[6]);
-        bitmap[idx_line1 + 0] = mk_line1(rgbas[0], rgbas[2]);
-        bitmap[idx_line1 + 1] = mk_line1(rgbas[4], rgbas[6]);
-        bitmap[idx_line2 + 0] = mk_line0(rgbas[1], rgbas[3]);
-        bitmap[idx_line2 + 1] = mk_line0(rgbas[5], rgbas[7]);
-        bitmap[idx_line3 + 0] = mk_line1(rgbas[1], rgbas[3]);
-        bitmap[idx_line3 + 1] = mk_line1(rgbas[5], rgbas[7]);
-
-        gbuffer[idx_line0 + 0] = mk_line0(uvs[0], uvs[2]);
-        gbuffer[idx_line0 + 1] = mk_line0(uvs[4], uvs[6]);
-        gbuffer[idx_line1 + 0] = mk_line1(uvs[0], uvs[2]);
-        gbuffer[idx_line1 + 1] = mk_line1(uvs[4], uvs[6]);
-        gbuffer[idx_line2 + 0] = mk_line0(uvs[1], uvs[3]);
-        gbuffer[idx_line2 + 1] = mk_line0(uvs[5], uvs[7]);
-        gbuffer[idx_line3 + 0] = mk_line1(uvs[1], uvs[3]);
-        gbuffer[idx_line3 + 1] = mk_line1(uvs[5], uvs[7]);
+        self.store_mi32_16x4(gbuffer, x, y, &uvs);
     }
 
     /// Renders a block of 16x4 pixels, where (x, y) is the coordinate of the
@@ -303,8 +309,9 @@ impl Renderer {
             for j in 0..h {
                 let xb = x + i * 16;
                 let yb = y + j * 4;
-                let rgbs = self.render_block_16x4(xb, yb, &mut rng);
-                self.store_pixels_16x4(bitmap, gbuffer, xb, yb, &rgbs);
+                let data = self.render_block_16x4(xb, yb, &mut rng);
+                self.store_pixels_color_16x4(bitmap, xb, yb, &data);
+                self.store_pixels_gbuffer_16x4(gbuffer, xb, yb, &data);
             }
         }
     }
@@ -354,7 +361,6 @@ impl Renderer {
     pub fn buffer_f32_into_render_buffer(&self,
                                          hdr_buffer: &[[MVector3; 8]],
                                          render_buffer: &mut RenderBuffer,
-                                         uv_buffer: &mut RenderBuffer,
                                          num_samples: u32) {
         let w = self.width / 16;
         let h = self.height / 4;
@@ -365,7 +371,6 @@ impl Renderer {
         {
             // This is safe here because there is only one mutable borrow.
             let bitmap = unsafe { render_buffer.get_mut_slice() };
-            let gbuffer = unsafe { uv_buffer.get_mut_slice() };
 
             for j in 0..h {
                 for i in 0..w {
@@ -373,11 +378,13 @@ impl Renderer {
                     let rgbs = generate_slice8(|k| rgbs[k] * factor);
                     let data = generate_slice8(|k| MPixelData {
                         color: rgbs[k],
-                        tex_index: Mi32::zero(), // TODO: Where do I get the texture index and coordinates/fresnel?
+                        // These values are unused, only the color is stored
+                        // in this function.
+                        tex_index: Mi32::zero(),
                         tex_coords: (Mf32::zero(), Mf32::zero()),
                         fresnel: Mf32::zero(),
                     });
-                    self.store_pixels_16x4(bitmap, gbuffer, i * 16, j * 4, &data);
+                    self.store_pixels_color_16x4(bitmap, i * 16, j * 4, &data);
                 }
             }
         }

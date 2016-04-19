@@ -148,7 +148,7 @@ fn main() {
         // front buffer) so we can display it later.
         if !render_realtime {
             let n = if f32_buffer_samples > 0 { f32_buffer_samples } else { 1 };
-            renderer.buffer_f32_into_render_buffer(&f32_buffer, &mut backbuffer, &mut backbuffer_g, n);
+            renderer.buffer_f32_into_render_buffer(&f32_buffer, &mut backbuffer, n);
             f32_buffer_samples += 1;
         }
 
