@@ -420,11 +420,15 @@ impl Renderer {
             // Stop when every ray hit a light source.
             if isect.material.all_sign_bits_negative() { break }
 
+            // Get a new ray and the color modulation. For the first bounce, the
+            // Fresnel term should not contribute to the color modulation
+            // because that is handled on the GPU.
             let (new_ray, color_mod, fr) = continue_path(isect.material,
                                                          &self.scene,
                                                          &ray,
                                                          &isect,
-                                                         rng);
+                                                         rng,
+                                                         i == 0);
             ray = new_ray;
             color = color.mul_coords(color_mod);
 

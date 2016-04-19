@@ -59,7 +59,7 @@
 use random::Rng;
 use ray::{MIntersection, MRay};
 use scene::Scene;
-use simd::{Mf32, Mi32};
+use simd::{Mask, Mf32, Mi32};
 use std::f32::consts;
 use vector3::MVector3;
 
@@ -178,6 +178,19 @@ impl MMaterial {
         let mati: Mi32 = unsafe { transmute(*self) };
         let tidx = mati.map(|x| x >> 24);
         tidx & Mi32::broadcast(0b11)
+    }
+
+    /// Sets the sign bit to 1 if the surface has a texture, or 0 if the texture
+    /// index is 0 (indicating no texture).
+    pub fn has_texture(&self) -> Mask {
+        use std::mem::transmute;
+
+        // Take the bitwise or of all bits that determine the texture ID. Only
+        // if the texture ID was zero will this result in 0.
+        let mati: Mi32 = unsafe { transmute(*self) };
+        let has_tex = mati.map(|x| x << 6) | mati.map(|x| x << 7);
+
+        unsafe { transmute(has_tex) }
     }
 }
 
@@ -328,7 +341,8 @@ pub fn continue_path(material: MMaterial,
                      scene: &Scene,
                      ray: &MRay,
                      isect: &MIntersection,
-                     rng: &mut Rng)
+                     rng: &mut Rng,
+                     ignore_fresnel: bool)
                      -> (MRay, MVector3, Mf32) {
 
     // Emissive materials have the sign bit set to 1, and a sign bit of 1
@@ -380,7 +394,7 @@ pub fn continue_path(material: MMaterial,
     // angle.
     let modulation = (weight_denom * p).recip_fast();
     let cos_theta = isect.normal.dot(new_ray.direction).max(Mf32::zero());
-    let (brdf_term, fresnel) = microfacet_brdf(material, &new_ray, ray, isect);
+    let (brdf_term, fresnel) = microfacet_brdf(material, &new_ray, ray, isect, ignore_fresnel);
     let color_mod = brdf_term * (modulation * cos_theta);
 
     debug_assert!(modulation.all_finite());
@@ -414,7 +428,8 @@ pub fn continue_path(material: MMaterial,
 fn microfacet_brdf(material: MMaterial,
                    ray_in: &MRay,
                    ray_out: &MRay,
-                   isect: &MIntersection)
+                   isect: &MIntersection,
+                   ignore_fresnel: bool)
                    -> (MVector3, Mf32) {
     // Compute the half-way vector. The outgoing ray points to the surface,
     // so negate it.
@@ -423,6 +438,16 @@ fn microfacet_brdf(material: MMaterial,
     let h = (ray_in.direction - ray_out.direction).normalized();
     let d = microfacet_normal_dist(h, isect, gloss);
     let (f_color, f_raw) = microfacet_fresnel(ray_in.direction, h, color);
+
+    let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
+    let f_color = if ignore_fresnel {
+        // If the material has a texture, pick white instead of the color,
+        // because when `ignore_fresnel` is set, the color will be sampled from
+        // the texture on the GPU, so we should not take it into account here.
+        f_color.pick(white, material.has_texture())
+    } else {
+        f_color
+    };
 
     debug_assert!(d.all_sign_bits_positive(), "surface normal density must not be negative");
 
