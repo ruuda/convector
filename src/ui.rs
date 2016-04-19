@@ -166,6 +166,7 @@ pub struct Window {
     quad: FullScreenQuad,
     frames: [Texture2d; 8],
     scratch: Texture2d,
+    textures: Vec<Texture2d>,
     frame_index: u32,
     enable_blend: bool,
     enable_median: bool,
@@ -215,6 +216,7 @@ impl Window {
             quad: quad,
             frames: unsafe { mem::uninitialized() },
             scratch: scratch,
+            textures: Vec::new(),
             frame_index: 0,
             enable_blend: true,
             enable_median: true,
@@ -222,14 +224,14 @@ impl Window {
             height: height,
         };
 
-        let f0 = window.upload_texture(black_bitmap(width, height));
-        let f1 = window.upload_texture(black_bitmap(width, height));
-        let f2 = window.upload_texture(black_bitmap(width, height));
-        let f3 = window.upload_texture(black_bitmap(width, height));
-        let f4 = window.upload_texture(black_bitmap(width, height));
-        let f5 = window.upload_texture(black_bitmap(width, height));
-        let f6 = window.upload_texture(black_bitmap(width, height));
-        let f7 = window.upload_texture(black_bitmap(width, height));
+        let f0 = window.upload_frame(black_bitmap(width, height));
+        let f1 = window.upload_frame(black_bitmap(width, height));
+        let f2 = window.upload_frame(black_bitmap(width, height));
+        let f3 = window.upload_frame(black_bitmap(width, height));
+        let f4 = window.upload_frame(black_bitmap(width, height));
+        let f5 = window.upload_frame(black_bitmap(width, height));
+        let f6 = window.upload_frame(black_bitmap(width, height));
+        let f7 = window.upload_frame(black_bitmap(width, height));
         let frames = [f0, f1, f2, f3, f4, f5, f6, f7];
 
         // Put the frames in place and avoid deallocating uninitialized memory.
@@ -238,7 +240,7 @@ impl Window {
         window
     }
 
-    fn upload_texture(&mut self, bitmap: Vec<u8>) -> Texture2d {
+    fn upload_frame(&mut self, bitmap: Vec<u8>) -> Texture2d {
         let dimensions = (self.width, self.height);
         let texture_data = RawImage2d::from_raw_rgba(bitmap, dimensions);
         let texture = Texture2d::with_mipmaps(&self.display,
@@ -248,13 +250,28 @@ impl Window {
         texture
     }
 
+    /// Uploads a texture to the GPU. This is intended for the textures that are
+    /// used for the scene, not the full-screen rendered frames. Texture
+    /// dimensions must be 1024 x 1024.
+    pub fn upload_texture(&mut self, bitmap: Vec<u8>) {
+        assert_eq!(bitmap.len(), 1024 * 1024 * 3);
+
+        let texture_data = RawImage2d::from_raw_rgb(bitmap, (1024, 1024));
+        let texture = Texture2d::with_mipmaps(&self.display,
+                                              texture_data,
+                                              MipmapsOption::NoMipmap)
+            .expect("failed to create texture");
+
+        self.textures.push(texture);
+    }
+
     pub fn display_buffer(&mut self, rgba_buffer: Vec<u8>, stats: &mut GlobalStats) {
         assert_eq!(rgba_buffer.len(), self.width as usize * self.height as usize * 4);
 
         let begin_texture = PreciseTime::now();
 
         let frame_index = self.frame_index as usize;
-        self.frames[frame_index] = self.upload_texture(rgba_buffer);
+        self.frames[frame_index] = self.upload_frame(rgba_buffer);
         self.frame_index = (self.frame_index + 1) % 8;
 
         let begin_draw = PreciseTime::now();

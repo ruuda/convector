@@ -90,8 +90,6 @@ fn main() {
     let height = 736;
     let patch_width = 32;
 
-    let _textures = load_textures();
-
     let mut window = Window::new(width, height, "infomagr interactive path tracer");
     let mut renderer = Renderer::new(build_scene(), width, height);
     let mut stats = GlobalStats::new();
@@ -102,6 +100,10 @@ fn main() {
     let mut f32_buffer_samples = 0;
     let mut should_continue = true;
     let mut render_realtime = true;
+
+    for texture in load_textures() {
+        window.upload_texture(texture);
+    }
 
     backbuffer.fill_black();
     let epoch = PreciseTime::now();
