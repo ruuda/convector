@@ -7,7 +7,7 @@ use glium::backend::Facade;
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{Event, WindowBuilder};
 use glium::index::{NoIndices, PrimitiveType};
-use glium::texture::{MipmapsOption, RawImage2d, Texture2d};
+use glium::texture::{MipmapsOption, RawImage2d, SrgbTexture2d, Texture2d};
 use stats::GlobalStats;
 use std::str;
 use time::PreciseTime;
@@ -159,7 +159,7 @@ impl FullScreenQuad {
     pub fn draw_gbuffer<S: Surface>(&self,
                                     target: &mut S,
                                     frame: &Texture2d,
-                                    textures: &[Texture2d]) {
+                                    textures: &[SrgbTexture2d]) {
         let uniforms = uniform! {
             frame: frame,
             texture1: &textures[0],
@@ -195,7 +195,7 @@ pub struct Window {
     quad: FullScreenQuad,
     frames: [Texture2d; 8],
     scratch: Texture2d,
-    textures: Vec<Texture2d>,
+    textures: Vec<SrgbTexture2d>,
     frame_index: u32,
     enable_blend: bool,
     enable_median: bool,
@@ -286,9 +286,9 @@ impl Window {
         assert_eq!(bitmap.len(), 1024 * 1024 * 3);
 
         let texture_data = RawImage2d::from_raw_rgb(bitmap, (1024, 1024));
-        let texture = Texture2d::with_mipmaps(&self.display,
-                                              texture_data,
-                                              MipmapsOption::NoMipmap)
+        let texture = SrgbTexture2d::with_mipmaps(&self.display,
+                                                  texture_data,
+                                                  MipmapsOption::NoMipmap)
             .expect("failed to create texture");
 
         self.textures.push(texture);
