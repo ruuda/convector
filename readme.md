@@ -52,5 +52,5 @@ Many structs represent eight instances at once, for SIMD. In that case the name
 has been prefixed with `M` (for “multi”). The single-instance struct types have
 the prefix `S` instead (for “single”).
 
-The most interesting stuff is in `src/triangle.rs`, `src/aabb.rs`, `src/bvh.rs`,
-and `src/renderer.rs`. The scene can be customized in `src/main.rs`.
+The most interesting stuff is in `src/triangle.rs`, `src/material.rs`,
+and `src/renderer.rs`, and `src/renderer.rs`. Shaders are in `src/gpu`.
