@@ -53,7 +53,7 @@ impl Rng {
         // 16 and 4, so modulo 8, a + b is always 0 or 4.) To avoid this, take
         // the seed modulo a prime. This removes the correlation modulo small
         // powers of two.
-        let seed = seed + (seed % 9358246936573323101);
+        let seed = seed.wrapping_add(seed % 9358246936573323101);
 
         let primes = Mu64(14491630826648200009, 13149596372461506851, 6119410235796056053, 14990141545859273719);
 
