@@ -190,17 +190,20 @@ impl Renderer {
 
     /// Converts floating-point color values to 24-bit RGB and stores the values
     /// in the bitmap.
-    fn store_pixels_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32, rgbs: &[MVector3; 8]) {
+    fn store_pixels_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32, data: &[(MVector3, Mi32); 8]) {
         // Convert f32 colors to i32 colors in the range 0-255.
         let range = Mf32::broadcast(255.0);
         let rgbas = generate_slice8(|i| {
             // TODO: Remove this factor 3.0, it is just to account for my dark
             // scene.
-            let rgb_255 = (rgbs[i] * Mf32::broadcast(2.0)).clamp_one() * range;
+            let rgb_255 = (data[i].0 * Mf32::broadcast(2.0)).clamp_one() * range;
+            let tidx = data[i].1;
             let r = rgb_255.x.into_mi32();
             let g = rgb_255.y.into_mi32().map(|x| x << 8);
             let b = rgb_255.z.into_mi32().map(|x| x << 16);
-            let a = Mi32::broadcast(0xff000000_u32 as i32);
+
+            // Store the texture index in the alpha channel.
+            let a = tidx.map(|x| x << 24);
             (r | g) | (b | a)
         });
 
@@ -231,12 +234,17 @@ impl Renderer {
 
     /// Renders a block of 16x4 pixels, where (x, y) is the coordinate of the
     /// bottom-left pixel. Bitmap must be an array of 8 pixels at once, and it
-    /// must be aligned to 64 bytes (a cache line).
-    fn render_block_16x4(&self, x: u32, y: u32, rng: &mut Rng) -> [MVector3; 8] {
+    /// must be aligned to 64 bytes (a cache line). Also returns texture indices
+    /// for every pixel.
+    fn render_block_16x4(&self, x: u32, y: u32, rng: &mut Rng) -> [(MVector3, Mi32); 8] {
         let (xs, ys) = self.get_pixel_coords_16x4(x, y, rng);
 
         if self.enable_debug_view {
-            generate_slice8(|i| self.render_pixels_debug(xs[i], ys[i]))
+            generate_slice8(|i| {
+                let color = self.render_pixels_debug(xs[i], ys[i]);
+                let tidx = Mi32::zero();
+                (color, tidx)
+            })
         } else {
             generate_slice8(|i| self.render_pixels(xs[i], ys[i], rng))
         }
@@ -287,10 +295,10 @@ impl Renderer {
             for j in 0..h {
                 let xb = x + i * 16;
                 let yb = y + j * 4;
-                let rgbs = self.render_block_16x4(xb, yb, &mut rng);
+                let data = self.render_block_16x4(xb, yb, &mut rng);
                 let index = ((y / 4 + j) * (self.width / 16) + (x / 16 + i)) as usize;
                 let current = hdr_buffer[index];
-                hdr_buffer[index] = generate_slice8(|k| current[k] + rgbs[k]);
+                hdr_buffer[index] = generate_slice8(|k| current[k] + data[k].0);
             }
         }
     }
@@ -327,17 +335,20 @@ impl Renderer {
                 for i in 0..w {
                     let rgbs = hdr_buffer[(j * w + i) as usize];
                     let rgbs = generate_slice8(|k| rgbs[k] * factor);
-                    self.store_pixels_16x4(bitmap, i * 16, j * 4, &rgbs);
+                    let data = generate_slice8(|k| (rgbs[k], Mi32::zero())); // TODO: Where do I get texture indices?
+                    self.store_pixels_16x4(bitmap, i * 16, j * 4, &data);
                 }
             }
         }
     }
 
-    fn render_pixels(&self, x: Mf32, y: Mf32, rng: &mut Rng) -> MVector3 {
+    /// Returns colors for the pixels, as well as the texture indices.
+    fn render_pixels(&self, x: Mf32, y: Mf32, rng: &mut Rng) -> (MVector3, Mi32) {
         let t = rng.sample_unit();
         let mut ray = self.scene.camera.get_ray(x, y, t);
         let mut color = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
         let mut hit_emissive = Mf32::zero();
+        let mut texture_indices = Mi32::zero();
 
         let max_bounces = 5;
         for i in 0..max_bounces {
@@ -355,6 +366,8 @@ impl Renderer {
             let (new_ray, color_mod) = continue_path(isect.material, &self.scene, &ray, &isect, rng);
             ray = new_ray;
             color = color.mul_coords(color_mod);
+
+            if i == 0 { texture_indices = isect.material.get_texture(); }
         }
 
         // Compute light contribution.
@@ -365,7 +378,9 @@ impl Renderer {
         // found a light source and the computed color is correct. If the ray
         // did not find a light source but the loop was terminated, the computed
         // color is invalid; it should be black.
-        MVector3::zero().pick(color, hit_emissive)
+        let color = MVector3::zero().pick(color, hit_emissive);
+
+        (color, texture_indices)
     }
 
     fn render_pixels_debug(&self, x: Mf32, y: Mf32) -> MVector3 {

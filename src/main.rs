@@ -53,10 +53,10 @@ fn build_scene() -> Scene {
     materials.insert("baseboard", SMaterial::white().with_glossiness(4));
     materials.insert("ceiling", SMaterial::white().with_glossiness(1));
     materials.insert("fauteuil", SMaterial::diffuse(1.0, 0.1, 0.4));
-    materials.insert("floor", SMaterial::diffuse(0.3, 0.1, 0.0).with_glossiness(4));
+    materials.insert("floor", SMaterial::diffuse(0.3, 0.1, 0.0).with_glossiness(4).with_texture(1));
     materials.insert("glass", SMaterial::sky());
     materials.insert("wall", SMaterial::diffuse(0.65, 0.7, 0.9).with_glossiness(1));
-    materials.insert("wood_light", SMaterial::diffuse(0.5, 0.3, 0.1).with_glossiness(3));
+    materials.insert("wood_light", SMaterial::diffuse(0.5, 0.3, 0.1).with_glossiness(3).with_texture(2));
     let indoor = Mesh::load_with_materials("models/indoor.obj", &materials);
     let meshes = [indoor];
 

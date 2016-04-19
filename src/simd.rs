@@ -552,6 +552,15 @@ impl Mul<Mf32> for Mf32 {
     }
 }
 
+impl Mul<Mi32> for Mi32 {
+    type Output = Mi32;
+
+    #[inline(always)]
+    fn mul(self, other: Mi32) -> Mi32 {
+        unsafe { simd_mul(self, other) }
+    }
+}
+
 impl Mul<Mu64> for Mu64 {
     type Output = Mu64;
 

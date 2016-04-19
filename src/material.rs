@@ -141,7 +141,7 @@ impl MMaterial {
     }
 
     /// Unpacks the color information from the material.
-    fn get_color(&self) -> MVector3 {
+    pub fn get_color(&self) -> MVector3 {
         use std::mem::transmute;
         let mask = Mi32::broadcast(0xff);
 
@@ -161,13 +161,23 @@ impl MMaterial {
     }
 
     /// Unpacks the Blinn-Phong glossiness exponent.
-    fn get_glossiness(&self) -> Mi32 {
+    pub fn get_glossiness(&self) -> Mi32 {
         use std::mem::transmute;
 
         // Extract the three glossiness exponent bits.
         let mati: Mi32 = unsafe { transmute(*self) };
         let exponent = mati.map(|x| x >> 26);
         exponent & Mi32::broadcast(0b111)
+    }
+
+    /// Unpacks the texture index.
+    pub fn get_texture(&self) -> Mi32 {
+        use std::mem::transmute;
+
+        // Extract the two texture index bits.
+        let mati: Mi32 = unsafe { transmute(*self) };
+        let tidx = mati.map(|x| x >> 24);
+        tidx & Mi32::broadcast(0b11)
     }
 }
 
