@@ -6,6 +6,7 @@ authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
 [dependencies]
 filebuffer        = "0.1"
 glium             = "0.14"
+imagefmt          = "3.0"
 num_cpus          = "0.2"
 rand              = "0.3.14"
 rayon             = "0.3.1"

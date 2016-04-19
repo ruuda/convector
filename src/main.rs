@@ -6,6 +6,7 @@
 
 extern crate alloc;
 extern crate filebuffer;
+extern crate imagefmt;
 extern crate num_cpus;
 extern crate rand;
 extern crate rayon;
@@ -47,6 +48,18 @@ use time::PreciseTime;
 use ui::{Action, Window};
 use wavefront::Mesh;
 
+fn load_textures() -> Vec<Vec<u8>> {
+    use imagefmt::ColFmt;
+
+    println!("loading textures");
+    let tex_floor = imagefmt::read("textures/floor.jpg", ColFmt::RGB);
+    let tex_wood = imagefmt::read("textures/wood_light.jpg", ColFmt::RGB);
+    let mut textures = Vec::with_capacity(2);
+    textures.push(tex_floor.expect("failed to read floor.jpeg").buf);
+    textures.push(tex_wood.expect("failed to read wood_light.jpg").buf);
+    textures
+}
+
 fn build_scene() -> Scene {
     println!("loading geometry");
     let mut materials = HashMap::new();
@@ -76,6 +89,8 @@ fn main() {
     let width = 1280;
     let height = 736;
     let patch_width = 32;
+
+    let _textures = load_textures();
 
     let mut window = Window::new(width, height, "infomagr interactive path tracer");
     let mut renderer = Renderer::new(build_scene(), width, height);
