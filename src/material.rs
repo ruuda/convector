@@ -247,15 +247,16 @@ fn continue_path_direct_sample(scene: &Scene,
     }
 }
 
-fn debug_assert_all_nonzero(x: Mf32, tag: &str) {
-    debug_assert!(x.0 != 0.0, "{} {:?} must be nonzero", tag, x);
-    debug_assert!(x.1 != 0.0, "{} {:?} must be nonzero", tag, x);
-    debug_assert!(x.2 != 0.0, "{} {:?} must be nonzero", tag, x);
-    debug_assert!(x.3 != 0.0, "{} {:?} must be nonzero", tag, x);
-    debug_assert!(x.4 != 0.0, "{} {:?} must be nonzero", tag, x);
-    debug_assert!(x.5 != 0.0, "{} {:?} must be nonzero", tag, x);
-    debug_assert!(x.6 != 0.0, "{} {:?} must be nonzero", tag, x);
-    debug_assert!(x.7 != 0.0, "{} {:?} must be nonzero", tag, x);
+/// Asserts that the values where active has sign bit 0 (positive) are nonzero.
+fn debug_assert_all_nonzero(x: Mf32, active: Mf32, tag: &str) {
+    debug_assert!(x.0 != 0.0 || active.0.is_sign_negative(), "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.1 != 0.0 || active.1.is_sign_negative(), "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.2 != 0.0 || active.2.is_sign_negative(), "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.3 != 0.0 || active.3.is_sign_negative(), "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.4 != 0.0 || active.4.is_sign_negative(), "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.5 != 0.0 || active.5.is_sign_negative(), "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.6 != 0.0 || active.6.is_sign_negative(), "{} {:?} must be nonzero", tag, x);
+    debug_assert!(x.7 != 0.0 || active.7.is_sign_negative(), "{} {:?} must be nonzero", tag, x);
 }
 
 /// Returns the probability density for the given ray, for the direct sampling
@@ -277,11 +278,12 @@ fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
         // to 1, so the pdf goes to infinity as cos(phi) goes to 0.
         let sample_isect = triangle.intersect_direct(ray);
         let distance_sqr = sample_isect.distance * sample_isect.distance;
-        let dot_emissive = sample_isect.normal.dot(ray.direction).abs();
+        // Add a small constant to avoid division by zero later on.
+        let dot_emissive = sample_isect.normal.dot(ray.direction).abs() + Mf32::broadcast(0.0001);
         let pd = distance_sqr * (sample_isect.area * dot_emissive).recip_fast();
 
-        debug_assert_all_nonzero(sample_isect.area, "area");
-        debug_assert_all_nonzero(dot_emissive, "dot_emissive");
+        debug_assert_all_nonzero(sample_isect.area, ray.active, "area");
+        debug_assert_all_nonzero(dot_emissive, ray.active, "dot_emissive");
 
         // Add the probability density if the triangle was intersected. If the
         // triangle was not intersected, the probability of sampling it directly
