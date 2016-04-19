@@ -26,8 +26,9 @@ struct FullScreenQuad {
     vertex_buffer: VertexBuffer<Vertex>,
     indices: NoIndices,
     program_blend: Program,
-    program_median: Program,
+    program_gbuffer: Program,
     program_id: Program,
+    program_median: Program,
 }
 
 impl FullScreenQuad {
@@ -54,8 +55,8 @@ impl FullScreenQuad {
             ).unwrap()
         };
 
-        let program_median = {
-            let fragment_shader = FileBuffer::open("src/gpu/median.glsl")
+        let program_gbuffer = {
+            let fragment_shader = FileBuffer::open("src/gpu/gbuffer.glsl")
                 .expect("failed to load fragment shader source");
 
             Program::from_source(facade,
@@ -74,12 +75,23 @@ impl FullScreenQuad {
             ).unwrap()
         };
 
+        let program_median = {
+            let fragment_shader = FileBuffer::open("src/gpu/median.glsl")
+                .expect("failed to load fragment shader source");
+
+            Program::from_source(facade,
+               str::from_utf8(&vertex_shader[..]).unwrap(),
+               str::from_utf8(&fragment_shader[..]).unwrap(), None
+            ).unwrap()
+        };
+
         FullScreenQuad {
             vertex_buffer: vertex_buffer,
             indices: indices,
             program_blend: program_blend,
-            program_median: program_median,
+            program_gbuffer: program_gbuffer,
             program_id: program_id,
+            program_median: program_median,
         }
     }
 
@@ -126,23 +138,6 @@ impl FullScreenQuad {
                     &Default::default()).expect("failed to draw quad");
     }
 
-    /// Applies a median filter to the source and draws that to the target.
-    pub fn draw_median<S: Surface>(&self,
-                                   target: &mut S,
-                                   source: &Texture2d,
-                                   width: u32,
-                                   height: u32) {
-        let uniforms = uniform! {
-            frame: source,
-            pixel_size: [1.0 / width as f32, 1.0 / height as f32],
-        };
-        target.draw(&self.vertex_buffer,
-                    &self.indices,
-                    &self.program_median,
-                    &uniforms,
-                    &Default::default()).expect("failed to draw quad");
-    }
-
     /// Draws the source onto the target.
     ///
     /// This does not have the same effect as using `source.fill()`, because
@@ -156,6 +151,40 @@ impl FullScreenQuad {
         target.draw(&self.vertex_buffer,
                     &self.indices,
                     &self.program_id,
+                    &uniforms,
+                    &Default::default()).expect("failed to draw quad");
+    }
+
+    /// Applies the gbuffer shader for texture filtering.
+    pub fn draw_gbuffer<S: Surface>(&self,
+                                    target: &mut S,
+                                    frame: &Texture2d,
+                                    textures: &[Texture2d]) {
+        let uniforms = uniform! {
+            frame: frame,
+            texture1: &textures[0],
+            texture2: &textures[1],
+        };
+        target.draw(&self.vertex_buffer,
+                    &self.indices,
+                    &self.program_gbuffer,
+                    &uniforms,
+                    &Default::default()).expect("failed to draw quad");
+    }
+
+    /// Applies a median filter to the source and draws that to the target.
+    pub fn draw_median<S: Surface>(&self,
+                                   target: &mut S,
+                                   source: &Texture2d,
+                                   width: u32,
+                                   height: u32) {
+        let uniforms = uniform! {
+            frame: source,
+            pixel_size: [1.0 / width as f32, 1.0 / height as f32],
+        };
+        target.draw(&self.vertex_buffer,
+                    &self.indices,
+                    &self.program_median,
                     &uniforms,
                     &Default::default()).expect("failed to draw quad");
     }
@@ -270,8 +299,17 @@ impl Window {
 
         let begin_texture = PreciseTime::now();
 
+        // Upload the render result to the GPU. It is not yet correct, it needs
+        // a gbuffer pass to add the textures.
+        self.scratch = self.upload_frame(rgba_buffer);
+
+        // TODO: Fix timers and trace here.
+
+        // Apply the gbuffer pass and render into one of the eight frames that
+        // are kept on the GPU.
         let frame_index = self.frame_index as usize;
-        self.frames[frame_index] = self.upload_frame(rgba_buffer);
+        let mut target = self.frames[frame_index].as_surface();
+        self.quad.draw_gbuffer(&mut target, &self.scratch, &self.textures[..]);
         self.frame_index = (self.frame_index + 1) % 8;
 
         let begin_draw = PreciseTime::now();
