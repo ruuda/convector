@@ -323,13 +323,13 @@ fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
 ///
 /// If a ray intersected a surface with a certain material, then this will
 /// compute the ray that continues the light path. A factor to multiply the
-/// final color by is returned as well.
+/// final color by is returned as well, and the Fresnel factor.
 pub fn continue_path(material: MMaterial,
                      scene: &Scene,
                      ray: &MRay,
                      isect: &MIntersection,
                      rng: &mut Rng)
-                     -> (MRay, MVector3) {
+                     -> (MRay, MVector3, Mf32) {
 
     // Emissive materials have the sign bit set to 1, and a sign bit of 1
     // means that the ray is inactive. So hitting an emissive material
@@ -380,7 +380,7 @@ pub fn continue_path(material: MMaterial,
     // angle.
     let modulation = (weight_denom * p).recip_fast();
     let cos_theta = isect.normal.dot(new_ray.direction).max(Mf32::zero());
-    let brdf_term = microfacet_brdf(material, &new_ray, ray, isect);
+    let (brdf_term, fresnel) = microfacet_brdf(material, &new_ray, ray, isect);
     let color_mod = brdf_term * (modulation * cos_theta);
 
     debug_assert!(modulation.all_finite());
@@ -406,21 +406,23 @@ pub fn continue_path(material: MMaterial,
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
     let color_mod = color_mod.pick(white, active);
 
-    (new_ray, color_mod)
+    (new_ray, color_mod, fresnel)
 }
 
+/// Returns the color modulation for the microfacet BRDF and also the raw
+/// Fresnel factor.
 fn microfacet_brdf(material: MMaterial,
                    ray_in: &MRay,
                    ray_out: &MRay,
                    isect: &MIntersection)
-                   -> MVector3 {
+                   -> (MVector3, Mf32) {
     // Compute the half-way vector. The outgoing ray points to the surface,
     // so negate it.
     let color = material.get_color();
     let gloss = material.get_glossiness();
     let h = (ray_in.direction - ray_out.direction).normalized();
-    let f = microfacet_fresnel(ray_in.direction, h, color);
     let d = microfacet_normal_dist(h, isect, gloss);
+    let (f_color, f_raw) = microfacet_fresnel(ray_in.direction, h, color);
 
     debug_assert!(d.all_sign_bits_positive(), "surface normal density must not be negative");
 
@@ -428,12 +430,14 @@ fn microfacet_brdf(material: MMaterial,
     // 4 * dot(n, l) * dot(n, v) has been absorbed into the geometry factor,
     // which is set to 1 now. (I tried a Kelemen-Szirmay-Kalos geometry term,
     // but it gave unrealistic results with hemisphere sampling.)
-    f * d
+    (f_color * d, f_raw)
 }
 
-/// Computes the Fresnel factor using Schlick’s approximation.
+/// Computes the Fresnel factor using Schlick’s approximation. Also returns the
+/// raw interpolation value, where 0.0 means material color, and 1.0 means
+/// white.
 #[inline(always)]
-fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -> MVector3 {
+fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -> (MVector3, Mf32) {
     let r0 = color;
     let r1 = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one()) - r0;
     let ct = Mf32::one() - half_way.dot(incoming).abs();
@@ -448,7 +452,7 @@ fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -
     // value. This is very cheap anyway (just one AVX bitwise and).
     let ct5 = ct5.abs();
 
-    r1.mul_add(ct5, r0)
+    (r1.mul_add(ct5, r0), ct5)
 }
 
 /// The factor due to the surface normal.

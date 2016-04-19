@@ -405,6 +405,7 @@ impl Renderer {
         let mut hit_emissive = Mf32::zero();
         let mut texture_index = Mi32::zero();
         let mut texture_coords = (Mf32::zero(), Mf32::zero());
+        let mut fresnel = Mf32::zero();
 
         let max_bounces = 5;
         for i in 0..max_bounces {
@@ -419,13 +420,18 @@ impl Renderer {
             // Stop when every ray hit a light source.
             if isect.material.all_sign_bits_negative() { break }
 
-            let (new_ray, color_mod) = continue_path(isect.material, &self.scene, &ray, &isect, rng);
+            let (new_ray, color_mod, fr) = continue_path(isect.material,
+                                                         &self.scene,
+                                                         &ray,
+                                                         &isect,
+                                                         rng);
             ray = new_ray;
             color = color.mul_coords(color_mod);
 
             if i == 0 {
                 texture_index = isect.material.get_texture();
                 texture_coords = isect.tex_coords;
+                fresnel = fr;
             }
         }
 
@@ -443,7 +449,7 @@ impl Renderer {
             color: color,
             tex_index: texture_index,
             tex_coords: texture_coords,
-            fresnel: Mf32::zero(), // TODO
+            fresnel: fresnel,
         }
     }
 
