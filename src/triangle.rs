@@ -102,39 +102,42 @@ impl Triangle {
         let cross = ray.direction.cross(from_ray);
         let u = cross.dot(e2) * denom;
         let v = cross.dot(e1) * denom;
+        let w = (Mf32::one() - u) - v;
 
         // In this coordinate system, the triangle is the set of points such
         // { (u, v) in plane | u >= 0 and v >= 0 and u + v <= 1 }
 
         // We need t to be positive, because we should not intersect backwards.
         // Also, u and v need to be positive. We can abuse the vblendvps
-        // instruction, which considers only the sign bit, so if t, u, v all
-        // have sign bit set to 0 (positive), then their bitwise or will have so
-        // too.
-        let mask_positive = t | u | v;
-
-        // We also need u + v < 1.0. With the vblendps instruction we are going
-        // to use a sign bit of 0 in the mask as "take new value" and 1 as "keep
-        // previous intersection", so do a greater-than comparison.
-        let mask_uv = (u + v).geq(Mf32::one());
+        // instruction, which considers only the sign bit, so if t, u, v, and w
+        // all have sign bit set to 0 (positive), then their bitwise or will
+        // have so too. If w is positive then u + v < 1.0.
+        let mask_positive = (t | u) | (v | w);
 
         // The intersection also needs to be closer than any previous
         // intersection. (Again, do the reverse comparison because sign bit 1
         // means discard intersection.)
         let mask_closer = t.geq(isect.distance);
 
+        // Interpolate the texture coordinates.
+        let (tx0x, tx0y) = (Mf32::broadcast(self.uv0.0), Mf32::broadcast(self.uv0.1));
+        let (tx1x, tx1y) = (Mf32::broadcast(self.uv1.0), Mf32::broadcast(self.uv1.1));
+        let (tx2x, tx2y) = (Mf32::broadcast(self.uv1.0), Mf32::broadcast(self.uv1.1));
+        let tex_x = tx0x.mul_add(w, tx1x.mul_add(v, tx2x * u));
+        let tex_y = tx0y.mul_add(w, tx1y.mul_add(v, tx2y * u));
+
         let new_isect = MIntersection {
             position: ray.direction.mul_add(t, ray.origin),
             normal: normal_denorm.normalized(),
             distance: t,
             material: MMaterial::broadcast_material(self.material),
-            tex_coords: (Mf32::zero(), Mf32::zero()), // TODO: Compute tex coords.
+            tex_coords: (tex_x, tex_y),
         };
 
         // Per ray, pick the new intersection if it is closer and if it was
         // indeed an intersection of the triangle, or pick the previous
         // intersection otherwise.
-        new_isect.pick(&isect, (ray.active | mask_positive) | (mask_uv | mask_closer))
+        new_isect.pick(&isect, mask_positive | (ray.active | mask_closer))
     }
 
     /// Intersects the triangle to determine the probability density for the
