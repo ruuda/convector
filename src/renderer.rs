@@ -225,8 +225,10 @@ impl Renderer {
             let tex_y = data[i].tex_coords.1 * range;
             let fresnel = data[i].fresnel * range;
 
-            let r = tex_x.into_mi32();
-            let g = tex_y.into_mi32().map(|x| x << 8);
+            // Do not clamp the texture coordinates, make them wrap instead.
+            let wrap = Mi32::broadcast(0xff);
+            let r = tex_x.into_mi32() & wrap;
+            let g = (tex_y.into_mi32() & wrap).map(|x| x << 8);
             let b = fresnel.into_mi32().map(|x| x << 16);
 
             (r | g) | b

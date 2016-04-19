@@ -122,7 +122,7 @@ impl Triangle {
         // Interpolate the texture coordinates.
         let (tx0x, tx0y) = (Mf32::broadcast(self.uv0.0), Mf32::broadcast(self.uv0.1));
         let (tx1x, tx1y) = (Mf32::broadcast(self.uv1.0), Mf32::broadcast(self.uv1.1));
-        let (tx2x, tx2y) = (Mf32::broadcast(self.uv1.0), Mf32::broadcast(self.uv1.1));
+        let (tx2x, tx2y) = (Mf32::broadcast(self.uv2.0), Mf32::broadcast(self.uv2.1));
         let tex_x = tx0x.mul_add(w, tx1x.mul_add(v, tx2x * u));
         let tex_y = tx0y.mul_add(w, tx1y.mul_add(v, tx2y * u));
 
