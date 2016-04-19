@@ -418,7 +418,15 @@ fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -
     let ct2 = ct * ct;
     let ct3 = ct2 * ct;
     let ct5 = ct2 * ct3;
-    r0 + r1 * ct5
+
+    // This value should never be negative. However, due to inaccuracies, values
+    // close to 0 can sometimes be very small negative numbers. That triggers
+    // one of my debug asserts because the BRDF of which this is a factor,
+    // should never be negative. To avoid hitting the assert, take the absolute
+    // value. This is very cheap anyway (just one AVX bitwise and).
+    let ct5 = ct5.abs();
+
+    r1.mul_add(ct5, r0)
 }
 
 /// The factor due to the surface normal.
