@@ -199,7 +199,7 @@ impl Renderer {
     /// in the bitmap.
     fn store_pixels_16x4(&self,
                          bitmap: &mut [Mi32],
-                         uvmap: &mut [Mi32],
+                         gbuffer: &mut [Mi32],
                          x: u32,
                          y: u32,
                          data: &[MPixelData; 8]) {
@@ -257,14 +257,14 @@ impl Renderer {
         bitmap[idx_line3 + 0] = mk_line1(rgbas[1], rgbas[3]);
         bitmap[idx_line3 + 1] = mk_line1(rgbas[5], rgbas[7]);
 
-        uvmap[idx_line0 + 0] = mk_line0(uvs[0], uvs[2]);
-        uvmap[idx_line0 + 1] = mk_line0(uvs[4], uvs[6]);
-        uvmap[idx_line1 + 0] = mk_line1(uvs[0], uvs[2]);
-        uvmap[idx_line1 + 1] = mk_line1(uvs[4], uvs[6]);
-        uvmap[idx_line2 + 0] = mk_line0(uvs[1], uvs[3]);
-        uvmap[idx_line2 + 1] = mk_line0(uvs[5], uvs[7]);
-        uvmap[idx_line3 + 0] = mk_line1(uvs[1], uvs[3]);
-        uvmap[idx_line3 + 1] = mk_line1(uvs[5], uvs[7]);
+        gbuffer[idx_line0 + 0] = mk_line0(uvs[0], uvs[2]);
+        gbuffer[idx_line0 + 1] = mk_line0(uvs[4], uvs[6]);
+        gbuffer[idx_line1 + 0] = mk_line1(uvs[0], uvs[2]);
+        gbuffer[idx_line1 + 1] = mk_line1(uvs[4], uvs[6]);
+        gbuffer[idx_line2 + 0] = mk_line0(uvs[1], uvs[3]);
+        gbuffer[idx_line2 + 1] = mk_line0(uvs[5], uvs[7]);
+        gbuffer[idx_line3 + 0] = mk_line1(uvs[1], uvs[3]);
+        gbuffer[idx_line3 + 1] = mk_line1(uvs[5], uvs[7]);
     }
 
     /// Renders a block of 16x4 pixels, where (x, y) is the coordinate of the
@@ -287,7 +287,7 @@ impl Renderer {
     /// patch. The patch width must be a multiple of 16.
     pub fn render_patch_u8(&self,
                            bitmap: &mut [Mi32],
-                           uvmap: &mut [Mi32],
+                           gbuffer: &mut [Mi32],
                            patch_width: u32,
                            x: u32,
                            y: u32,
@@ -302,7 +302,7 @@ impl Renderer {
                 let xb = x + i * 16;
                 let yb = y + j * 4;
                 let rgbs = self.render_block_16x4(xb, yb, &mut rng);
-                self.store_pixels_16x4(bitmap, uvmap, xb, yb, &rgbs);
+                self.store_pixels_16x4(bitmap, gbuffer, xb, yb, &rgbs);
             }
         }
     }
@@ -363,7 +363,7 @@ impl Renderer {
         {
             // This is safe here because there is only one mutable borrow.
             let bitmap = unsafe { render_buffer.get_mut_slice() };
-            let uvmap = unsafe { uv_buffer.get_mut_slice() };
+            let gbuffer = unsafe { uv_buffer.get_mut_slice() };
 
             for j in 0..h {
                 for i in 0..w {
@@ -375,7 +375,7 @@ impl Renderer {
                         tex_coords: (Mf32::zero(), Mf32::zero()),
                         fresnel: Mf32::zero(),
                     });
-                    self.store_pixels_16x4(bitmap, uvmap, i * 16, j * 4, &data);
+                    self.store_pixels_16x4(bitmap, gbuffer, i * 16, j * 4, &data);
                 }
             }
         }
