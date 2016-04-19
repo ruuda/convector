@@ -201,9 +201,17 @@ fn diffuse_brdf(isect: &MIntersection, ray_in: &MRay) -> MVector3 {
 }
 
 /// Continues the path of a photon by sampling the BRDF.
+///
+/// This samples the hemisphere in a cosine-weighted distribution, it does not
+/// sample proportional to the Blinn-Phong BRDF. There is a correction factor
+/// when the final color is computed, so this does not introduce bias, it just
+/// leads to more variance because the pdf from which samples are drawn is not
+/// such a good match for the BRDF as it could be. However, in my case the
+/// Blinn-Phong BRDF is only used with low exponents (diffuse, not very glossy),
+/// so the cosine distribution still does a decent job, and it is much cheaper
+/// to sample from than a distribution specific for the Blinn-Phong BRDF.
 #[inline(always)]
-fn continue_path_brdf(ray: &MRay,
-                      isect: &MIntersection,
+fn continue_path_brdf(isect: &MIntersection,
                       rng: &mut Rng)
                       -> MRay {
     // Bounce in a random direction in the hemisphere around the surface
@@ -320,7 +328,7 @@ pub fn continue_path(material: MMaterial,
 
     // Generate one ray by sampling the BRDF, and one ray for direct light
     // sampling.
-    let ray_brdf = continue_path_brdf(ray, isect, rng);
+    let ray_brdf = continue_path_brdf(isect, rng);
     let ray_direct = continue_path_direct_sample(scene, isect, rng);
 
     // Randomly pick one of the two rays to use, then compute the weight for
