@@ -99,10 +99,31 @@ impl SMaterial {
         SMaterial(mat)
     }
 
+    /// Sets the glossiness of the material. Valid values are 0 (completely
+    /// diffuse) trough 6 (a bit glossy, but not mirror-like).
+    pub fn with_glossiness(self, glossiness: u32) -> SMaterial {
+        assert!(glossiness <= 6);
+        let SMaterial(mat) = self;
+        // Mask that resets the glossiness to 0.
+        let no_gloss = 0b11100011_11111111_11111111_11111111_u32;
+        let mat = (mat & no_gloss) | (glossiness << 26);
+        SMaterial(mat)
+    }
+
+    /// Sets the texture index of the material. Valid values are 0 through 3.
+    pub fn with_texture(self, texture_index: u32) -> SMaterial {
+        assert!(texture_index <= 3);
+        let SMaterial(mat) = self;
+        // Mask that resets the texture index to 0.
+        let no_tidx = 0b11111100_11111111_11111111_11111111_u32;
+        let mat = (mat & no_tidx) | (texture_index << 24);
+        SMaterial(mat)
+    }
+
     /// Returns whether the material is eligible for direct sampling.
-    pub fn is_direct_sample(&self) -> bool {
+    pub fn is_direct_sample(self) -> bool {
         let ds_mask = 0b01000000_00000000_00000000_00000000;
-        let SMaterial(mat) = *self;
+        let SMaterial(mat) = self;
         (mat & ds_mask) == ds_mask
     }
 }
