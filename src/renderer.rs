@@ -197,7 +197,12 @@ impl Renderer {
 
     /// Converts floating-point color values to 24-bit RGB and stores the values
     /// in the bitmap.
-    fn store_pixels_16x4(&self, bitmap: &mut [Mi32], x: u32, y: u32, data: &[MPixelData; 8]) {
+    fn store_pixels_16x4(&self,
+                         bitmap: &mut [Mi32],
+                         uvmap: &mut [Mi32],
+                         x: u32,
+                         y: u32,
+                         data: &[MPixelData; 8]) {
         // Convert f32 colors to i32 colors in the range 0-255.
         let range = Mf32::broadcast(255.0);
         let rgbas = generate_slice8(|i| {
@@ -211,6 +216,20 @@ impl Renderer {
             // Store the texture index in the alpha channel.
             let a = tex_index.map(|x| x << 24);
             (r | g) | (b | a)
+        });
+
+        // Also generate the pixels for texture coordinates and the Fresnel
+        // factor.
+        let uvs = generate_slice8(|i| {
+            let tex_x = data[i].tex_coords.0 * range;
+            let tex_y = data[i].tex_coords.1 * range;
+            let fresnel = data[i].fresnel * range;
+
+            let r = tex_x.into_mi32();
+            let g = tex_y.into_mi32().map(|x| x << 8);
+            let b = fresnel.into_mi32().map(|x| x << 16);
+
+            (r | g) | b
         });
 
         // Helper functions to shuffle around the pixels from the order as
@@ -228,6 +247,7 @@ impl Renderer {
         let idx_line1 = ((y * self.width + 1 * self.width + x) / 8) as usize;
         let idx_line2 = ((y * self.width + 2 * self.width + x) / 8) as usize;
         let idx_line3 = ((y * self.width + 3 * self.width + x) / 8) as usize;
+
         bitmap[idx_line0 + 0] = mk_line0(rgbas[0], rgbas[2]);
         bitmap[idx_line0 + 1] = mk_line0(rgbas[4], rgbas[6]);
         bitmap[idx_line1 + 0] = mk_line1(rgbas[0], rgbas[2]);
@@ -236,6 +256,15 @@ impl Renderer {
         bitmap[idx_line2 + 1] = mk_line0(rgbas[5], rgbas[7]);
         bitmap[idx_line3 + 0] = mk_line1(rgbas[1], rgbas[3]);
         bitmap[idx_line3 + 1] = mk_line1(rgbas[5], rgbas[7]);
+
+        uvmap[idx_line0 + 0] = mk_line0(uvs[0], uvs[2]);
+        uvmap[idx_line0 + 1] = mk_line0(uvs[4], uvs[6]);
+        uvmap[idx_line1 + 0] = mk_line1(uvs[0], uvs[2]);
+        uvmap[idx_line1 + 1] = mk_line1(uvs[4], uvs[6]);
+        uvmap[idx_line2 + 0] = mk_line0(uvs[1], uvs[3]);
+        uvmap[idx_line2 + 1] = mk_line0(uvs[5], uvs[7]);
+        uvmap[idx_line3 + 0] = mk_line1(uvs[1], uvs[3]);
+        uvmap[idx_line3 + 1] = mk_line1(uvs[5], uvs[7]);
     }
 
     /// Renders a block of 16x4 pixels, where (x, y) is the coordinate of the
@@ -258,6 +287,7 @@ impl Renderer {
     /// patch. The patch width must be a multiple of 16.
     pub fn render_patch_u8(&self,
                            bitmap: &mut [Mi32],
+                           uvmap: &mut [Mi32],
                            patch_width: u32,
                            x: u32,
                            y: u32,
@@ -272,7 +302,7 @@ impl Renderer {
                 let xb = x + i * 16;
                 let yb = y + j * 4;
                 let rgbs = self.render_block_16x4(xb, yb, &mut rng);
-                self.store_pixels_16x4(bitmap, xb, yb, &rgbs);
+                self.store_pixels_16x4(bitmap, uvmap, xb, yb, &rgbs);
             }
         }
     }
@@ -322,6 +352,7 @@ impl Renderer {
     pub fn buffer_f32_into_render_buffer(&self,
                                          hdr_buffer: &[[MVector3; 8]],
                                          render_buffer: &mut RenderBuffer,
+                                         uv_buffer: &mut RenderBuffer,
                                          num_samples: u32) {
         let w = self.width / 16;
         let h = self.height / 4;
@@ -332,6 +363,7 @@ impl Renderer {
         {
             // This is safe here because there is only one mutable borrow.
             let bitmap = unsafe { render_buffer.get_mut_slice() };
+            let uvmap = unsafe { uv_buffer.get_mut_slice() };
 
             for j in 0..h {
                 for i in 0..w {
@@ -343,7 +375,7 @@ impl Renderer {
                         tex_coords: (Mf32::zero(), Mf32::zero()),
                         fresnel: Mf32::zero(),
                     });
-                    self.store_pixels_16x4(bitmap, i * 16, j * 4, &data);
+                    self.store_pixels_16x4(bitmap, uvmap, i * 16, j * 4, &data);
                 }
             }
         }

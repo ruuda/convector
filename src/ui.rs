@@ -294,7 +294,10 @@ impl Window {
         self.textures.push(texture);
     }
 
-    pub fn display_buffer(&mut self, rgba_buffer: Vec<u8>, stats: &mut GlobalStats) {
+    pub fn display_buffer(&mut self,
+                          rgba_buffer: Vec<u8>,
+                          uv_buffer: Vec<u8>,
+                          stats: &mut GlobalStats) {
         assert_eq!(rgba_buffer.len(), self.width as usize * self.height as usize * 4);
 
         let begin_texture = PreciseTime::now();

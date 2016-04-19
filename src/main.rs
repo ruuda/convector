@@ -96,6 +96,7 @@ fn main() {
     let mut trace_log = trace::TraceLog::with_limit(6 * 1024);
     let mut threadpool = scoped_threadpool::Pool::new(num_cpus::get() as u32);
     let mut backbuffer = RenderBuffer::new(width, height);
+    let mut backbuffer_uv = RenderBuffer::new(width, height);
     let mut f32_buffer = renderer.new_buffer_f32(); // TODO: Consistency.
     let mut f32_buffer_samples = 0;
     let mut should_continue = true;
@@ -147,15 +148,18 @@ fn main() {
         // front buffer) so we can display it later.
         if !render_realtime {
             let n = if f32_buffer_samples > 0 { f32_buffer_samples } else { 1 };
-            renderer.buffer_f32_into_render_buffer(&f32_buffer, &mut backbuffer, n);
+            renderer.buffer_f32_into_render_buffer(&f32_buffer, &mut backbuffer, &mut backbuffer_uv, n);
             f32_buffer_samples += 1;
         }
 
         let new_backbuffer = RenderBuffer::new(width, height);
+        let new_backbuffer_uv = RenderBuffer::new(width, height);
         let frontbuffer = mem::replace(&mut backbuffer, new_backbuffer);
+        let frontbuffer_uv = mem::replace(&mut backbuffer_uv, new_backbuffer_uv);
         let renderer_ref = &renderer;
         let trace_log_ref = &trace_log;
         let backbuffer_ref = &backbuffer;
+        let backbuffer_uv_ref = &backbuffer_uv;
         let f32_buffer_ref = &f32_buffer[..];
 
         threadpool.scoped(|scope| {
@@ -177,7 +181,8 @@ fn main() {
                         if render_realtime {
                             let _stw = trace_log_ref.scoped("render_patch_u8", j * w + i);
                             let bitmap = unsafe { backbuffer_ref.get_mut_slice() };
-                            renderer_ref.render_patch_u8(bitmap, patch_width, x, y, frame_number);
+                            let uvmap = unsafe { backbuffer_uv_ref.get_mut_slice() };
+                            renderer_ref.render_patch_u8(bitmap, uvmap, patch_width, x, y, frame_number);
                         } else {
                             let _stw = trace_log_ref.scoped("accumulate_patch_f32", j * w + i);
                             let buffer = unsafe { util::make_mutable(f32_buffer_ref) };
@@ -190,7 +195,9 @@ fn main() {
             // In the mean time upload the previous frame to the GPU
             // and display it.
             let _stw_display = trace_log.scoped("display_buffer", 0);
-            window.display_buffer(frontbuffer.into_bitmap(), &mut stats);
+            window.display_buffer(frontbuffer.into_bitmap(),
+                                  frontbuffer_uv.into_bitmap(),
+                                  &mut stats);
 
             // The scope automatically waits for all tasks to complete
             // before the loop continues.
