@@ -1,3 +1,10 @@
+// Convector -- An interactive CPU path tracer
+// Copyright 2016 Ruud van Asseldonk
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 3. A copy
+// of the License is available in the root of the repository.
+
 //! Implements vectors in R3.
 
 use simd::{Mask, Mf32};

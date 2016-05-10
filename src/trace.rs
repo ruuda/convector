@@ -1,3 +1,10 @@
+// Convector -- An interactive CPU path tracer
+// Copyright 2016 Ruud van Asseldonk
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 3. A copy
+// of the License is available in the root of the repository.
+
 //! This mod writes trace logs that can be inspected with chrome://tracing.
 //! It is intended as a debugging tool, so I can see what all the cores are
 //! doing; how work is scheduled among CPUs and what is blocking.

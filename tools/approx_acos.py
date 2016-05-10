@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+# Convector -- An interactive CPU path tracer
+# Copyright 2016 Ruud van Asseldonk
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3. A copy
+# of the License is available in the root of the repository.
+
 # The goal is to approximate acos(x) with a rational function f such that the
 # worst absolute error is minimal. That is, pick the function that performs best
 # in the worst case. Furthermore, I impose the following restrictions:

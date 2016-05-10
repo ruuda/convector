@@ -54,3 +54,10 @@ the prefix `S` instead (for “single”).
 
 The most interesting stuff is in `src/triangle.rs`, `src/material.rs`,
 and `src/renderer.rs`, and `src/renderer.rs`. Shaders are in `src/gpu`.
+
+License
+-------
+
+Convector is free software. It is licensed under the
+[GNU General Public License](https://www.gnu.org/licenses/gpl-3.0.html),
+version 3.
