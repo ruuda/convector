@@ -36,8 +36,8 @@ Controls
 
  * Press `b` to toggle blending recent frames.
  * Press `d` to toggle debug view.
-   The green channel shows the number of AABB intersections,
-   the blue channel shows the number of triangle intersections.
+   The green channel shows the number of primary AABB intersections,
+   the blue channel shows the number of primary triangle intersections.
  * Press `m` to toggle the median filter for noise reduction.
  * Press `q` to quit the application.
  * Press `r` to switch between realtime and accumulative rendering.
