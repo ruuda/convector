@@ -90,7 +90,7 @@ fn main() {
     let height = 736;
     let patch_width = 32;
 
-    let mut window = Window::new(width, height, "infomagr interactive path tracer");
+    let mut window = Window::new(width, height, "Convector interactive path tracer");
     let mut renderer = Renderer::new(build_scene(), width, height);
     let mut stats = GlobalStats::new();
     let mut trace_log = trace::TraceLog::with_limit(6 * 1024);

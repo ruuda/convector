@@ -1,5 +1,5 @@
-Infomagr
-========
+Convector
+=========
 
 Interactive path tracer. Copyright 2016 Ruud van Asseldonk.
 
