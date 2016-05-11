@@ -63,6 +63,6 @@ License
 Convector is free software. It is licensed under the
 [GNU General Public License][gplv3], version 3.
 
-[ci-img]:    https://travis-ci.org/ruud-v-a/hound.svg?branch=master
-[ci]:        https://travis-ci.org/ruud-v-a/hound
+[ci-img]:    https://ci.appveyor.com/api/projects/status/468h0bilnnrsrnyy?svg=true
+[ci]:        https://ci.appveyor.com/project/ruud-v-a/convector
 [gplv3]:     https://www.gnu.org/licenses/gpl-3.0.html
