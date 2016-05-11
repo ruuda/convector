@@ -1,0 +1,9 @@
+machine:
+  pre:
+    - curl -sSf https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly 
+
+test:
+  override:
+    # temporary workaround until cargo#2078 is ready
+    - eval `ssh-agent` && ssh-add /home/ubuntu/.ssh/id_circleci_github && cargo build --verbose -j 2
+    - cargo test --verbose -j 2
