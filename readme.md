@@ -67,3 +67,5 @@ Convector is free software. It is licensed under the
 [gplv3]:        https://www.gnu.org/licenses/gpl-3.0.html
 [interactive]:  https://raw.githubusercontent.com/ruuda/convector/master/screenshots/interactive.png
 [accumulative]: https://raw.githubusercontent.com/ruuda/convector/master/screenshots/accumulative.png
+[ci-img]:       https://ci.appveyor.com/api/projects/status/468h0bilnnrsrnyy?svg=true
+[ci]:           https://ci.appveyor.com/project/ruuda/convector
