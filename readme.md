@@ -48,12 +48,12 @@ Controls
 About the code
 --------------
 
-Many structs represent eight instances at once, for SIMD. In that case the name
+Many structs represent eight instances at once for SIMD. In that case the name
 has been prefixed with `M` (for “multi”). The single-instance struct types have
 the prefix `S` instead (for “single”).
 
 The most interesting stuff is in `src/triangle.rs`, `src/material.rs`,
-and `src/renderer.rs`, and `src/renderer.rs`. Shaders are in `src/gpu`.
+and `src/renderer.rs`, and `src/bvh.rs`. Shaders are in `src/gpu`.
 
 License
 -------
