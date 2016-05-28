@@ -239,7 +239,7 @@ impl Window {
         // TODO: Proper HiDPI support.
         let display = WindowBuilder::new()
             .with_dimensions(width, height)
-            .with_title(From::from(title))
+            .with_title(String::from(title))
             .with_srgb(Some(true)) // Automatically convert RGB -> sRGB.
             .with_vsync()
             .build_glium()
