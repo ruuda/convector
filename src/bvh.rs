@@ -174,7 +174,7 @@ impl InterimNode {
     fn bin_triangles_uniform<'a>(&'a self, bins: &mut [Bin<'a>], axis: Axis) {
         // Create a vector of pointers to the triangle refs and sort them on
         // coordinate.
-        let mut triptrs: Vec<&TriangleRef> = self.triangles.iter().map(|tri| tri).collect();
+        let mut triptrs: Vec<&TriangleRef> = self.triangles.iter().collect();
         triptrs.sort_by(|t1, t2| {
             let a = t1.barycenter.get_coord(axis);
             let b = t2.barycenter.get_coord(axis);
