@@ -20,7 +20,6 @@ use {bench, test};
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Mf32(pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32, pub f32);
 
-
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct Mi32(pub i32, pub i32, pub i32, pub i32, pub i32, pub i32, pub i32, pub i32);

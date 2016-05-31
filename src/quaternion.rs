@@ -117,7 +117,7 @@ pub fn rotate(vector: &MVector3, rotation: &MQuaternion) -> MVector3 {
     // is its conjugate.) This means that we can compute the rotation in two
     // steps: p = v * q^-1, and q * p. The first step is simpler than generic
     // quaternion multiplication because we know that v is pure imaginary. The
-    // second step simpler than generc quaternion multiplication because we know
+    // second step simpler than generic quaternion multiplication because we know
     // that the result is pure imaginary, so the real component does not have to
     // be computed.
 
