@@ -9,7 +9,7 @@
 
 #![allow(dead_code)] // TODO: Remove at some point.
 
-#![feature(alloc, cfg_target_feature, heap_api, iter_arith, platform_intrinsics, repr_simd, test)]
+#![feature(alloc, cfg_target_feature, heap_api, platform_intrinsics, repr_simd, test)]
 
 extern crate alloc;
 extern crate filebuffer;
