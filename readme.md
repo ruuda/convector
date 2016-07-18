@@ -3,14 +3,13 @@ Convector
 
 Interactive CPU path tracer.
 
-| ![Interactive][interactive] | ![Accumulative][accumulative] |
-|-----------------------------|-------------------------------|
+[![Build Status][ci-img]][ci]
 
 On the left: interactive mode, running at about 10 fps on my machine. On the
 right: accumulative mode, after rendering for a few minutes.
 
-**TL;DR**: Download the nightly version of [Rust](https://rust-lang.org),
-then `cargo run --release`.
+| ![Interactive][interactive] | ![Accumulative][accumulative] |
+|-----------------------------|-------------------------------|
 
 Requirements
 ------------
@@ -67,5 +66,5 @@ Convector is free software. It is licensed under the
 [gplv3]:        https://www.gnu.org/licenses/gpl-3.0.html
 [interactive]:  https://raw.githubusercontent.com/ruuda/convector/master/screenshots/interactive.png
 [accumulative]: https://raw.githubusercontent.com/ruuda/convector/master/screenshots/accumulative.png
-[ci-img]:       https://ci.appveyor.com/api/projects/status/468h0bilnnrsrnyy?svg=true
+[ci-img]:       https://ci.appveyor.com/api/projects/status/nkqhoi829382i1ow?svg=true
 [ci]:           https://ci.appveyor.com/project/ruuda/convector
