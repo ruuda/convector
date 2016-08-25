@@ -162,7 +162,9 @@ impl MVector3 {
     /// Builds an mvector by applying the function to the numbers 0..7.
     ///
     /// Note: this is essentially a transpose, avoid in hot code.
-    pub fn generate<F>(mut f: F) -> MVector3 where F: FnMut(usize) -> SVector3 {
+    pub fn generate<F>(mut f: F) -> MVector3
+        where F: FnMut(usize) -> SVector3
+    {
         MVector3 {
             x: Mf32::generate(|i| f(i).x),
             y: Mf32::generate(|i| f(i).y),

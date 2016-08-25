@@ -78,7 +78,9 @@ impl MRay {
     /// Builds an mray by applying the function to the numbers 0..7.
     ///
     /// Note: this is essentially a transpose, avoid in hot code.
-    pub fn generate<F>(mut f: F) -> MRay where F: FnMut(usize) -> SRay {
+    pub fn generate<F>(mut f: F) -> MRay
+        where F: FnMut(usize) -> SRay
+    {
         MRay {
             origin: MVector3::generate(|i| f(i).origin),
             direction: MVector3::generate(|i| f(i).direction),

@@ -53,7 +53,9 @@ impl Aabb {
 
     /// Returns the smalles axis-aligned bounding box that contains all input
     /// points.
-    pub fn enclose_points<'a, I>(points: I) -> Aabb where I: IntoIterator<Item = &'a SVector3> {
+    pub fn enclose_points<'a, I>(points: I) -> Aabb
+        where I: IntoIterator<Item = &'a SVector3>
+    {
         let mut it = points.into_iter();
         let &first = it.next().expect("enclosure must encluse at least one point");
 
@@ -69,7 +71,9 @@ impl Aabb {
     }
 
     /// Returns the smallest bounding box that contains all input boxes.
-    pub fn enclose_aabbs<'a, I>(aabbs: I) -> Aabb where I: IntoIterator<Item = &'a Aabb> {
+    pub fn enclose_aabbs<'a, I>(aabbs: I) -> Aabb
+        where I: IntoIterator<Item = &'a Aabb>
+    {
         let mut it = aabbs.into_iter();
         let first = it.next().expect("enclosure must enclose at least one AABB");
 

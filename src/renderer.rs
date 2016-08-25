@@ -101,10 +101,13 @@ impl RenderBuffer {
         // https://github.com/rust-lang/rfcs/pull/1398#issuecomment-198584430.
         // The extra copy is unfortunate, but the allocator API needs to change
         // before it can be avoided.
-        let byte_buffer = buffer.iter().flat_map(|mi32| {
-            let bytes: &[u8; 32] = unsafe { mem::transmute(mi32) };
-            bytes
-        }).cloned().collect();
+        let byte_buffer = buffer.iter()
+            .flat_map(|mi32| {
+                let bytes: &[u8; 32] = unsafe { mem::transmute(mi32) };
+                bytes
+            })
+            .cloned()
+            .collect();
 
         drop_cache_line_aligned_vec(buffer);
         byte_buffer
@@ -112,7 +115,7 @@ impl RenderBuffer {
 }
 
 // The render buffer must be shared among threads, but UnsafeCell is not Sync.
-unsafe impl Sync for RenderBuffer { }
+unsafe impl Sync for RenderBuffer {}
 
 impl Renderer {
     pub fn new(scene: Scene, width: u32, height: u32) -> Renderer {
@@ -234,10 +237,10 @@ impl Renderer {
     /// Converts floating-point color values to 32-bit RGBA and stores the
     /// values in the bitmap.
     fn store_pixels_color_16x4(&self,
-                         bitmap: &mut [Mi32],
-                         x: u32,
-                         y: u32,
-                         data: &[MPixelData; 8]) {
+                               bitmap: &mut [Mi32],
+                               x: u32,
+                               y: u32,
+                               data: &[MPixelData; 8]) {
         // Convert f32 colors to i32 colors in the range 0-255.
         let range = Mf32::broadcast(255.0);
         let rgbas = generate_slice8(|i| {
@@ -390,13 +393,15 @@ impl Renderer {
                 for i in 0..w {
                     let rgbs = hdr_buffer[(j * w + i) as usize];
                     let rgbs = generate_slice8(|k| rgbs[k] * factor);
-                    let data = generate_slice8(|k| MPixelData {
-                        color: rgbs[k],
-                        // These values are unused, only the color is stored
-                        // in this function.
-                        tex_index: Mi32::zero(),
-                        tex_coords: (Mf32::zero(), Mf32::zero()),
-                        fresnel: Mf32::zero(),
+                    let data = generate_slice8(|k| {
+                        MPixelData {
+                            color: rgbs[k],
+                            // These values are unused, only the color is stored
+                            // in this function.
+                            tex_index: Mi32::zero(),
+                            tex_coords: (Mf32::zero(), Mf32::zero()),
+                            fresnel: Mf32::zero(),
+                        }
                     });
                     self.store_pixels_color_16x4(bitmap, i * 16, j * 4, &data);
                 }
@@ -425,17 +430,15 @@ impl Renderer {
             debug_assert!(isect.distance.all_finite(), "infinite distance at iteration {}", i);
 
             // Stop when every ray hit a light source.
-            if isect.material.all_sign_bits_negative() { break }
+            if isect.material.all_sign_bits_negative() {
+                break;
+            }
 
             // Get a new ray and the color modulation. For the first bounce, the
             // Fresnel term should not contribute to the color modulation
             // because that is handled on the GPU.
-            let (new_ray, color_mod, fr) = continue_path(isect.material,
-                                                         &self.scene,
-                                                         &ray,
-                                                         &isect,
-                                                         rng,
-                                                         i == 0);
+            let (new_ray, color_mod, fr) =
+                continue_path(isect.material, &self.scene, &ray, &isect, rng, i == 0);
             ray = new_ray;
             color = color.mul_coords(color_mod);
 

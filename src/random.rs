@@ -35,7 +35,6 @@ pub struct Rng {
 }
 
 impl Rng {
-
     /// Creates a new random number generator.
     ///
     /// The generator is seeded from three 32-bit integers, suggestively called
@@ -62,11 +61,12 @@ impl Rng {
         // powers of two.
         let seed = seed.wrapping_add(seed % 9358246936573323101);
 
-        let primes = Mu64(14491630826648200009, 13149596372461506851, 6119410235796056053, 14990141545859273719);
+        let primes = Mu64(14491630826648200009,
+                          13149596372461506851,
+                          6119410235796056053,
+                          14990141545859273719);
 
-        Rng {
-            state: Mu64(seed, seed, seed, seed) * primes,
-        }
+        Rng { state: Mu64(seed, seed, seed, seed) * primes }
     }
 
     /// Updates the state and returns the old state.

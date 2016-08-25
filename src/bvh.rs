@@ -162,7 +162,9 @@ impl InterimNode {
             let num_tris = self.triangles.len();
             if bins[index].triangles.len() > num_tris / 8 && num_tris > bins.len() {
                 // Clear the bins before trying again.
-                for bin in &mut bins[..] { bin.clear(); }
+                for bin in &mut bins[..] {
+                    bin.clear();
+                }
                 return self.bin_triangles_uniform(bins, axis);
             }
         }
@@ -201,8 +203,8 @@ impl InterimNode {
     /// Returs the bounding box enclosing the bin bounding boxes.
     fn enclose_bins(bins: &[Bin]) -> Aabb {
         let aabbs = bins.iter()
-                        .filter(|bin| bin.triangles.len() > 0)
-                        .map(|bin| bin.aabb.as_ref().unwrap());
+            .filter(|bin| bin.triangles.len() > 0)
+            .map(|bin| bin.aabb.as_ref().unwrap());
 
         Aabb::enclose_aabbs(aabbs)
     }
@@ -213,9 +215,12 @@ impl InterimNode {
     }
 
     /// Returns the cheapest split and its cost.
-    fn find_cheapest_split<'a, H>(&self, heuristic: &H, bins: &[Bin<'a>])
-                              -> (f32, Vec<&'a TriangleRef>, Vec<&'a TriangleRef>)
-                              where H: Heuristic {
+    fn find_cheapest_split<'a, H>(&self,
+                                  heuristic: &H,
+                                  bins: &[Bin<'a>])
+                                  -> (f32, Vec<&'a TriangleRef>, Vec<&'a TriangleRef>)
+        where H: Heuristic
+    {
         let mut best_split_at = 0;
         let mut best_split_cost = 0.0;
         let mut is_first = true;
@@ -257,10 +262,12 @@ impl InterimNode {
 
     /// Splits the node if that is would be beneficial according to the
     /// heuristic.
-    fn split<H>(&mut self, heuristic: &H) where H: Heuristic {
+    fn split<H>(&mut self, heuristic: &H)
+        where H: Heuristic
+    {
         // If there is only one triangle, splitting does not make sense.
         if self.triangles.len() <= 1 {
-            return
+            return;
         }
 
         let (best_split_cost, left_tris, right_tris) = {
@@ -286,7 +293,9 @@ impl InterimNode {
                     }
                 }
 
-                for bin in &mut bins[..] { bin.clear(); }
+                for bin in &mut bins[..] {
+                    bin.clear();
+                }
             }
 
             // Something must have set the cost.
@@ -301,7 +310,7 @@ impl InterimNode {
         // one.
         let no_split_cost = heuristic.tris_cost(self.triangles.len());
         if no_split_cost < best_split_cost {
-            return
+            return;
         }
 
         let left_node = InterimNode::from_triangle_refs(left_tris);
@@ -313,7 +322,9 @@ impl InterimNode {
     }
 
     /// Recursively splits the node, constructing the BVH.
-    fn split_recursive<H>(&mut self, heuristic: &H) where H: Heuristic {
+    fn split_recursive<H>(&mut self, heuristic: &H)
+        where H: Heuristic
+    {
         use rayon;
         self.split(heuristic);
 
@@ -396,8 +407,10 @@ impl InterimNode {
             nodes.push(BvhNode::new());
 
             // Recursively crystallize the child nodes.
-            self.children[0].crystallize(source_triangles, nodes, sorted_triangles, child_index + 0);
-            self.children[1].crystallize(source_triangles, nodes, sorted_triangles, child_index + 1);
+            self.children[0]
+                .crystallize(source_triangles, nodes, sorted_triangles, child_index + 0);
+            self.children[1]
+                .crystallize(source_triangles, nodes, sorted_triangles, child_index + 1);
 
             nodes[into_index].index = child_index as u32;
             nodes[into_index].len = 0;
@@ -474,9 +487,10 @@ impl BvhNode {
 impl Bvh {
     pub fn build(source_triangles: &[Triangle]) -> Bvh {
         // Actual triangles are not important to the BVH, convert them to AABBs.
-        let trirefs = (0..).zip(source_triangles.iter())
-                           .map(|(i, tri)| TriangleRef::from_triangle(i, tri))
-                           .collect();
+        let trirefs = (0..)
+            .zip(source_triangles.iter())
+            .map(|(i, tri)| TriangleRef::from_triangle(i, tri))
+            .collect();
 
         let mut root = InterimNode::from_triangle_refs(trirefs);
 
@@ -534,20 +548,19 @@ impl Bvh {
         let mut triangles = Vec::new();
 
         for mesh in meshes {
-            let mesh_triangles = mesh.triangles.iter().map(
-                |ref tri| {
-                    let (i0, i1, i2) = tri.vertices;
-                    let v0 = mesh.vertices[i0 as usize];
-                    let v1 = mesh.vertices[i1 as usize];
-                    let v2 = mesh.vertices[i2 as usize];
-                    let mut triangle = Triangle::new(v0, v1, v2, tri.material);
-                    if let Some((tx0, tx1, tx2)) = tri.tex_coords {
-                        triangle.uv0 = mesh.tex_coords[tx0 as usize];
-                        triangle.uv1 = mesh.tex_coords[tx1 as usize];
-                        triangle.uv2 = mesh.tex_coords[tx2 as usize];
-                    }
-                    triangle
-                });
+            let mesh_triangles = mesh.triangles.iter().map(|ref tri| {
+                let (i0, i1, i2) = tri.vertices;
+                let v0 = mesh.vertices[i0 as usize];
+                let v1 = mesh.vertices[i1 as usize];
+                let v2 = mesh.vertices[i2 as usize];
+                let mut triangle = Triangle::new(v0, v1, v2, tri.material);
+                if let Some((tx0, tx1, tx2)) = tri.tex_coords {
+                    triangle.uv0 = mesh.tex_coords[tx0 as usize];
+                    triangle.uv1 = mesh.tex_coords[tx1 as usize];
+                    triangle.uv2 = mesh.tex_coords[tx2 as usize];
+                }
+                triangle
+            });
             triangles.extend(mesh_triangles);
         }
 
@@ -573,7 +586,10 @@ impl Bvh {
     /// Also returns the number of AABBs intersected and the number of triangles
     /// intersected.
     #[inline(always)]
-    pub fn intersect_nearest_impl(&self, ray: &MRay, mut isect: MIntersection) -> (MIntersection, u32, u32) {
+    pub fn intersect_nearest_impl(&self,
+                                  ray: &MRay,
+                                  mut isect: MIntersection)
+                                  -> (MIntersection, u32, u32) {
         // Keep a stack of nodes that still need to be intersected. This does
         // involve a heap allocation, but that is not so bad. Using a small
         // on-stack vector from the smallvec crate (which falls back to heap
@@ -610,7 +626,7 @@ impl Bvh {
             // intersection, then nothing inside the node can yield
             // a closer intersection, so we can skip the node.
             if aabb_isect.is_further_away_than(isect.distance, ray.active) {
-                continue
+                continue;
             }
 
             if node.len == 0 {

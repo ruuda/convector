@@ -133,8 +133,9 @@ impl Scene {
 
         println!("scene statistics:");
         println!("  triangles eligible for direct sampling: {} / {} ({:0.1}%)",
-            self.direct_sample.len(), self.bvh.triangles.len(),
-            100.0 * self.direct_sample.len() as f32 / self.bvh.triangles.len() as f32);
+                 self.direct_sample.len(),
+                 self.bvh.triangles.len(),
+                 100.0 * self.direct_sample.len() as f32 / self.bvh.triangles.len() as f32);
     }
 
     /// Returns 8 random points on 8 random triangles eligible for direct

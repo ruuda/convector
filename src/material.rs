@@ -225,7 +225,8 @@ fn diffuse_brdf(isect: &MIntersection, ray_in: &MRay) -> MVector3 {
     let modulation = Mf32::broadcast(0.5 / consts::PI) * cos_theta;
 
     debug_assert!(modulation.all_finite());
-    debug_assert!(modulation.all_sign_bits_positive(), "color modulation cannot be negative");
+    debug_assert!(modulation.all_sign_bits_positive(),
+                  "color modulation cannot be negative");
 
     MVector3::new(modulation, modulation, modulation)
 }
@@ -241,9 +242,7 @@ fn diffuse_brdf(isect: &MIntersection, ray_in: &MRay) -> MVector3 {
 /// so the cosine distribution still does a decent job, and it is much cheaper
 /// to sample from than a distribution specific for the Blinn-Phong BRDF.
 #[inline(always)]
-fn continue_path_brdf(isect: &MIntersection,
-                      rng: &mut Rng)
-                      -> MRay {
+fn continue_path_brdf(isect: &MIntersection, rng: &mut Rng) -> MRay {
     // Bounce in a random direction in the hemisphere around the surface
     // normal, with a cosine-weighted distribution, for a diffuse bounce.
     let dir_z = rng.sample_hemisphere_vector();
@@ -268,10 +267,7 @@ fn pd_brdf(isect: &MIntersection, ray: &MRay) -> Mf32 {
 }
 
 /// Continues the path of a photon by sampling a point on a surface.
-fn continue_path_direct_sample(scene: &Scene,
-                               isect: &MIntersection,
-                               rng: &mut Rng)
-                               -> MRay {
+fn continue_path_direct_sample(scene: &Scene, isect: &MIntersection, rng: &mut Rng) -> MRay {
     let ds = scene.get_direct_sample(rng);
     let direction = (ds.position - isect.position).normalized();
 
@@ -329,7 +325,8 @@ fn pd_direct_sample(scene: &Scene, ray: &MRay) -> Mf32 {
         pd_total = (pd_total + pd).pick(pd_total, sample_isect.mask);
 
         debug_assert!(pd_total.all_finite());
-        debug_assert!(pd_total.all_sign_bits_positive(), "probability density must be positive");
+        debug_assert!(pd_total.all_sign_bits_positive(),
+                      "probability density must be positive");
     });
 
     // So far we computed the probability density per triangle, but we picked
@@ -421,7 +418,7 @@ pub fn continue_path(material: MMaterial,
     let new_ray = MRay {
         origin: new_ray.origin.pick(ray.origin, active),
         direction: new_ray.direction.pick(ray.direction, active),
-        active: active
+        active: active,
     };
 
     let white = MVector3::new(Mf32::one(), Mf32::one(), Mf32::one());
@@ -456,7 +453,8 @@ fn microfacet_brdf(material: MMaterial,
         f_color
     };
 
-    debug_assert!(d.all_sign_bits_positive(), "surface normal density must not be negative");
+    debug_assert!(d.all_sign_bits_positive(),
+                  "surface normal density must not be negative");
 
     // Compute the final microfacet transmission. The factor
     // 4 * dot(n, l) * dot(n, v) has been absorbed into the geometry factor,
@@ -493,7 +491,8 @@ fn microfacet_fresnel(incoming: MVector3, half_way: MVector3, color: MVector3) -
 /// distribution".)
 fn microfacet_normal_dist(half_way: MVector3,
                           isect: &MIntersection,
-                          glossiness_exponent_index: Mi32) -> Mf32 {
+                          glossiness_exponent_index: Mi32)
+                          -> Mf32 {
     // Compute powers of the cosine.
     let c1 = half_way.dot(isect.normal);
     let c2 = c1 * c1;

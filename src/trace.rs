@@ -93,7 +93,7 @@ impl TraceLog {
         };
         TraceLog {
             log: Arc::new(Mutex::new(trace_log_impl)),
-            epoch:  PreciseTime::now(),
+            epoch: PreciseTime::now(),
             frame_number: 0,
         }
     }

@@ -57,9 +57,10 @@ impl FullScreenQuad {
                 .expect("failed to load fragment shader source");
 
             Program::from_source(facade,
-               str::from_utf8(&vertex_shader[..]).unwrap(),
-               str::from_utf8(&fragment_shader[..]).unwrap(), None
-            ).unwrap()
+                                 str::from_utf8(&vertex_shader[..]).unwrap(),
+                                 str::from_utf8(&fragment_shader[..]).unwrap(),
+                                 None)
+                .unwrap()
         };
 
         let program_gbuffer = {
@@ -67,9 +68,10 @@ impl FullScreenQuad {
                 .expect("failed to load fragment shader source");
 
             Program::from_source(facade,
-               str::from_utf8(&vertex_shader[..]).unwrap(),
-               str::from_utf8(&fragment_shader[..]).unwrap(), None
-            ).unwrap()
+                                 str::from_utf8(&vertex_shader[..]).unwrap(),
+                                 str::from_utf8(&fragment_shader[..]).unwrap(),
+                                 None)
+                .unwrap()
         };
 
         let program_id = {
@@ -77,9 +79,10 @@ impl FullScreenQuad {
                 .expect("failed to load fragment shader source");
 
             Program::from_source(facade,
-               str::from_utf8(&vertex_shader[..]).unwrap(),
-               str::from_utf8(&fragment_shader[..]).unwrap(), None
-            ).unwrap()
+                                 str::from_utf8(&vertex_shader[..]).unwrap(),
+                                 str::from_utf8(&fragment_shader[..]).unwrap(),
+                                 None)
+                .unwrap()
         };
 
         let program_median = {
@@ -87,9 +90,10 @@ impl FullScreenQuad {
                 .expect("failed to load fragment shader source");
 
             Program::from_source(facade,
-               str::from_utf8(&vertex_shader[..]).unwrap(),
-               str::from_utf8(&fragment_shader[..]).unwrap(), None
-            ).unwrap()
+                                 str::from_utf8(&vertex_shader[..]).unwrap(),
+                                 str::from_utf8(&fragment_shader[..]).unwrap(),
+                                 None)
+                .unwrap()
         };
 
         FullScreenQuad {
@@ -103,9 +107,7 @@ impl FullScreenQuad {
     }
 
     /// Renders the frames blended to the target surface.
-    pub fn draw_blended<S: Surface>(&self,
-                                    target: &mut S,
-                                    frames: &[Texture2d]) {
+    pub fn draw_blended<S: Surface>(&self, target: &mut S, frames: &[Texture2d]) {
         let uniforms = uniform! {
             frame0: &frames[0],
             frame1: &frames[1],
@@ -117,16 +119,15 @@ impl FullScreenQuad {
             frame7: &frames[7],
         };
         target.draw(&self.vertex_buffer,
-                    &self.indices,
-                    &self.program_blend,
-                    &uniforms,
-                    &Default::default()).expect("failed to draw quad");
+                  &self.indices,
+                  &self.program_blend,
+                  &uniforms,
+                  &Default::default())
+            .expect("failed to draw quad");
     }
 
     /// Renders a single frame to the target surface.
-    pub fn draw_single<S: Surface>(&self,
-                                   target: &mut S,
-                                   frame: &Texture2d) {
+    pub fn draw_single<S: Surface>(&self, target: &mut S, frame: &Texture2d) {
         // Draw blended as well, but blend between the same frame.
         let uniforms = uniform! {
             frame0: frame,
@@ -139,10 +140,11 @@ impl FullScreenQuad {
             frame7: frame,
         };
         target.draw(&self.vertex_buffer,
-                    &self.indices,
-                    &self.program_blend,
-                    &uniforms,
-                    &Default::default()).expect("failed to draw quad");
+                  &self.indices,
+                  &self.program_blend,
+                  &uniforms,
+                  &Default::default())
+            .expect("failed to draw quad");
     }
 
     /// Draws the source onto the target.
@@ -156,10 +158,11 @@ impl FullScreenQuad {
             frame: source,
         };
         target.draw(&self.vertex_buffer,
-                    &self.indices,
-                    &self.program_id,
-                    &uniforms,
-                    &Default::default()).expect("failed to draw quad");
+                  &self.indices,
+                  &self.program_id,
+                  &uniforms,
+                  &Default::default())
+            .expect("failed to draw quad");
     }
 
     /// Applies the gbuffer shader for texture filtering.
@@ -175,10 +178,11 @@ impl FullScreenQuad {
             texture2: &textures[1],
         };
         target.draw(&self.vertex_buffer,
-                    &self.indices,
-                    &self.program_gbuffer,
-                    &uniforms,
-                    &Default::default()).expect("failed to draw quad");
+                  &self.indices,
+                  &self.program_gbuffer,
+                  &uniforms,
+                  &Default::default())
+            .expect("failed to draw quad");
     }
 
     /// Applies a median filter to the source and draws that to the target.
@@ -192,10 +196,11 @@ impl FullScreenQuad {
             pixel_size: [1.0 / width as f32, 1.0 / height as f32],
         };
         target.draw(&self.vertex_buffer,
-                    &self.indices,
-                    &self.program_median,
-                    &uniforms,
-                    &Default::default()).expect("failed to draw quad");
+                  &self.indices,
+                  &self.program_median,
+                  &uniforms,
+                  &Default::default())
+            .expect("failed to draw quad");
     }
 }
 
@@ -286,9 +291,7 @@ impl Window {
     fn upload_frame(&mut self, bitmap: Vec<u8>) -> Texture2d {
         let dimensions = (self.width, self.height);
         let texture_data = RawImage2d::from_raw_rgba(bitmap, dimensions);
-        let texture = Texture2d::with_mipmaps(&self.display,
-                                              texture_data,
-                                              MipmapsOption::NoMipmap)
+        let texture = Texture2d::with_mipmaps(&self.display, texture_data, MipmapsOption::NoMipmap)
             .expect("failed to create texture");
         texture
     }
@@ -300,10 +303,9 @@ impl Window {
         assert_eq!(bitmap.len(), 1024 * 1024 * 3);
 
         let texture_data = RawImage2d::from_raw_rgb(bitmap, (1024, 1024));
-        let texture = SrgbTexture2d::with_mipmaps(&self.display,
-                                                  texture_data,
-                                                  MipmapsOption::NoMipmap)
-            .expect("failed to create texture");
+        let texture =
+            SrgbTexture2d::with_mipmaps(&self.display, texture_data, MipmapsOption::NoMipmap)
+                .expect("failed to create texture");
 
         self.textures.push(texture);
     }
@@ -312,7 +314,8 @@ impl Window {
                           rgba_buffer: Vec<u8>,
                           gbuffer: Vec<u8>,
                           stats: &mut GlobalStats) {
-        assert_eq!(rgba_buffer.len(), self.width as usize * self.height as usize * 4);
+        assert_eq!(rgba_buffer.len(),
+                   self.width as usize * self.height as usize * 4);
 
         let begin_texture = PreciseTime::now();
 
@@ -328,7 +331,10 @@ impl Window {
         self.frame_index = (self.frame_index + 1) % 8;
         let frame_index = self.frame_index as usize;
         let mut target = self.frames[frame_index].as_surface();
-        self.quad.draw_gbuffer(&mut target, &self.scratch, &self.gbuffer_texture, &self.textures[..]);
+        self.quad.draw_gbuffer(&mut target,
+                               &self.scratch,
+                               &self.gbuffer_texture,
+                               &self.textures[..]);
 
         let begin_draw = PreciseTime::now();
 
@@ -378,7 +384,7 @@ impl Window {
                 // The user pressed 't' for trace.
                 Event::ReceivedCharacter('t') => return Action::DumpTrace,
                 // Something else.
-                _ => ()
+                _ => (),
             }
         }
         Action::None

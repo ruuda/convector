@@ -387,9 +387,8 @@ impl Mf32 {
     ///
     /// This is slow, use only for diagnostic purposes.
     pub fn all_finite(self) -> bool {
-        self.0.is_finite() && self.1.is_finite() &&
-        self.2.is_finite() && self.3.is_finite() &&
-        self.4.is_finite() && self.5.is_finite() &&
+        self.0.is_finite() && self.1.is_finite() && self.2.is_finite() &&
+        self.3.is_finite() && self.4.is_finite() && self.5.is_finite() &&
         self.6.is_finite() && self.7.is_finite()
     }
 }
@@ -443,7 +442,9 @@ impl Mask {
 
 impl Mu64 {
     /// Applies the function componentwise.
-    pub fn map<F>(self, mut f: F) -> Mu64 where F: FnMut(u64) -> u64 {
+    pub fn map<F>(self, mut f: F) -> Mu64
+        where F: FnMut(u64) -> u64
+    {
         Mu64(f(self.0), f(self.1), f(self.2), f(self.3))
     }
 }
@@ -477,9 +478,7 @@ impl BitAnd<Mi32> for Mi32 {
 
     #[inline(always)]
     fn bitand(self, other: Mi32) -> Mi32 {
-        unsafe {
-            simd_and(self, other)
-        }
+        unsafe { simd_and(self, other) }
     }
 }
 

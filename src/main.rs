@@ -144,10 +144,12 @@ fn main() {
                 // blur.
                 renderer.set_time(time, 0.0);
             }
-            Action::None => { }
+            Action::None => {}
         }
 
-        if render_realtime { renderer.set_time(time, time_delta); }
+        if render_realtime {
+            renderer.set_time(time, time_delta);
+        }
         renderer.update_scene();
 
         // When rendering in accumulation mode, first copy the current state

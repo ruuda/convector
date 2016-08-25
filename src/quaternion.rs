@@ -264,7 +264,9 @@ fn bench_interpolate_1000(b: &mut test::Bencher) {
         let ((q0, q1), &t) = it.next().unwrap();
         for _ in 0..100 {
             unroll_10! {{
-                test::black_box(test::black_box(q0).interpolate(test::black_box(q1), test::black_box(t)));
+                test::black_box(
+                    test::black_box(q0)
+                    .interpolate(test::black_box(q1), test::black_box(t)));
             }};
         }
     });

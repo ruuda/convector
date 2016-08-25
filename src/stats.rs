@@ -13,14 +13,12 @@ use time::Duration;
 ///
 /// The number of values stored is bounded.
 pub struct Stats {
-    values: Vec<u32>
+    values: Vec<u32>,
 }
 
 impl Stats {
     pub fn new() -> Stats {
-        Stats {
-            values: Vec::with_capacity(128),
-        }
+        Stats { values: Vec::with_capacity(128) }
     }
 
     pub fn insert(&mut self, value: u32) {

@@ -92,7 +92,9 @@ impl Mesh {
         let mut material = SMaterial::white(); // The default material.
 
         for (line, line_nr) in input.lines().zip(1u32..) {
-            if line.is_empty() { continue }
+            if line.is_empty() {
+                continue;
+            }
 
             let mut pieces = line.split_whitespace();
             match pieces.next() {
@@ -117,7 +119,7 @@ impl Mesh {
                         material = new_mat;
                     } else {
                         panic!("material '{}' not present in material dictionary",
-                                material_name);
+                               material_name);
                     }
                 }
                 Some("f") => {
@@ -135,8 +137,10 @@ impl Mesh {
                         push_triangle(&vertices, &mut triangles, i0, i2, i3, material, line_nr);
                         i2 = i3;
                     }
-                },
-                _ => { /* Anything else is not supported. */ }
+                }
+                _ => {
+                    // Anything else is not supported.
+                }
             }
         }
 

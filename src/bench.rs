@@ -89,7 +89,9 @@ pub fn unit_squaternions(n: usize) -> Vec<SQuaternion> {
         // Use rejection sampling because I do not know how to sample a 4D unit
         // sphere uniformly.
         let norm_squared = a * a + b * b + c * c + d * d;
-        if norm_squared > 1.0 { continue }
+        if norm_squared > 1.0 {
+            continue;
+        }
 
         let norm = norm_squared.sqrt();
         let q = SQuaternion::new(a / norm, b / norm, c / norm, d / norm);
@@ -175,9 +177,9 @@ pub fn triangles(n: usize) -> Vec<Triangle> {
     let v1s = svectors_on_unit_sphere(n);
     let v2s = svectors_on_unit_sphere(n);
     v0s.iter()
-       .zip(v1s.iter().zip(v2s.iter()))
-       .map(|(&v0, (&v1, &v2))| Triangle::new(v0, v1, v2, SMaterial::white()))
-       .collect()
+        .zip(v1s.iter().zip(v2s.iter()))
+        .map(|(&v0, (&v1, &v2))| Triangle::new(v0, v1, v2, SMaterial::white()))
+        .collect()
 }
 
 /// Generates n bounding boxes with two vertices on the unit sphere.
@@ -185,9 +187,9 @@ pub fn aabbs(n: usize) -> Vec<Aabb> {
     let v0s = svectors_on_unit_sphere(n);
     let v1s = svectors_on_unit_sphere(n);
     v0s.iter()
-       .zip(v1s.iter())
-       .map(|(&v0, &v1)| Aabb::new(SVector3::min(v0, v1), SVector3::max(v0, v1)))
-       .collect()
+        .zip(v1s.iter())
+        .map(|(&v0, &v1)| Aabb::new(SVector3::min(v0, v1), SVector3::max(v0, v1)))
+        .collect()
 }
 
 /// Generates n mrays originating from a sphere of radius 10, pointing inward.
@@ -195,13 +197,13 @@ pub fn mrays_inward(n: usize) -> Vec<MRay> {
     let origins = mvectors_on_unit_sphere(n);
     let dests = mvectors_on_unit_sphere(n);
     origins.iter()
-           .zip(dests.iter())
-           .map(|(&from, &to)| {
-               let origin = from * Mf32::broadcast(10.0);
-               let direction = (to - origin).normalized();
-               MRay::new(origin, direction)
-           })
-           .collect()
+        .zip(dests.iter())
+        .map(|(&from, &to)| {
+            let origin = from * Mf32::broadcast(10.0);
+            let direction = (to - origin).normalized();
+            MRay::new(origin, direction)
+        })
+        .collect()
 }
 
 /// Generates n mrays originating from a sphere of radius 10, pointing inward.
@@ -210,14 +212,14 @@ pub fn mrays_inward_coherent(n: usize) -> Vec<MRay> {
     let origins = svectors_on_unit_sphere(n);
     let dests = mvectors_on_unit_sphere(n);
     origins.iter()
-           .zip(dests.iter())
-           .map(|(&from, &to)| {
-               let origin = MVector3::broadcast(from * 10.0);
-               let dest = to * Mf32::broadcast(0.5);
-               let direction = (dest - origin).normalized();
-               MRay::new(origin, direction)
-           })
-           .collect()
+        .zip(dests.iter())
+        .map(|(&from, &to)| {
+            let origin = MVector3::broadcast(from * 10.0);
+            let dest = to * Mf32::broadcast(0.5);
+            let direction = (dest - origin).normalized();
+            MRay::new(origin, direction)
+        })
+        .collect()
 }
 
 #[test]
