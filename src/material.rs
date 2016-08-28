@@ -214,23 +214,6 @@ pub fn sky_intensity(ray_direction: MVector3) -> MVector3 {
     MVector3::new(r, g, b).mul_add(two, MVector3::new(half, half, half))
 }
 
-/// Returns the proportion of incoming energy that is transmitted into the
-/// outgoing direction.
-fn diffuse_brdf(isect: &MIntersection, ray_in: &MRay) -> MVector3 {
-    // There is the factor dot(normal, direction) that modulates the incoming
-    // contribution. The incoming energy is then radiated evenly in all
-    // directions, so the energy density in every direction is 1/2pi, to
-    // ensure that energy density integrates to 1.
-    let cos_theta = isect.normal.dot(ray_in.direction).max(Mf32::zero());
-    let modulation = Mf32::broadcast(0.5 / consts::PI) * cos_theta;
-
-    debug_assert!(modulation.all_finite());
-    debug_assert!(modulation.all_sign_bits_positive(),
-                  "color modulation cannot be negative");
-
-    MVector3::new(modulation, modulation, modulation)
-}
-
 /// Continues the path of a photon by sampling the BRDF.
 ///
 /// This samples the hemisphere in a cosine-weighted distribution, it does not

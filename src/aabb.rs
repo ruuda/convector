@@ -88,18 +88,6 @@ impl Aabb {
         Aabb::new(min, max)
     }
 
-    /// Returns the bounding box extended to contain the point.
-    pub fn extend_point(&self, point: SVector3) -> Aabb {
-        let min = SVector3::min(point, self.origin);
-        let max = SVector3::max(point, self.far);
-        Aabb::new(min, max)
-    }
-
-    /// Returns the center of the bounding box.
-    pub fn center(&self) -> SVector3 {
-        (self.origin + self.far) * 0.5
-    }
-
     /// Returns the size of the bounding box.
     pub fn size(&self) -> SVector3 {
         self.far - self.origin
@@ -204,32 +192,10 @@ fn aabb_enclose_aabbs() {
 }
 
 #[test]
-fn aabb_center() {
-    let aabb = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(5.0, 7.0, 9.0));
-    assert_eq!(aabb.center(), SVector3::new(3.0, 4.5, 6.0));
-}
-
-#[test]
 fn aabb_area() {
     // Width: 4, height: 5, depth: 6.
     let aabb = Aabb::new(SVector3::new(1.0, 2.0, 3.0), SVector3::new(5.0, 7.0, 9.0));
     assert_eq!(40.0 + 60.0 + 48.0, aabb.area());
-}
-
-#[test]
-fn aabb_extend_point() {
-    let aabb = Aabb::new(SVector3::zero(), SVector3::one());
-    let p = SVector3::new(0.5, 0.5, 1.5);
-    let aabb_p = aabb.extend_point(p);
-
-    assert_eq!(aabb_p.origin, SVector3::zero());
-    assert_eq!(aabb_p.far, SVector3::new(1.0, 1.0, 1.5));
-
-    let q = SVector3::new(-0.2, 1.2, 1.0);
-    let aabb_pq = aabb_p.extend_point(q);
-
-    assert_eq!(aabb_pq.origin, SVector3::new(-0.2, 0.0, 0.0));
-    assert_eq!(aabb_pq.far, SVector3::new(1.0, 1.2, 1.5));
 }
 
 #[test]
