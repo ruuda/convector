@@ -5,11 +5,11 @@ authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
 
 [dependencies]
 filebuffer        = "0.1"
-glium             = "0.15"
+glium             = "0.16"
 imagefmt          = "4.0"
 num_cpus          = "1.0"
 rand              = "0.3"
-rayon             = "0.4"
+rayon             = "0.6"
 scoped_threadpool = "0.1"
-thread-id         = "2.0"
+thread-id         = "3.0"
 time              = "0.1"
