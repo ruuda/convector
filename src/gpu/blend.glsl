@@ -31,4 +31,5 @@ void main() {
 
     // Take the mean of the eight frames.
     color = (c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7) * 0.125f;
+    color.a = 1.0f;
 }
